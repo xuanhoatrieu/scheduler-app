@@ -1,16 +1,16 @@
 # Graph Report - lichhoc-app  (2026-05-27)
 
 ## Corpus Check
-- 75 files · ~20,854 words
+- 94 files · ~26,683 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 547 nodes · 517 edges · 68 communities (55 shown, 13 thin omitted)
+- 654 nodes · 670 edges · 79 communities (65 shown, 14 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `9b6938a0`
+- Built from commit: `0bd95487`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -82,32 +82,43 @@
 - [[_COMMUNITY_Community 64|Community 64]]
 - [[_COMMUNITY_Community 65|Community 65]]
 - [[_COMMUNITY_Community 66|Community 66]]
+- [[_COMMUNITY_Community 68|Community 68]]
+- [[_COMMUNITY_Community 69|Community 69]]
+- [[_COMMUNITY_Community 70|Community 70]]
+- [[_COMMUNITY_Community 71|Community 71]]
+- [[_COMMUNITY_Community 72|Community 72]]
+- [[_COMMUNITY_Community 73|Community 73]]
+- [[_COMMUNITY_Community 74|Community 74]]
+- [[_COMMUNITY_Community 75|Community 75]]
+- [[_COMMUNITY_Community 76|Community 76]]
+- [[_COMMUNITY_Community 77|Community 77]]
+- [[_COMMUNITY_Community 78|Community 78]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `useAuth()` - 11 edges
-2. `US-XXX Story Title` - 10 edges
-3. `Spec Intake` - 10 edges
-4. `US-001 Install Harness Into A Project` - 10 edges
-5. `Harness Demo Walkthrough` - 9 edges
-6. `Glossary` - 8 edges
-7. `Architecture` - 8 edges
-8. `Design` - 8 edges
-9. `expo` - 7 edges
-10. `Harness` - 7 edges
+1. `syncStudentData()` - 11 edges
+2. `useAuth()` - 11 edges
+3. `US-XXX Story Title` - 10 edges
+4. `Spec Intake` - 10 edges
+5. `US-001 Install Harness Into A Project` - 10 edges
+6. `Harness Demo Walkthrough` - 9 edges
+7. `Glossary` - 8 edges
+8. `Architecture` - 8 edges
+9. `Design` - 8 edges
+10. `syncLecturerData()` - 7 edges
 
 ## Surprising Connections (you probably didn't know these)
+- `run()` --calls--> `syncLecturerData()`  [EXTRACTED]
+  backend/test_lecturer_crawler.js → backend/services/lecturerCrawler.js
+- `run()` --calls--> `syncStudentData()`  [EXTRACTED]
+  backend/test_student_crawler.js → backend/services/studentCrawler.js
+- `run()` --calls--> `encrypt()`  [EXTRACTED]
+  backend/test_strategy.js → backend/utils/security.js
 - `RootNavigator()` --calls--> `useAuth()`  [EXTRACTED]
   legacy_student_code/app/App.js → legacy_student_code/app/src/context/AuthContext.js
 - `SettingsScreen()` --calls--> `useAuth()`  [EXTRACTED]
   legacy_student_code/app/src/screens/SettingsScreen.js → legacy_student_code/app/src/context/AuthContext.js
-- `LoginScreen()` --calls--> `useAuth()`  [EXTRACTED]
-  legacy_student_code/app/src/screens/LoginScreen.js → legacy_student_code/app/src/context/AuthContext.js
-- `InfoScreen()` --calls--> `useAuth()`  [EXTRACTED]
-  legacy_student_code/app/src/screens/InfoScreen.js → legacy_student_code/app/src/context/AuthContext.js
-- `ScheduleScreen()` --calls--> `useAuth()`  [EXTRACTED]
-  legacy_student_code/app/src/screens/ScheduleScreen.js → legacy_student_code/app/src/context/AuthContext.js
 
-## Communities (68 total, 13 thin omitted)
+## Communities (79 total, 14 thin omitted)
 
 ### Community 0 - "Community 0"
 Cohesion: 0.08
@@ -250,8 +261,8 @@ Cohesion: 0.50
 Nodes (4): axios, checkForm(), cheerio, main()
 
 ### Community 47 - "Community 47"
-Cohesion: 0.10
-Nodes (19): dependencies, axios, cheerio, cors, dotenv, express, helmet, jsonwebtoken (+11 more)
+Cohesion: 0.09
+Nodes (22): dependencies, axios, cheerio, cors, dotenv, express, helmet, jsonwebtoken (+14 more)
 
 ### Community 48 - "Community 48"
 Cohesion: 0.11
@@ -298,8 +309,8 @@ Cohesion: 0.25
 Nodes (7): expo, assetBundlePatterns, name, orientation, slug, userInterfaceStyle, version
 
 ### Community 59 - "Community 59"
-Cohesion: 0.29
-Nodes (6): updated_at, working_on, feature, notes, status, task
+Cohesion: 0.22
+Nodes (8): updated_at, working_on, current_phase, current_plan_path, feature, notes, status, task
 
 ### Community 60 - "Community 60"
 Cohesion: 0.33
@@ -325,25 +336,65 @@ Nodes (4): Story Validation Plan: TUAF Schedule Epic, Test Matrix Reference:, Va
 Cohesion: 0.50
 Nodes (3): Action Plan, Execution Plan: TUAF Schedule Epic, Phân chia Giai đoạn & Mile-stones:
 
+### Community 68 - "Community 68"
+Cohesion: 0.20
+Nodes (14): run(), { syncStudentData }, cheerio, parseExams(), parseFinance(), parseGrades(), parseSchedule(), axios (+6 more)
+
+### Community 69 - "Community 69"
+Cohesion: 0.17
+Nodes (12): run(), { syncLecturerData }, cheerio, parseLecturerSchedule(), axios, cheerio, createSessionAxios(), loginLecturer() (+4 more)
+
+### Community 70 - "Community 70"
+Cohesion: 0.18
+Nodes (10): { Sequelize }, { DataTypes }, Exam, { sequelize }, { DataTypes }, Grade, { sequelize }, { DataTypes } (+2 more)
+
+### Community 71 - "Community 71"
+Cohesion: 0.20
+Nodes (10): { connectDB }, { encrypt }, Exam, Finance, Grade, run(), Schedule, strategyManager (+2 more)
+
+### Community 72 - "Community 72"
+Cohesion: 0.33
+Nodes (7): decrypted, { encrypt, decrypt }, encrypted, crypto, decrypt(), encrypt(), getKey()
+
+### Community 73 - "Community 73"
+Cohesion: 0.25
+Nodes (7): Exam, Finance, Grade, Schedule, ScheduleStrategy, { syncLecturerData }, { syncStudentData }
+
+### Community 74 - "Community 74"
+Cohesion: 0.29
+Nodes (3): ApiStrategy, ScheduleStrategy, ScheduleStrategy
+
+### Community 75 - "Community 75"
+Cohesion: 0.33
+Nodes (3): ApiStrategy, CrawlerStrategy, StrategyManager
+
+### Community 76 - "Community 76"
+Cohesion: 0.50
+Nodes (3): { DataTypes }, Finance, { sequelize }
+
+### Community 77 - "Community 77"
+Cohesion: 0.50
+Nodes (3): { DataTypes }, Schedule, { sequelize }
+
 ## Knowledge Gaps
-- **335 isolated node(s):** `name`, `version`, `main`, `start`, `axios` (+330 more)
+- **389 isolated node(s):** `name`, `version`, `main`, `start`, `axios` (+384 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **13 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **14 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
+- **Why does `syncStudentData()` connect `Community 68` to `Community 73`, `Community 69`?**
+  _High betweenness centrality (0.002) - this node is a cross-community bridge._
+- **Why does `syncLecturerData()` connect `Community 69` to `Community 73`?**
+  _High betweenness centrality (0.001) - this node is a cross-community bridge._
+- **Why does `encrypt()` connect `Community 72` to `Community 71`?**
+  _High betweenness centrality (0.001) - this node is a cross-community bridge._
 - **What connects `name`, `version`, `main` to the rest of the system?**
-  _335 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _389 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Community 0` be split into smaller, more focused modules?**
   _Cohesion score 0.08412698412698413 - nodes in this community are weakly interconnected._
 - **Should `Community 1` be split into smaller, more focused modules?**
   _Cohesion score 0.08695652173913043 - nodes in this community are weakly interconnected._
 - **Should `Community 2` be split into smaller, more focused modules?**
-  _Cohesion score 0.1111111111111111 - nodes in this community are weakly interconnected._
-- **Should `Community 3` be split into smaller, more focused modules?**
-  _Cohesion score 0.14285714285714285 - nodes in this community are weakly interconnected._
-- **Should `Community 47` be split into smaller, more focused modules?**
-  _Cohesion score 0.1 - nodes in this community are weakly interconnected._
-- **Should `Community 48` be split into smaller, more focused modules?**
   _Cohesion score 0.1111111111111111 - nodes in this community are weakly interconnected._

@@ -1,11 +1,11 @@
 {
-  "updated_at": "2026-05-27T12:53:00Z",
+  "updated_at": "2026-05-27T13:58:00Z",
   "working_on": {
     "feature": "TUAF Schedule Core Setup",
     "current_plan_path": "plans/260527-1054-tuaf-schedule/",
-    "current_phase": "phase-04",
-    "task": "Lập trình Lecturer Portal SSO & Crawler để trích xuất CSRF Token, tự động đăng nhập SSO thông qua sso.tuaf.edu.vn và cào lịch dạy giảng viên",
+    "current_phase": "phase-06",
+    "task": "Lập trình Cron Job tự động đồng bộ (3h sáng) & Xây dựng các Express REST APIs (Auth, Lịch học, Điểm số, Tài chính)",
     "status": "coding",
-    "notes": "Hệ thống đã hoàn tất Phase 03 (Student Portal Crawler với thuật toán phân tách dòng cào đa ca cực đỉnh đã hoạt động hoàn hảo cào thành công 24 lịch học nhỏ của sinh viên). Hiện tại đang chuyển sang Phase 04 để lập trình module đăng nhập SSO giảng viên."
+    "notes": "Hệ thống đã hoàn thành Phase 05 (Strategy Pattern, di chuyển toàn bộ DB Cache sang PostgreSQL qua Sequelize thành công). Hiện tại đang chuyển sang Phase 06 để lập trình các API Express và Cron Job đồng bộ."
   }
 }
