@@ -17,8 +17,8 @@ Dự án TUAF Schedule phát triển hoàn toàn mới (Greenfield) hệ thống
 | Phase | Name | Status | Progress |
 |-------|------|--------|----------|
 | 01 | Setup Environment | ✅ Complete | 100% |
-| 02 | Database & Security | 🟡 In Progress | 0% |
-| 03 | Student Portal Crawler | ⬜ Pending | 0% |
+| 02 | Database & Security | ✅ Complete | 100% |
+| 03 | Student Portal Crawler | 🟡 In Progress | 0% |
 | 04 | Lecturer Portal SSO & Crawler | ⬜ Pending | 0% |
 | 05 | Sourcing Strategy Pattern | ⬜ Pending | 0% |
 | 06 | Cron Job & Backend API | ⬜ Pending | 0% |
