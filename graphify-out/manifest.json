@@ -300,13 +300,13 @@
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/mobile/App.js": {
-    "mtime": 1779885568.5811534,
-    "ast_hash": "d1fb2b9c2c7ebb614ae21d4f30319b3b",
+    "mtime": 1779890450.026512,
+    "ast_hash": "00cfe6384b9f820d33e4e653be9ac77b",
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/.brain/session.json": {
-    "mtime": 1779890322.984216,
-    "ast_hash": "6d8f4797560daa95c43d87e1d70eda9f",
+    "mtime": 1779890405.291053,
+    "ast_hash": "6cc753865ae4f9f95f257ad38deba53a",
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/docs/DESIGN.md": {
@@ -360,8 +360,8 @@
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/plans/260527-1054-tuaf-schedule/plan.md": {
-    "mtime": 1779890218.3691676,
-    "ast_hash": "68e883a4b2d333516186700c6aa0b7f9",
+    "mtime": 1779890395.9589577,
+    "ast_hash": "5667cf157c1ac52a4b6b717f2c7ce79f",
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/plans/260527-1054-tuaf-schedule/phase-07-mobile-app.md": {
@@ -375,8 +375,8 @@
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/plans/260527-1054-tuaf-schedule/phase-06-cron-api.md": {
-    "mtime": 1779879273.5083766,
-    "ast_hash": "1a709a364b73ab281af4e407d7e9d002",
+    "mtime": 1779890400.4630036,
+    "ast_hash": "e3917a2f3f02defb04a73ab00770f7e5",
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/backend/test_lecturer_crawler.js": {
@@ -502,6 +502,26 @@
   "/home/trieuhoa/lichhoc-app/backend/middleware/auth.js": {
     "mtime": 1779890352.1055112,
     "ast_hash": "23ea73e3cf25f75371ad86efea4b4665",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/mobile/services/api.js": {
+    "mtime": 1779890422.2242265,
+    "ast_hash": "b7dc90c3c95963715756979f5a654669",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/mobile/components/ScheduleCard.js": {
+    "mtime": 1779890427.955285,
+    "ast_hash": "fc3b7940f234e930c4959a20dd833f1f",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/mobile/screens/DashboardScreen.js": {
+    "mtime": 1779890445.1864622,
+    "ast_hash": "650435e0befbe647ce9ad06015fb0be7",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/mobile/screens/LoginScreen.js": {
+    "mtime": 1779890434.2593498,
+    "ast_hash": "8528a905340b9cb2b1fdcd256b274e3e",
     "semantic_hash": ""
   }
 }
