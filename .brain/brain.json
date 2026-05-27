@@ -6,16 +6,36 @@
   },
   "tech_stack": [
     "Node.js",
-    "Express",
+    "Express.js",
     "React Native / Expo",
-    "MongoDB / PostgreSQL"
+    "PostgreSQL (vitts-postgres)",
+    "Sequelize ORM",
+    "node-cron",
+    "JSON Web Token (JWT)",
+    "AES-256-CBC Encryption"
   ],
-  "features": [],
-  "decisions": [],
+  "features": [
+    "Student Portal Crawler: Tự động đăng nhập và bóc tách dữ liệu Sinh viên (Lịch học, Lịch thi, Điểm, Học phí)",
+    "Lecturer Portal SSO & Crawler: Đăng nhập SSO qua cổng trường giảng viên và bóc tách lịch giảng dạy",
+    "PostgreSQL Caching Layer: Phục vụ lưu đệm dữ liệu cào để giảm tải cổng trường và phản hồi cực nhanh dưới 50ms",
+    "Security Cryptography: Mã hóa mật khẩu cổng trường AES-256 đầu cuối, lưu trữ an toàn trong PostgreSQL",
+    "Strategy Pattern: Tự động điều phối luồng dữ liệu Dual-Mode giữa cào trực tiếp (Crawler) và Database nội bộ (API)",
+    "Cron Job Service: Tự động giải mã tài khoản và đồng bộ lúc 3:00 sáng hàng ngày",
+    "Express SECURE Rest API: Securing endpoints qua JWT Bearer authentication",
+    "Expo Mobile Application: Giao diện Dashboards phân tab mượt mà, hỗ trợ nhớ session đăng nhập và Offline Caching"
+  ],
+  "decisions": [
+    "Sử dụng PostgreSQL 14 (docker vitts-postgres) thay thế hoàn toàn cho MongoDB do phù hợp hạ tầng thực tế",
+    "Áp dụng cơ chế split-and-zip (splitCellByBr) để tách bóc môn học bị gộp nhiều tiết/thứ trong cùng một ô bảng thời khóa biểu",
+    "Hiện thực hóa Strategy Pattern để mở rộng hệ thống sang kết nối API chính thức dễ dàng",
+    "Sử dụng lưu trữ đệm JSON động trong PostgreSQL cho bảng lịch sử biên lai hóa đơn học phí của Sinh viên"
+  ],
   "infrastructure": {
     "data_source_mode": "dual_mode",
     "cron_job": "0 3 * * *",
-    "encryption": "AES-256-CBC"
+    "encryption": "AES-256-CBC",
+    "database": "PostgreSQL 14 (vitts-postgres Docker container)",
+    "port": 5000
   },
   "github": {}
 }

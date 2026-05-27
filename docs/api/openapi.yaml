@@ -1,0 +1,155 @@
+openapi: 3.0.0
+info:
+  title: TUAF Schedule Backend API
+  version: 1.0.0
+  description: Tài liệu chuẩn OpenAPI 3.0 cho hệ thống xem lịch học & giảng dạy thông minh TUAF Schedule.
+
+servers:
+  - url: http://localhost:5000/api
+    description: Development Server
+
+paths:
+  /auth/login:
+    post:
+      summary: Đăng nhập tài khoản cổng trường
+      description: Đăng nhập tài khoản sinh viên/giảng viên, tự động đồng bộ & cache dữ liệu, sinh token JWT.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+                - role
+              properties:
+                username:
+                  type: string
+                  example: DTN245748004
+                password:
+                  type: string
+                  format: password
+                  example: DTN245748004
+                role:
+                  type: string
+                  enum: [student, lecturer]
+                  example: student
+      responses:
+        '200':
+          description: Đăng nhập thành công và cấp JWT Token
+        '401':
+          description: Đăng nhập cổng trường thất bại (sai tài khoản/mật khẩu)
+
+  /schedule:
+    get:
+      summary: Lấy thời khóa biểu lưu đệm
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: semester
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "2"
+        - name: schoolYear
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "2025"
+        - name: forceSync
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "false"
+      responses:
+        '200':
+          description: Trả về danh sách môn học thời khóa biểu lưu cache PostgreSQL
+
+  /exams:
+    get:
+      summary: Lấy lịch thi lưu đệm
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: semester
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "2"
+        - name: schoolYear
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "2025"
+        - name: forceSync
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "false"
+      responses:
+        '200':
+          description: Trả về lịch thi học kỳ lưu cache PostgreSQL
+
+  /grades:
+    get:
+      summary: Lấy điểm học tập lưu đệm
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: semester
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "2"
+        - name: schoolYear
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "2025"
+        - name: forceSync
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "false"
+      responses:
+        '200':
+          description: Trả về bảng điểm chi tiết lưu cache PostgreSQL
+
+  /finance:
+    get:
+      summary: Lấy học phí công nợ lưu đệm
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: semester
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "2"
+        - name: forceSync
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "false"
+      responses:
+        '200':
+          description: Trả về tổng học phí công nợ & chi tiết biên lai đã nộp
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
