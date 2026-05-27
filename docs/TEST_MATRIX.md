@@ -1,9 +1,6 @@
 # Test Matrix
 
-This file maps product behavior to proof.
-
-No product behavior has been defined or implemented yet. Do not mark a row
-implemented until tests or validation evidence exist.
+This file maps product behavior to proof. Do not mark a row implemented until tests or validation evidence exist.
 
 ## Status Values
 
@@ -19,15 +16,18 @@ implemented until tests or validation evidence exist.
 
 | Story | Contract | Unit | Integration | E2E | Platform | Status | Evidence |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| TBD | Add rows when story packets are created | no | no | no | no | planned | none |
+| **US-001** | Student Portal Crawler | yes | yes | no | no | implemented | `backend/test_student_crawler.js` |
+| **US-002** | Lecturer Portal SSO & Crawler | yes | yes | no | no | implemented | `backend/test_lecturer_crawler.js` |
+| **US-003** | AES-256 password security encryption | yes | no | no | no | implemented | `backend/test_security.js` |
+| **US-004** | PostgreSQL connection via Sequelize | no | yes | no | no | implemented | `backend/test_pg_connection.js` |
+| **US-005** | Strategy Pattern for crawler vs API | yes | yes | no | no | implemented | `backend/test_strategy.js` |
+| **US-006** | Express REST APIs (Auth, Schedules, Finances) | no | yes | no | no | implemented | `backend/test_api_integration.js` |
+| **US-007** | Expo Mobile screens with offline cache | no | no | no | yes | implemented | `mobile/App.js` |
 
 ## Evidence Rules
 
 - Unit proof covers pure domain and application rules.
-- Integration proof covers backend enforcement, data integrity, provider
-  behavior, jobs, or service contracts.
+- Integration proof covers backend enforcement, data integrity, provider behavior, jobs, or service contracts.
 - E2E proof covers user-visible browser flows.
-- Platform proof covers only shell, deployment, mobile, desktop, or runtime
-  behavior that cannot be proven in lower layers.
-- A story can be implemented without every proof column if the story packet
-  explains why.
+- Platform proof covers only shell, deployment, mobile, desktop, or runtime behavior that cannot be proven in lower layers.
+- A story can be implemented without every proof column if the story packet explains why.
