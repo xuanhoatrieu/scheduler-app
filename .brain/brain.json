@@ -1,0 +1,21 @@
+{
+  "project": {
+    "name": "TUAF Schedule",
+    "description": "Hệ thống xem lịch học và lịch giảng dạy thông minh dành cho Sinh viên & Giảng viên trường Đại học Nông Lâm Thái Nguyên (TUAF).",
+    "created_at": "2026-05-27T10:52:00Z"
+  },
+  "tech_stack": [
+    "Node.js",
+    "Express",
+    "React Native / Expo",
+    "MongoDB / PostgreSQL"
+  ],
+  "features": [],
+  "decisions": [],
+  "infrastructure": {
+    "data_source_mode": "dual_mode",
+    "cron_job": "0 3 * * *",
+    "encryption": "AES-256-CBC"
+  },
+  "github": {}
+}

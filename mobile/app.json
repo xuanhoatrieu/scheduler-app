@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "name": "TUAF Schedule",
+    "slug": "tuaf-schedule",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "**/*"
+    ]
+  }
+}
