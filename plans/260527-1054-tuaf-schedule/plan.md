@@ -21,8 +21,8 @@ Dự án TUAF Schedule phát triển hoàn toàn mới (Greenfield) hệ thống
 | 03 | Student Portal Crawler | ✅ Complete | 100% |
 | 04 | Lecturer Portal SSO & Crawler | ✅ Complete | 100% |
 | 05 | Sourcing Strategy Pattern | ✅ Complete | 100% |
-| 06 | Cron Job & Backend API | 🟡 In Progress | 0% |
-| 07 | Mobile App - Frontend | ⬜ Pending | 0% |
+| 06 | Cron Job & Backend API | ✅ Complete | 100% |
+| 07 | Mobile App - Frontend | 🟡 In Progress | 0% |
 | 08 | Testing & Validation | ⬜ Pending | 0% |
 
 ## Quick Commands

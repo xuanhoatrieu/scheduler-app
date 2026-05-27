@@ -1,16 +1,16 @@
 # Graph Report - lichhoc-app  (2026-05-27)
 
 ## Corpus Check
-- 94 files · ~26,683 words
+- 99 files · ~28,439 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 654 nodes · 670 edges · 79 communities (65 shown, 14 thin omitted)
+- 695 nodes · 736 edges · 78 communities (64 shown, 14 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `0bd95487`
+- Built from commit: `08af6d2f`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -91,7 +91,6 @@
 - [[_COMMUNITY_Community 74|Community 74]]
 - [[_COMMUNITY_Community 75|Community 75]]
 - [[_COMMUNITY_Community 76|Community 76]]
-- [[_COMMUNITY_Community 77|Community 77]]
 - [[_COMMUNITY_Community 78|Community 78]]
 
 ## God Nodes (most connected - your core abstractions)
@@ -107,18 +106,18 @@
 10. `syncLecturerData()` - 7 edges
 
 ## Surprising Connections (you probably didn't know these)
+- `handleForceSync()` --calls--> `decrypt()`  [EXTRACTED]
+  backend/routes/schedule.js → backend/utils/security.js
+- `startServices()` --calls--> `connectDB()`  [EXTRACTED]
+  backend/server.js → backend/config/db.js
 - `run()` --calls--> `syncLecturerData()`  [EXTRACTED]
   backend/test_lecturer_crawler.js → backend/services/lecturerCrawler.js
 - `run()` --calls--> `syncStudentData()`  [EXTRACTED]
   backend/test_student_crawler.js → backend/services/studentCrawler.js
 - `run()` --calls--> `encrypt()`  [EXTRACTED]
   backend/test_strategy.js → backend/utils/security.js
-- `RootNavigator()` --calls--> `useAuth()`  [EXTRACTED]
-  legacy_student_code/app/App.js → legacy_student_code/app/src/context/AuthContext.js
-- `SettingsScreen()` --calls--> `useAuth()`  [EXTRACTED]
-  legacy_student_code/app/src/screens/SettingsScreen.js → legacy_student_code/app/src/context/AuthContext.js
 
-## Communities (79 total, 14 thin omitted)
+## Communities (78 total, 14 thin omitted)
 
 ### Community 0 - "Community 0"
 Cohesion: 0.08
@@ -321,8 +320,8 @@ Cohesion: 0.33
 Nodes (5): Overview, Problem Statement, Risk Classification, Solution, Story Epic: TUAF Schedule Greenfield Development
 
 ### Community 62 - "Community 62"
-Cohesion: 0.40
-Nodes (4): app, cors, express, helmet
+Cohesion: 0.20
+Nodes (10): app, authRoutes, { connectDB }, cors, express, helmet, { initCronJob }, scheduleRoutes (+2 more)
 
 ### Community 63 - "Community 63"
 Cohesion: 0.40
@@ -341,60 +340,56 @@ Cohesion: 0.20
 Nodes (14): run(), { syncStudentData }, cheerio, parseExams(), parseFinance(), parseGrades(), parseSchedule(), axios (+6 more)
 
 ### Community 69 - "Community 69"
-Cohesion: 0.17
-Nodes (12): run(), { syncLecturerData }, cheerio, parseLecturerSchedule(), axios, cheerio, createSessionAxios(), loginLecturer() (+4 more)
+Cohesion: 0.08
+Nodes (22): run(), { syncLecturerData }, cheerio, parseLecturerSchedule(), axios, cheerio, createSessionAxios(), loginLecturer() (+14 more)
 
 ### Community 70 - "Community 70"
-Cohesion: 0.18
-Nodes (10): { Sequelize }, { DataTypes }, Exam, { sequelize }, { DataTypes }, Grade, { sequelize }, { DataTypes } (+2 more)
+Cohesion: 0.14
+Nodes (13): { Sequelize }, { DataTypes }, Exam, { sequelize }, { DataTypes }, Finance, { sequelize }, { DataTypes } (+5 more)
 
 ### Community 71 - "Community 71"
 Cohesion: 0.20
 Nodes (10): { connectDB }, { encrypt }, Exam, Finance, Grade, run(), Schedule, strategyManager (+2 more)
 
 ### Community 72 - "Community 72"
-Cohesion: 0.33
-Nodes (7): decrypted, { encrypt, decrypt }, encrypted, crypto, decrypt(), encrypt(), getKey()
+Cohesion: 0.19
+Nodes (12): decrypted, { encrypt, decrypt }, encrypted, cron, { decrypt }, runDailySync(), strategyManager, User (+4 more)
 
 ### Community 73 - "Community 73"
-Cohesion: 0.25
-Nodes (7): Exam, Finance, Grade, Schedule, ScheduleStrategy, { syncLecturerData }, { syncStudentData }
+Cohesion: 0.15
+Nodes (8): axios, { connectDB }, User, jwt, User, { DataTypes }, { sequelize }, User
 
 ### Community 74 - "Community 74"
-Cohesion: 0.29
-Nodes (3): ApiStrategy, ScheduleStrategy, ScheduleStrategy
+Cohesion: 0.18
+Nodes (10): authMiddleware, { decrypt }, Exam, express, Finance, Grade, handleForceSync(), router (+2 more)
 
 ### Community 75 - "Community 75"
 Cohesion: 0.33
 Nodes (3): ApiStrategy, CrawlerStrategy, StrategyManager
 
 ### Community 76 - "Community 76"
-Cohesion: 0.50
-Nodes (3): { DataTypes }, Finance, { sequelize }
-
-### Community 77 - "Community 77"
-Cohesion: 0.50
-Nodes (3): { DataTypes }, Schedule, { sequelize }
+Cohesion: 0.22
+Nodes (8): { encrypt }, express, jwt, router, strategy, strategyManager, token, User
 
 ## Knowledge Gaps
-- **389 isolated node(s):** `name`, `version`, `main`, `start`, `axios` (+384 more)
+- **419 isolated node(s):** `name`, `version`, `main`, `start`, `axios` (+414 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **14 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `syncStudentData()` connect `Community 68` to `Community 73`, `Community 69`?**
-  _High betweenness centrality (0.002) - this node is a cross-community bridge._
-- **Why does `syncLecturerData()` connect `Community 69` to `Community 73`?**
-  _High betweenness centrality (0.001) - this node is a cross-community bridge._
-- **Why does `encrypt()` connect `Community 72` to `Community 71`?**
-  _High betweenness centrality (0.001) - this node is a cross-community bridge._
+- **Why does `syncStudentData()` connect `Community 68` to `Community 69`?**
+  _High betweenness centrality (0.003) - this node is a cross-community bridge._
 - **What connects `name`, `version`, `main` to the rest of the system?**
-  _389 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _419 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Community 0` be split into smaller, more focused modules?**
   _Cohesion score 0.08412698412698413 - nodes in this community are weakly interconnected._
 - **Should `Community 1` be split into smaller, more focused modules?**
   _Cohesion score 0.08695652173913043 - nodes in this community are weakly interconnected._
 - **Should `Community 2` be split into smaller, more focused modules?**
   _Cohesion score 0.1111111111111111 - nodes in this community are weakly interconnected._
+- **Should `Community 3` be split into smaller, more focused modules?**
+  _Cohesion score 0.14285714285714285 - nodes in this community are weakly interconnected._
+- **Should `Community 47` be split into smaller, more focused modules?**
+  _Cohesion score 0.08695652173913043 - nodes in this community are weakly interconnected._

@@ -346,13 +346,58 @@
       "norm_label": "helmet"
     },
     {
-      "label": "app",
+      "label": "{ connectDB }",
       "file_type": "code",
       "source_file": "backend/server.js",
       "source_location": "L6",
+      "id": "backend_server_connectdb",
+      "community": 62,
+      "norm_label": "{ connectdb }"
+    },
+    {
+      "label": "{ initCronJob }",
+      "file_type": "code",
+      "source_file": "backend/server.js",
+      "source_location": "L7",
+      "id": "backend_server_initcronjob",
+      "community": 62,
+      "norm_label": "{ initcronjob }"
+    },
+    {
+      "label": "authRoutes",
+      "file_type": "code",
+      "source_file": "backend/server.js",
+      "source_location": "L9",
+      "id": "backend_server_authroutes",
+      "community": 62,
+      "norm_label": "authroutes"
+    },
+    {
+      "label": "scheduleRoutes",
+      "file_type": "code",
+      "source_file": "backend/server.js",
+      "source_location": "L10",
+      "id": "backend_server_scheduleroutes",
+      "community": 62,
+      "norm_label": "scheduleroutes"
+    },
+    {
+      "label": "app",
+      "file_type": "code",
+      "source_file": "backend/server.js",
+      "source_location": "L12",
       "id": "backend_server_app",
       "community": 62,
       "norm_label": "app"
+    },
+    {
+      "label": "startServices()",
+      "file_type": "code",
+      "source_file": "backend/server.js",
+      "source_location": "L35",
+      "id": "backend_server_startservices",
+      "community": 62,
+      "norm_label": "startservices()"
     },
     {
       "label": "test_lecturer_crawler.js",
@@ -571,12 +616,57 @@
       "norm_label": "run()"
     },
     {
+      "label": "test_api_integration.js",
+      "file_type": "code",
+      "source_file": "backend/test_api_integration.js",
+      "source_location": "L1",
+      "id": "backend_test_api_integration_js",
+      "community": 73,
+      "norm_label": "test_api_integration.js"
+    },
+    {
+      "label": "axios",
+      "file_type": "code",
+      "source_file": "backend/test_api_integration.js",
+      "source_location": "L2",
+      "id": "backend_test_api_integration_axios",
+      "community": 73,
+      "norm_label": "axios"
+    },
+    {
+      "label": "{ connectDB }",
+      "file_type": "code",
+      "source_file": "backend/test_api_integration.js",
+      "source_location": "L3",
+      "id": "backend_test_api_integration_connectdb",
+      "community": 73,
+      "norm_label": "{ connectdb }"
+    },
+    {
+      "label": "User",
+      "file_type": "code",
+      "source_file": "backend/test_api_integration.js",
+      "source_location": "L4",
+      "id": "backend_test_api_integration_user",
+      "community": 73,
+      "norm_label": "user"
+    },
+    {
+      "label": "run()",
+      "file_type": "code",
+      "source_file": "backend/test_api_integration.js",
+      "source_location": "L16",
+      "id": "backend_test_api_integration_run",
+      "community": 73,
+      "norm_label": "run()"
+    },
+    {
       "label": "Schedule.js",
       "file_type": "code",
       "source_file": "backend/models/Schedule.js",
       "source_location": "L1",
       "id": "backend_models_schedule_js",
-      "community": 77,
+      "community": 70,
       "norm_label": "schedule.js"
     },
     {
@@ -585,7 +675,7 @@
       "source_file": "backend/models/Schedule.js",
       "source_location": "L1",
       "id": "models_schedule_datatypes",
-      "community": 77,
+      "community": 70,
       "norm_label": "{ datatypes }"
     },
     {
@@ -594,7 +684,7 @@
       "source_file": "backend/models/Schedule.js",
       "source_location": "L2",
       "id": "models_schedule_sequelize",
-      "community": 77,
+      "community": 70,
       "norm_label": "{ sequelize }"
     },
     {
@@ -603,7 +693,7 @@
       "source_file": "backend/models/Schedule.js",
       "source_location": "L4",
       "id": "models_schedule_schedule",
-      "community": 77,
+      "community": 70,
       "norm_label": "schedule"
     },
     {
@@ -648,7 +738,7 @@
       "source_file": "backend/models/Finance.js",
       "source_location": "L1",
       "id": "backend_models_finance_js",
-      "community": 76,
+      "community": 70,
       "norm_label": "finance.js"
     },
     {
@@ -657,7 +747,7 @@
       "source_file": "backend/models/Finance.js",
       "source_location": "L1",
       "id": "models_finance_datatypes",
-      "community": 76,
+      "community": 70,
       "norm_label": "{ datatypes }"
     },
     {
@@ -666,7 +756,7 @@
       "source_file": "backend/models/Finance.js",
       "source_location": "L2",
       "id": "models_finance_sequelize",
-      "community": 76,
+      "community": 70,
       "norm_label": "{ sequelize }"
     },
     {
@@ -675,7 +765,7 @@
       "source_file": "backend/models/Finance.js",
       "source_location": "L4",
       "id": "models_finance_finance",
-      "community": 76,
+      "community": 70,
       "norm_label": "finance"
     },
     {
@@ -720,7 +810,7 @@
       "source_file": "backend/models/User.js",
       "source_location": "L1",
       "id": "backend_models_user_js",
-      "community": 70,
+      "community": 73,
       "norm_label": "user.js"
     },
     {
@@ -729,7 +819,7 @@
       "source_file": "backend/models/User.js",
       "source_location": "L1",
       "id": "models_user_datatypes",
-      "community": 70,
+      "community": 73,
       "norm_label": "{ datatypes }"
     },
     {
@@ -738,7 +828,7 @@
       "source_file": "backend/models/User.js",
       "source_location": "L2",
       "id": "models_user_sequelize",
-      "community": 70,
+      "community": 73,
       "norm_label": "{ sequelize }"
     },
     {
@@ -747,7 +837,7 @@
       "source_file": "backend/models/User.js",
       "source_location": "L4",
       "id": "models_user_user",
-      "community": 70,
+      "community": 73,
       "norm_label": "user"
     },
     {
@@ -776,6 +866,249 @@
       "id": "config_db_connectdb",
       "community": 71,
       "norm_label": "connectdb()"
+    },
+    {
+      "label": "syncScheduler.js",
+      "file_type": "code",
+      "source_file": "backend/jobs/syncScheduler.js",
+      "source_location": "L1",
+      "id": "backend_jobs_syncscheduler_js",
+      "community": 72,
+      "norm_label": "syncscheduler.js"
+    },
+    {
+      "label": "cron",
+      "file_type": "code",
+      "source_file": "backend/jobs/syncScheduler.js",
+      "source_location": "L1",
+      "id": "jobs_syncscheduler_cron",
+      "community": 72,
+      "norm_label": "cron"
+    },
+    {
+      "label": "User",
+      "file_type": "code",
+      "source_file": "backend/jobs/syncScheduler.js",
+      "source_location": "L2",
+      "id": "jobs_syncscheduler_user",
+      "community": 72,
+      "norm_label": "user"
+    },
+    {
+      "label": "{ decrypt }",
+      "file_type": "code",
+      "source_file": "backend/jobs/syncScheduler.js",
+      "source_location": "L3",
+      "id": "jobs_syncscheduler_decrypt",
+      "community": 72,
+      "norm_label": "{ decrypt }"
+    },
+    {
+      "label": "strategyManager",
+      "file_type": "code",
+      "source_file": "backend/jobs/syncScheduler.js",
+      "source_location": "L4",
+      "id": "jobs_syncscheduler_strategymanager",
+      "community": 72,
+      "norm_label": "strategymanager"
+    },
+    {
+      "label": "runDailySync()",
+      "file_type": "code",
+      "source_file": "backend/jobs/syncScheduler.js",
+      "source_location": "L9",
+      "id": "jobs_syncscheduler_rundailysync",
+      "community": 72,
+      "norm_label": "rundailysync()"
+    },
+    {
+      "label": "initCronJob()",
+      "file_type": "code",
+      "source_file": "backend/jobs/syncScheduler.js",
+      "source_location": "L44",
+      "id": "jobs_syncscheduler_initcronjob",
+      "community": 62,
+      "norm_label": "initcronjob()"
+    },
+    {
+      "label": "auth.js",
+      "file_type": "code",
+      "source_file": "backend/routes/auth.js",
+      "source_location": "L1",
+      "id": "backend_routes_auth_js",
+      "community": 76,
+      "norm_label": "auth.js"
+    },
+    {
+      "label": "express",
+      "file_type": "code",
+      "source_file": "backend/routes/auth.js",
+      "source_location": "L1",
+      "id": "routes_auth_express",
+      "community": 76,
+      "norm_label": "express"
+    },
+    {
+      "label": "router",
+      "file_type": "code",
+      "source_file": "backend/routes/auth.js",
+      "source_location": "L2",
+      "id": "routes_auth_router",
+      "community": 76,
+      "norm_label": "router"
+    },
+    {
+      "label": "jwt",
+      "file_type": "code",
+      "source_file": "backend/routes/auth.js",
+      "source_location": "L3",
+      "id": "routes_auth_jwt",
+      "community": 76,
+      "norm_label": "jwt"
+    },
+    {
+      "label": "User",
+      "file_type": "code",
+      "source_file": "backend/routes/auth.js",
+      "source_location": "L4",
+      "id": "routes_auth_user",
+      "community": 76,
+      "norm_label": "user"
+    },
+    {
+      "label": "{ encrypt }",
+      "file_type": "code",
+      "source_file": "backend/routes/auth.js",
+      "source_location": "L5",
+      "id": "routes_auth_encrypt",
+      "community": 76,
+      "norm_label": "{ encrypt }"
+    },
+    {
+      "label": "strategyManager",
+      "file_type": "code",
+      "source_file": "backend/routes/auth.js",
+      "source_location": "L6",
+      "id": "routes_auth_strategymanager",
+      "community": 76,
+      "norm_label": "strategymanager"
+    },
+    {
+      "label": "strategy",
+      "file_type": "code",
+      "source_file": "backend/routes/auth.js",
+      "source_location": "L45",
+      "id": "routes_auth_strategy",
+      "community": 76,
+      "norm_label": "strategy"
+    },
+    {
+      "label": "token",
+      "file_type": "code",
+      "source_file": "backend/routes/auth.js",
+      "source_location": "L56",
+      "id": "routes_auth_token",
+      "community": 76,
+      "norm_label": "token"
+    },
+    {
+      "label": "schedule.js",
+      "file_type": "code",
+      "source_file": "backend/routes/schedule.js",
+      "source_location": "L1",
+      "id": "backend_routes_schedule_js",
+      "community": 74,
+      "norm_label": "schedule.js"
+    },
+    {
+      "label": "express",
+      "file_type": "code",
+      "source_file": "backend/routes/schedule.js",
+      "source_location": "L1",
+      "id": "routes_schedule_express",
+      "community": 74,
+      "norm_label": "express"
+    },
+    {
+      "label": "router",
+      "file_type": "code",
+      "source_file": "backend/routes/schedule.js",
+      "source_location": "L2",
+      "id": "routes_schedule_router",
+      "community": 74,
+      "norm_label": "router"
+    },
+    {
+      "label": "authMiddleware",
+      "file_type": "code",
+      "source_file": "backend/routes/schedule.js",
+      "source_location": "L3",
+      "id": "routes_schedule_authmiddleware",
+      "community": 74,
+      "norm_label": "authmiddleware"
+    },
+    {
+      "label": "Schedule",
+      "file_type": "code",
+      "source_file": "backend/routes/schedule.js",
+      "source_location": "L4",
+      "id": "routes_schedule_schedule",
+      "community": 74,
+      "norm_label": "schedule"
+    },
+    {
+      "label": "Exam",
+      "file_type": "code",
+      "source_file": "backend/routes/schedule.js",
+      "source_location": "L5",
+      "id": "routes_schedule_exam",
+      "community": 74,
+      "norm_label": "exam"
+    },
+    {
+      "label": "Grade",
+      "file_type": "code",
+      "source_file": "backend/routes/schedule.js",
+      "source_location": "L6",
+      "id": "routes_schedule_grade",
+      "community": 74,
+      "norm_label": "grade"
+    },
+    {
+      "label": "Finance",
+      "file_type": "code",
+      "source_file": "backend/routes/schedule.js",
+      "source_location": "L7",
+      "id": "routes_schedule_finance",
+      "community": 74,
+      "norm_label": "finance"
+    },
+    {
+      "label": "{ decrypt }",
+      "file_type": "code",
+      "source_file": "backend/routes/schedule.js",
+      "source_location": "L8",
+      "id": "routes_schedule_decrypt",
+      "community": 74,
+      "norm_label": "{ decrypt }"
+    },
+    {
+      "label": "strategyManager",
+      "file_type": "code",
+      "source_file": "backend/routes/schedule.js",
+      "source_location": "L9",
+      "id": "routes_schedule_strategymanager",
+      "community": 74,
+      "norm_label": "strategymanager"
+    },
+    {
+      "label": "handleForceSync()",
+      "file_type": "code",
+      "source_file": "backend/routes/schedule.js",
+      "source_location": "L14",
+      "id": "routes_schedule_handleforcesync",
+      "community": 74,
+      "norm_label": "handleforcesync()"
     },
     {
       "label": "studentCrawler.js",
@@ -1026,7 +1359,7 @@
       "source_file": "backend/strategies/ScheduleStrategy.js",
       "source_location": "L1",
       "id": "backend_strategies_schedulestrategy_js",
-      "community": 74,
+      "community": 69,
       "norm_label": "schedulestrategy.js"
     },
     {
@@ -1035,7 +1368,7 @@
       "source_file": "backend/strategies/ScheduleStrategy.js",
       "source_location": "L4",
       "id": "strategies_schedulestrategy_schedulestrategy",
-      "community": 74,
+      "community": 69,
       "norm_label": "schedulestrategy"
     },
     {
@@ -1044,7 +1377,7 @@
       "source_file": "backend/strategies/ScheduleStrategy.js",
       "source_location": "L12",
       "id": "strategies_schedulestrategy_schedulestrategy_getschedule",
-      "community": 74,
+      "community": 69,
       "norm_label": ".getschedule()"
     },
     {
@@ -1053,7 +1386,7 @@
       "source_file": "backend/strategies/CrawlerStrategy.js",
       "source_location": "L1",
       "id": "backend_strategies_crawlerstrategy_js",
-      "community": 73,
+      "community": 69,
       "norm_label": "crawlerstrategy.js"
     },
     {
@@ -1062,7 +1395,7 @@
       "source_file": "backend/strategies/CrawlerStrategy.js",
       "source_location": "L1",
       "id": "strategies_crawlerstrategy_schedulestrategy",
-      "community": 73,
+      "community": 69,
       "norm_label": "schedulestrategy"
     },
     {
@@ -1071,7 +1404,7 @@
       "source_file": "backend/strategies/CrawlerStrategy.js",
       "source_location": "L2",
       "id": "strategies_crawlerstrategy_syncstudentdata",
-      "community": 73,
+      "community": 69,
       "norm_label": "{ syncstudentdata }"
     },
     {
@@ -1080,7 +1413,7 @@
       "source_file": "backend/strategies/CrawlerStrategy.js",
       "source_location": "L3",
       "id": "strategies_crawlerstrategy_synclecturerdata",
-      "community": 73,
+      "community": 69,
       "norm_label": "{ synclecturerdata }"
     },
     {
@@ -1089,7 +1422,7 @@
       "source_file": "backend/strategies/CrawlerStrategy.js",
       "source_location": "L4",
       "id": "strategies_crawlerstrategy_schedule",
-      "community": 73,
+      "community": 69,
       "norm_label": "schedule"
     },
     {
@@ -1098,7 +1431,7 @@
       "source_file": "backend/strategies/CrawlerStrategy.js",
       "source_location": "L5",
       "id": "strategies_crawlerstrategy_exam",
-      "community": 73,
+      "community": 69,
       "norm_label": "exam"
     },
     {
@@ -1107,7 +1440,7 @@
       "source_file": "backend/strategies/CrawlerStrategy.js",
       "source_location": "L6",
       "id": "strategies_crawlerstrategy_grade",
-      "community": 73,
+      "community": 69,
       "norm_label": "grade"
     },
     {
@@ -1116,7 +1449,7 @@
       "source_file": "backend/strategies/CrawlerStrategy.js",
       "source_location": "L7",
       "id": "strategies_crawlerstrategy_finance",
-      "community": 73,
+      "community": 69,
       "norm_label": "finance"
     },
     {
@@ -1197,7 +1530,7 @@
       "source_file": "backend/strategies/ApiStrategy.js",
       "source_location": "L1",
       "id": "backend_strategies_apistrategy_js",
-      "community": 74,
+      "community": 69,
       "norm_label": "apistrategy.js"
     },
     {
@@ -1206,7 +1539,7 @@
       "source_file": "backend/strategies/ApiStrategy.js",
       "source_location": "L1",
       "id": "strategies_apistrategy_schedulestrategy",
-      "community": 74,
+      "community": 69,
       "norm_label": "schedulestrategy"
     },
     {
@@ -1215,7 +1548,7 @@
       "source_file": "backend/strategies/ApiStrategy.js",
       "source_location": "L6",
       "id": "strategies_apistrategy_apistrategy",
-      "community": 74,
+      "community": 69,
       "norm_label": "apistrategy"
     },
     {
@@ -1224,8 +1557,44 @@
       "source_file": "backend/strategies/ApiStrategy.js",
       "source_location": "L7",
       "id": "strategies_apistrategy_apistrategy_getschedule",
-      "community": 74,
+      "community": 69,
       "norm_label": ".getschedule()"
+    },
+    {
+      "label": "auth.js",
+      "file_type": "code",
+      "source_file": "backend/middleware/auth.js",
+      "source_location": "L1",
+      "id": "backend_middleware_auth_js",
+      "community": 73,
+      "norm_label": "auth.js"
+    },
+    {
+      "label": "jwt",
+      "file_type": "code",
+      "source_file": "backend/middleware/auth.js",
+      "source_location": "L1",
+      "id": "middleware_auth_jwt",
+      "community": 73,
+      "norm_label": "jwt"
+    },
+    {
+      "label": "User",
+      "file_type": "code",
+      "source_file": "backend/middleware/auth.js",
+      "source_location": "L2",
+      "id": "middleware_auth_user",
+      "community": 73,
+      "norm_label": "user"
+    },
+    {
+      "label": "authMiddleware()",
+      "file_type": "code",
+      "source_file": "backend/middleware/auth.js",
+      "source_location": "L9",
+      "id": "middleware_auth_authmiddleware",
+      "community": 73,
+      "norm_label": "authmiddleware()"
     },
     {
       "label": "security.js",
@@ -6177,9 +6546,9 @@
       "source_file": "backend/package.json",
       "source_location": "L20",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_package_dependencies",
-      "target": "backend_package_dependencies_pg",
-      "confidence_score": 1.0
+      "target": "backend_package_dependencies_pg"
     },
     {
       "relation": "contains",
@@ -6187,9 +6556,9 @@
       "source_file": "backend/package.json",
       "source_location": "L21",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_package_dependencies",
-      "target": "backend_package_dependencies_pg_hstore",
-      "confidence_score": 1.0
+      "target": "backend_package_dependencies_pg_hstore"
     },
     {
       "relation": "contains",
@@ -6197,9 +6566,9 @@
       "source_file": "backend/package.json",
       "source_location": "L22",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_package_dependencies",
-      "target": "backend_package_dependencies_sequelize",
-      "confidence_score": 1.0
+      "target": "backend_package_dependencies_sequelize"
     },
     {
       "relation": "contains",
@@ -6242,6 +6611,112 @@
       "target": "backend_server_helmet"
     },
     {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/server.js",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "backend_server_js",
+      "target": "backend_config_db_js",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/server.js",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "backend_server_js",
+      "target": "config_db_connectdb",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/server.js",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "backend_server_js",
+      "target": "backend_server_connectdb",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/server.js",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "backend_server_js",
+      "target": "backend_jobs_syncscheduler_js",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/server.js",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "backend_server_js",
+      "target": "jobs_syncscheduler_initcronjob",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/server.js",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "backend_server_js",
+      "target": "backend_server_initcronjob",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/server.js",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "backend_server_js",
+      "target": "backend_routes_auth_js",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/server.js",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "backend_server_js",
+      "target": "backend_server_authroutes",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/server.js",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "backend_server_js",
+      "target": "backend_routes_schedule_js",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/server.js",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "backend_server_js",
+      "target": "backend_server_scheduleroutes",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "backend/server.js",
@@ -6252,15 +6727,47 @@
       "target": "backend_server_app"
     },
     {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/server.js",
+      "source_location": "L35",
+      "weight": 1.0,
+      "source": "backend_server_js",
+      "target": "backend_server_startservices",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/server.js",
+      "source_location": "L38",
+      "weight": 1.0,
+      "source": "backend_server_startservices",
+      "target": "config_db_connectdb"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/server.js",
+      "source_location": "L41",
+      "weight": 1.0,
+      "source": "backend_server_startservices",
+      "target": "jobs_syncscheduler_initcronjob"
+    },
+    {
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "backend/test_lecturer_crawler.js",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_test_lecturer_crawler_js",
-      "target": "backend_services_lecturercrawler_js",
-      "confidence_score": 1.0
+      "target": "backend_services_lecturercrawler_js"
     },
     {
       "relation": "imports",
@@ -6269,9 +6776,9 @@
       "source_file": "backend/test_lecturer_crawler.js",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_test_lecturer_crawler_js",
-      "target": "services_lecturercrawler_synclecturerdata",
-      "confidence_score": 1.0
+      "target": "services_lecturercrawler_synclecturerdata"
     },
     {
       "relation": "contains",
@@ -6279,9 +6786,9 @@
       "source_file": "backend/test_lecturer_crawler.js",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_test_lecturer_crawler_js",
-      "target": "backend_test_lecturer_crawler_synclecturerdata",
-      "confidence_score": 1.0
+      "target": "backend_test_lecturer_crawler_synclecturerdata"
     },
     {
       "relation": "contains",
@@ -6289,9 +6796,9 @@
       "source_file": "backend/test_lecturer_crawler.js",
       "source_location": "L14",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_test_lecturer_crawler_js",
-      "target": "backend_test_lecturer_crawler_run",
-      "confidence_score": 1.0
+      "target": "backend_test_lecturer_crawler_run"
     },
     {
       "relation": "calls",
@@ -6310,9 +6817,9 @@
       "source_file": "backend/test_pg_connection.js",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_test_pg_connection_js",
-      "target": "backend_test_pg_connection_client",
-      "confidence_score": 1.0
+      "target": "backend_test_pg_connection_client"
     },
     {
       "relation": "contains",
@@ -6320,9 +6827,9 @@
       "source_file": "backend/test_pg_connection.js",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_test_pg_connection_js",
-      "target": "backend_test_pg_connection_passwords",
-      "confidence_score": 1.0
+      "target": "backend_test_pg_connection_passwords"
     },
     {
       "relation": "contains",
@@ -6330,9 +6837,9 @@
       "source_file": "backend/test_pg_connection.js",
       "source_location": "L14",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_test_pg_connection_js",
-      "target": "backend_test_pg_connection_testpasswords",
-      "confidence_score": 1.0
+      "target": "backend_test_pg_connection_testpasswords"
     },
     {
       "relation": "imports_from",
@@ -6341,9 +6848,9 @@
       "source_file": "backend/test_security.js",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_test_security_js",
-      "target": "backend_utils_security_js",
-      "confidence_score": 1.0
+      "target": "backend_utils_security_js"
     },
     {
       "relation": "imports",
@@ -6352,9 +6859,9 @@
       "source_file": "backend/test_security.js",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_test_security_js",
-      "target": "utils_security_encrypt",
-      "confidence_score": 1.0
+      "target": "utils_security_encrypt"
     },
     {
       "relation": "imports",
@@ -6363,9 +6870,9 @@
       "source_file": "backend/test_security.js",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_test_security_js",
-      "target": "utils_security_decrypt",
-      "confidence_score": 1.0
+      "target": "utils_security_decrypt"
     },
     {
       "relation": "contains",
@@ -6373,9 +6880,9 @@
       "source_file": "backend/test_security.js",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_test_security_js",
-      "target": "backend_test_security_encrypt_decrypt",
-      "confidence_score": 1.0
+      "target": "backend_test_security_encrypt_decrypt"
     },
     {
       "relation": "contains",
@@ -6383,9 +6890,9 @@
       "source_file": "backend/test_security.js",
       "source_location": "L13",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_test_security_js",
-      "target": "backend_test_security_encrypted",
-      "confidence_score": 1.0
+      "target": "backend_test_security_encrypted"
     },
     {
       "relation": "contains",
@@ -6393,9 +6900,9 @@
       "source_file": "backend/test_security.js",
       "source_location": "L18",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_test_security_js",
-      "target": "backend_test_security_decrypted",
-      "confidence_score": 1.0
+      "target": "backend_test_security_decrypted"
     },
     {
       "relation": "imports_from",
@@ -6404,9 +6911,9 @@
       "source_file": "backend/test_student_crawler.js",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_test_student_crawler_js",
-      "target": "backend_services_studentcrawler_js",
-      "confidence_score": 1.0
+      "target": "backend_services_studentcrawler_js"
     },
     {
       "relation": "imports",
@@ -6415,9 +6922,9 @@
       "source_file": "backend/test_student_crawler.js",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_test_student_crawler_js",
-      "target": "services_studentcrawler_syncstudentdata",
-      "confidence_score": 1.0
+      "target": "services_studentcrawler_syncstudentdata"
     },
     {
       "relation": "contains",
@@ -6425,9 +6932,9 @@
       "source_file": "backend/test_student_crawler.js",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_test_student_crawler_js",
-      "target": "backend_test_student_crawler_syncstudentdata",
-      "confidence_score": 1.0
+      "target": "backend_test_student_crawler_syncstudentdata"
     },
     {
       "relation": "contains",
@@ -6435,9 +6942,9 @@
       "source_file": "backend/test_student_crawler.js",
       "source_location": "L14",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_test_student_crawler_js",
-      "target": "backend_test_student_crawler_run",
-      "confidence_score": 1.0
+      "target": "backend_test_student_crawler_run"
     },
     {
       "relation": "calls",
@@ -6457,9 +6964,9 @@
       "source_file": "backend/test_strategy.js",
       "source_location": "L4",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_test_strategy_js",
-      "target": "backend_config_db_js",
-      "confidence_score": 1.0
+      "target": "backend_config_db_js"
     },
     {
       "relation": "imports",
@@ -6468,9 +6975,9 @@
       "source_file": "backend/test_strategy.js",
       "source_location": "L4",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_test_strategy_js",
-      "target": "config_db_connectdb",
-      "confidence_score": 1.0
+      "target": "config_db_connectdb"
     },
     {
       "relation": "contains",
@@ -6478,9 +6985,9 @@
       "source_file": "backend/test_strategy.js",
       "source_location": "L4",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_test_strategy_js",
-      "target": "backend_test_strategy_connectdb",
-      "confidence_score": 1.0
+      "target": "backend_test_strategy_connectdb"
     },
     {
       "relation": "imports_from",
@@ -6489,9 +6996,9 @@
       "source_file": "backend/test_strategy.js",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_test_strategy_js",
-      "target": "backend_models_user_js",
-      "confidence_score": 1.0
+      "target": "backend_models_user_js"
     },
     {
       "relation": "contains",
@@ -6499,9 +7006,9 @@
       "source_file": "backend/test_strategy.js",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_test_strategy_js",
-      "target": "backend_test_strategy_user",
-      "confidence_score": 1.0
+      "target": "backend_test_strategy_user"
     },
     {
       "relation": "imports_from",
@@ -6510,9 +7017,9 @@
       "source_file": "backend/test_strategy.js",
       "source_location": "L6",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_test_strategy_js",
-      "target": "backend_models_schedule_js",
-      "confidence_score": 1.0
+      "target": "backend_models_schedule_js"
     },
     {
       "relation": "contains",
@@ -6520,9 +7027,9 @@
       "source_file": "backend/test_strategy.js",
       "source_location": "L6",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_test_strategy_js",
-      "target": "backend_test_strategy_schedule",
-      "confidence_score": 1.0
+      "target": "backend_test_strategy_schedule"
     },
     {
       "relation": "imports_from",
@@ -6531,9 +7038,9 @@
       "source_file": "backend/test_strategy.js",
       "source_location": "L7",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_test_strategy_js",
-      "target": "backend_models_exam_js",
-      "confidence_score": 1.0
+      "target": "backend_models_exam_js"
     },
     {
       "relation": "contains",
@@ -6541,9 +7048,9 @@
       "source_file": "backend/test_strategy.js",
       "source_location": "L7",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_test_strategy_js",
-      "target": "backend_test_strategy_exam",
-      "confidence_score": 1.0
+      "target": "backend_test_strategy_exam"
     },
     {
       "relation": "imports_from",
@@ -6552,9 +7059,9 @@
       "source_file": "backend/test_strategy.js",
       "source_location": "L8",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_test_strategy_js",
-      "target": "backend_models_grade_js",
-      "confidence_score": 1.0
+      "target": "backend_models_grade_js"
     },
     {
       "relation": "contains",
@@ -6562,9 +7069,9 @@
       "source_file": "backend/test_strategy.js",
       "source_location": "L8",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_test_strategy_js",
-      "target": "backend_test_strategy_grade",
-      "confidence_score": 1.0
+      "target": "backend_test_strategy_grade"
     },
     {
       "relation": "imports_from",
@@ -6573,9 +7080,9 @@
       "source_file": "backend/test_strategy.js",
       "source_location": "L9",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_test_strategy_js",
-      "target": "backend_models_finance_js",
-      "confidence_score": 1.0
+      "target": "backend_models_finance_js"
     },
     {
       "relation": "contains",
@@ -6583,9 +7090,9 @@
       "source_file": "backend/test_strategy.js",
       "source_location": "L9",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_test_strategy_js",
-      "target": "backend_test_strategy_finance",
-      "confidence_score": 1.0
+      "target": "backend_test_strategy_finance"
     },
     {
       "relation": "imports_from",
@@ -6594,9 +7101,9 @@
       "source_file": "backend/test_strategy.js",
       "source_location": "L10",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_test_strategy_js",
-      "target": "backend_utils_security_js",
-      "confidence_score": 1.0
+      "target": "backend_utils_security_js"
     },
     {
       "relation": "imports",
@@ -6605,9 +7112,9 @@
       "source_file": "backend/test_strategy.js",
       "source_location": "L10",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_test_strategy_js",
-      "target": "utils_security_encrypt",
-      "confidence_score": 1.0
+      "target": "utils_security_encrypt"
     },
     {
       "relation": "contains",
@@ -6615,9 +7122,9 @@
       "source_file": "backend/test_strategy.js",
       "source_location": "L10",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_test_strategy_js",
-      "target": "backend_test_strategy_encrypt",
-      "confidence_score": 1.0
+      "target": "backend_test_strategy_encrypt"
     },
     {
       "relation": "imports_from",
@@ -6626,9 +7133,9 @@
       "source_file": "backend/test_strategy.js",
       "source_location": "L11",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_test_strategy_js",
-      "target": "backend_strategies_strategymanager_js",
-      "confidence_score": 1.0
+      "target": "backend_strategies_strategymanager_js"
     },
     {
       "relation": "contains",
@@ -6636,9 +7143,9 @@
       "source_file": "backend/test_strategy.js",
       "source_location": "L11",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_test_strategy_js",
-      "target": "backend_test_strategy_strategymanager",
-      "confidence_score": 1.0
+      "target": "backend_test_strategy_strategymanager"
     },
     {
       "relation": "contains",
@@ -6646,9 +7153,9 @@
       "source_file": "backend/test_strategy.js",
       "source_location": "L20",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_test_strategy_js",
-      "target": "backend_test_strategy_run",
-      "confidence_score": 1.0
+      "target": "backend_test_strategy_run"
     },
     {
       "relation": "calls",
@@ -6675,12 +7182,85 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": "backend/test_api_integration.js",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "backend_test_api_integration_js",
+      "target": "backend_test_api_integration_axios",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/test_api_integration.js",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "backend_test_api_integration_js",
+      "target": "backend_config_db_js",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/test_api_integration.js",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "backend_test_api_integration_js",
+      "target": "config_db_connectdb",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/test_api_integration.js",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "backend_test_api_integration_js",
+      "target": "backend_test_api_integration_connectdb",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/test_api_integration.js",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "backend_test_api_integration_js",
+      "target": "backend_models_user_js",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/test_api_integration.js",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "backend_test_api_integration_js",
+      "target": "backend_test_api_integration_user",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/test_api_integration.js",
+      "source_location": "L16",
+      "weight": 1.0,
+      "source": "backend_test_api_integration_js",
+      "target": "backend_test_api_integration_run",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": "backend/models/Schedule.js",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_models_schedule_js",
-      "target": "models_schedule_datatypes",
-      "confidence_score": 1.0
+      "target": "models_schedule_datatypes"
     },
     {
       "relation": "imports_from",
@@ -6689,9 +7269,9 @@
       "source_file": "backend/models/Schedule.js",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_models_schedule_js",
-      "target": "backend_config_db_js",
-      "confidence_score": 1.0
+      "target": "backend_config_db_js"
     },
     {
       "relation": "imports",
@@ -6700,9 +7280,9 @@
       "source_file": "backend/models/Schedule.js",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_models_schedule_js",
-      "target": "config_db_sequelize",
-      "confidence_score": 1.0
+      "target": "config_db_sequelize"
     },
     {
       "relation": "contains",
@@ -6710,9 +7290,9 @@
       "source_file": "backend/models/Schedule.js",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_models_schedule_js",
-      "target": "models_schedule_sequelize",
-      "confidence_score": 1.0
+      "target": "models_schedule_sequelize"
     },
     {
       "relation": "contains",
@@ -6720,8 +7300,19 @@
       "source_file": "backend/models/Schedule.js",
       "source_location": "L4",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_models_schedule_js",
-      "target": "models_schedule_schedule",
+      "target": "models_schedule_schedule"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routes/schedule.js",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "backend_routes_schedule_js",
+      "target": "backend_models_schedule_js",
       "confidence_score": 1.0
     },
     {
@@ -6731,9 +7322,9 @@
       "source_file": "backend/strategies/CrawlerStrategy.js",
       "source_location": "L4",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_strategies_crawlerstrategy_js",
-      "target": "backend_models_schedule_js",
-      "confidence_score": 1.0
+      "target": "backend_models_schedule_js"
     },
     {
       "relation": "contains",
@@ -6741,9 +7332,9 @@
       "source_file": "backend/models/Grade.js",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_models_grade_js",
-      "target": "models_grade_datatypes",
-      "confidence_score": 1.0
+      "target": "models_grade_datatypes"
     },
     {
       "relation": "imports_from",
@@ -6752,9 +7343,9 @@
       "source_file": "backend/models/Grade.js",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_models_grade_js",
-      "target": "backend_config_db_js",
-      "confidence_score": 1.0
+      "target": "backend_config_db_js"
     },
     {
       "relation": "imports",
@@ -6763,9 +7354,9 @@
       "source_file": "backend/models/Grade.js",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_models_grade_js",
-      "target": "config_db_sequelize",
-      "confidence_score": 1.0
+      "target": "config_db_sequelize"
     },
     {
       "relation": "contains",
@@ -6773,9 +7364,9 @@
       "source_file": "backend/models/Grade.js",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_models_grade_js",
-      "target": "models_grade_sequelize",
-      "confidence_score": 1.0
+      "target": "models_grade_sequelize"
     },
     {
       "relation": "contains",
@@ -6783,8 +7374,19 @@
       "source_file": "backend/models/Grade.js",
       "source_location": "L4",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_models_grade_js",
-      "target": "models_grade_grade",
+      "target": "models_grade_grade"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routes/schedule.js",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "backend_routes_schedule_js",
+      "target": "backend_models_grade_js",
       "confidence_score": 1.0
     },
     {
@@ -6794,9 +7396,9 @@
       "source_file": "backend/strategies/CrawlerStrategy.js",
       "source_location": "L6",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_strategies_crawlerstrategy_js",
-      "target": "backend_models_grade_js",
-      "confidence_score": 1.0
+      "target": "backend_models_grade_js"
     },
     {
       "relation": "contains",
@@ -6804,9 +7406,9 @@
       "source_file": "backend/models/Finance.js",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_models_finance_js",
-      "target": "models_finance_datatypes",
-      "confidence_score": 1.0
+      "target": "models_finance_datatypes"
     },
     {
       "relation": "imports_from",
@@ -6815,9 +7417,9 @@
       "source_file": "backend/models/Finance.js",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_models_finance_js",
-      "target": "backend_config_db_js",
-      "confidence_score": 1.0
+      "target": "backend_config_db_js"
     },
     {
       "relation": "imports",
@@ -6826,9 +7428,9 @@
       "source_file": "backend/models/Finance.js",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_models_finance_js",
-      "target": "config_db_sequelize",
-      "confidence_score": 1.0
+      "target": "config_db_sequelize"
     },
     {
       "relation": "contains",
@@ -6836,9 +7438,9 @@
       "source_file": "backend/models/Finance.js",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_models_finance_js",
-      "target": "models_finance_sequelize",
-      "confidence_score": 1.0
+      "target": "models_finance_sequelize"
     },
     {
       "relation": "contains",
@@ -6846,8 +7448,19 @@
       "source_file": "backend/models/Finance.js",
       "source_location": "L4",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_models_finance_js",
-      "target": "models_finance_finance",
+      "target": "models_finance_finance"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routes/schedule.js",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "backend_routes_schedule_js",
+      "target": "backend_models_finance_js",
       "confidence_score": 1.0
     },
     {
@@ -6857,9 +7470,9 @@
       "source_file": "backend/strategies/CrawlerStrategy.js",
       "source_location": "L7",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_strategies_crawlerstrategy_js",
-      "target": "backend_models_finance_js",
-      "confidence_score": 1.0
+      "target": "backend_models_finance_js"
     },
     {
       "relation": "contains",
@@ -6867,9 +7480,9 @@
       "source_file": "backend/models/Exam.js",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_models_exam_js",
-      "target": "models_exam_datatypes",
-      "confidence_score": 1.0
+      "target": "models_exam_datatypes"
     },
     {
       "relation": "imports_from",
@@ -6878,9 +7491,9 @@
       "source_file": "backend/models/Exam.js",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_models_exam_js",
-      "target": "backend_config_db_js",
-      "confidence_score": 1.0
+      "target": "backend_config_db_js"
     },
     {
       "relation": "imports",
@@ -6889,9 +7502,9 @@
       "source_file": "backend/models/Exam.js",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_models_exam_js",
-      "target": "config_db_sequelize",
-      "confidence_score": 1.0
+      "target": "config_db_sequelize"
     },
     {
       "relation": "contains",
@@ -6899,9 +7512,9 @@
       "source_file": "backend/models/Exam.js",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_models_exam_js",
-      "target": "models_exam_sequelize",
-      "confidence_score": 1.0
+      "target": "models_exam_sequelize"
     },
     {
       "relation": "contains",
@@ -6909,8 +7522,19 @@
       "source_file": "backend/models/Exam.js",
       "source_location": "L4",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_models_exam_js",
-      "target": "models_exam_exam",
+      "target": "models_exam_exam"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routes/schedule.js",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "backend_routes_schedule_js",
+      "target": "backend_models_exam_js",
       "confidence_score": 1.0
     },
     {
@@ -6920,9 +7544,9 @@
       "source_file": "backend/strategies/CrawlerStrategy.js",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_strategies_crawlerstrategy_js",
-      "target": "backend_models_exam_js",
-      "confidence_score": 1.0
+      "target": "backend_models_exam_js"
     },
     {
       "relation": "contains",
@@ -6930,9 +7554,9 @@
       "source_file": "backend/models/User.js",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_models_user_js",
-      "target": "models_user_datatypes",
-      "confidence_score": 1.0
+      "target": "models_user_datatypes"
     },
     {
       "relation": "imports_from",
@@ -6941,9 +7565,9 @@
       "source_file": "backend/models/User.js",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_models_user_js",
-      "target": "backend_config_db_js",
-      "confidence_score": 1.0
+      "target": "backend_config_db_js"
     },
     {
       "relation": "imports",
@@ -6952,9 +7576,9 @@
       "source_file": "backend/models/User.js",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_models_user_js",
-      "target": "config_db_sequelize",
-      "confidence_score": 1.0
+      "target": "config_db_sequelize"
     },
     {
       "relation": "contains",
@@ -6962,9 +7586,9 @@
       "source_file": "backend/models/User.js",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_models_user_js",
-      "target": "models_user_sequelize",
-      "confidence_score": 1.0
+      "target": "models_user_sequelize"
     },
     {
       "relation": "contains",
@@ -6972,8 +7596,41 @@
       "source_file": "backend/models/User.js",
       "source_location": "L4",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_models_user_js",
-      "target": "models_user_user",
+      "target": "models_user_user"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/jobs/syncScheduler.js",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "backend_jobs_syncscheduler_js",
+      "target": "backend_models_user_js",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routes/auth.js",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "backend_routes_auth_js",
+      "target": "backend_models_user_js",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/middleware/auth.js",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "backend_middleware_auth_js",
+      "target": "backend_models_user_js",
       "confidence_score": 1.0
     },
     {
@@ -6982,9 +7639,9 @@
       "source_file": "backend/config/db.js",
       "source_location": "L6",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_config_db_js",
-      "target": "config_db_sequelize",
-      "confidence_score": 1.0
+      "target": "config_db_sequelize"
     },
     {
       "relation": "contains",
@@ -6992,9 +7649,381 @@
       "source_file": "backend/config/db.js",
       "source_location": "L13",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_config_db_js",
-      "target": "config_db_connectdb",
+      "target": "config_db_connectdb"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/jobs/syncScheduler.js",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "backend_jobs_syncscheduler_js",
+      "target": "jobs_syncscheduler_cron",
       "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/jobs/syncScheduler.js",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "backend_jobs_syncscheduler_js",
+      "target": "jobs_syncscheduler_user",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/jobs/syncScheduler.js",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "backend_jobs_syncscheduler_js",
+      "target": "backend_utils_security_js",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/jobs/syncScheduler.js",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "backend_jobs_syncscheduler_js",
+      "target": "utils_security_decrypt",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/jobs/syncScheduler.js",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "backend_jobs_syncscheduler_js",
+      "target": "jobs_syncscheduler_decrypt",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/jobs/syncScheduler.js",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "backend_jobs_syncscheduler_js",
+      "target": "backend_strategies_strategymanager_js",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/jobs/syncScheduler.js",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "backend_jobs_syncscheduler_js",
+      "target": "jobs_syncscheduler_strategymanager",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/jobs/syncScheduler.js",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "backend_jobs_syncscheduler_js",
+      "target": "jobs_syncscheduler_rundailysync",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/jobs/syncScheduler.js",
+      "source_location": "L44",
+      "weight": 1.0,
+      "source": "backend_jobs_syncscheduler_js",
+      "target": "jobs_syncscheduler_initcronjob",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/jobs/syncScheduler.js",
+      "source_location": "L22",
+      "weight": 1.0,
+      "source": "jobs_syncscheduler_rundailysync",
+      "target": "utils_security_decrypt"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routes/auth.js",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "backend_routes_auth_js",
+      "target": "routes_auth_express",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routes/auth.js",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "backend_routes_auth_js",
+      "target": "routes_auth_router",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routes/auth.js",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "backend_routes_auth_js",
+      "target": "routes_auth_jwt",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routes/auth.js",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "backend_routes_auth_js",
+      "target": "routes_auth_user",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routes/auth.js",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "backend_routes_auth_js",
+      "target": "backend_utils_security_js",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routes/auth.js",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "backend_routes_auth_js",
+      "target": "utils_security_encrypt",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routes/auth.js",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "backend_routes_auth_js",
+      "target": "routes_auth_encrypt",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routes/auth.js",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "backend_routes_auth_js",
+      "target": "backend_strategies_strategymanager_js",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routes/auth.js",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "backend_routes_auth_js",
+      "target": "routes_auth_strategymanager",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routes/auth.js",
+      "source_location": "L45",
+      "weight": 1.0,
+      "source": "backend_routes_auth_js",
+      "target": "routes_auth_strategy",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routes/auth.js",
+      "source_location": "L56",
+      "weight": 1.0,
+      "source": "backend_routes_auth_js",
+      "target": "routes_auth_token",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routes/schedule.js",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "backend_routes_schedule_js",
+      "target": "routes_schedule_express",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routes/schedule.js",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "backend_routes_schedule_js",
+      "target": "routes_schedule_router",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routes/schedule.js",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "backend_routes_schedule_js",
+      "target": "backend_middleware_auth_js",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routes/schedule.js",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "backend_routes_schedule_js",
+      "target": "routes_schedule_authmiddleware",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routes/schedule.js",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "backend_routes_schedule_js",
+      "target": "routes_schedule_schedule",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routes/schedule.js",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "backend_routes_schedule_js",
+      "target": "routes_schedule_exam",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routes/schedule.js",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "backend_routes_schedule_js",
+      "target": "routes_schedule_grade",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routes/schedule.js",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "backend_routes_schedule_js",
+      "target": "routes_schedule_finance",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routes/schedule.js",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "backend_routes_schedule_js",
+      "target": "backend_utils_security_js",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routes/schedule.js",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "backend_routes_schedule_js",
+      "target": "utils_security_decrypt",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routes/schedule.js",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "backend_routes_schedule_js",
+      "target": "routes_schedule_decrypt",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routes/schedule.js",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "backend_routes_schedule_js",
+      "target": "backend_strategies_strategymanager_js",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routes/schedule.js",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "backend_routes_schedule_js",
+      "target": "routes_schedule_strategymanager",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routes/schedule.js",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "backend_routes_schedule_js",
+      "target": "routes_schedule_handleforcesync",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/routes/schedule.js",
+      "source_location": "L19",
+      "weight": 1.0,
+      "source": "routes_schedule_handleforcesync",
+      "target": "utils_security_decrypt"
     },
     {
       "relation": "contains",
@@ -7002,9 +8031,9 @@
       "source_file": "backend/services/studentCrawler.js",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_services_studentcrawler_js",
-      "target": "services_studentcrawler_axios",
-      "confidence_score": 1.0
+      "target": "services_studentcrawler_axios"
     },
     {
       "relation": "contains",
@@ -7012,9 +8041,9 @@
       "source_file": "backend/services/studentCrawler.js",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_services_studentcrawler_js",
-      "target": "services_studentcrawler_cheerio",
-      "confidence_score": 1.0
+      "target": "services_studentcrawler_cheerio"
     },
     {
       "relation": "imports_from",
@@ -7023,9 +8052,9 @@
       "source_file": "backend/services/studentCrawler.js",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_services_studentcrawler_js",
-      "target": "backend_services_parsers_studentparser_js",
-      "confidence_score": 1.0
+      "target": "backend_services_parsers_studentparser_js"
     },
     {
       "relation": "imports",
@@ -7034,9 +8063,9 @@
       "source_file": "backend/services/studentCrawler.js",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_services_studentcrawler_js",
-      "target": "parsers_studentparser_parseschedule",
-      "confidence_score": 1.0
+      "target": "parsers_studentparser_parseschedule"
     },
     {
       "relation": "imports",
@@ -7045,9 +8074,9 @@
       "source_file": "backend/services/studentCrawler.js",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_services_studentcrawler_js",
-      "target": "parsers_studentparser_parseexams",
-      "confidence_score": 1.0
+      "target": "parsers_studentparser_parseexams"
     },
     {
       "relation": "imports",
@@ -7056,9 +8085,9 @@
       "source_file": "backend/services/studentCrawler.js",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_services_studentcrawler_js",
-      "target": "parsers_studentparser_parsegrades",
-      "confidence_score": 1.0
+      "target": "parsers_studentparser_parsegrades"
     },
     {
       "relation": "imports",
@@ -7067,9 +8096,9 @@
       "source_file": "backend/services/studentCrawler.js",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_services_studentcrawler_js",
-      "target": "parsers_studentparser_parsefinance",
-      "confidence_score": 1.0
+      "target": "parsers_studentparser_parsefinance"
     },
     {
       "relation": "contains",
@@ -7077,9 +8106,9 @@
       "source_file": "backend/services/studentCrawler.js",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_services_studentcrawler_js",
-      "target": "services_studentcrawler_parseschedule_parseexams_parsegrades_parsefinance",
-      "confidence_score": 1.0
+      "target": "services_studentcrawler_parseschedule_parseexams_parsegrades_parsefinance"
     },
     {
       "relation": "contains",
@@ -7087,9 +8116,9 @@
       "source_file": "backend/services/studentCrawler.js",
       "source_location": "L10",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_services_studentcrawler_js",
-      "target": "services_studentcrawler_createsessionaxios",
-      "confidence_score": 1.0
+      "target": "services_studentcrawler_createsessionaxios"
     },
     {
       "relation": "contains",
@@ -7097,9 +8126,9 @@
       "source_file": "backend/services/studentCrawler.js",
       "source_location": "L28",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_services_studentcrawler_js",
-      "target": "services_studentcrawler_mergecookies",
-      "confidence_score": 1.0
+      "target": "services_studentcrawler_mergecookies"
     },
     {
       "relation": "contains",
@@ -7107,9 +8136,9 @@
       "source_file": "backend/services/studentCrawler.js",
       "source_location": "L48",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_services_studentcrawler_js",
-      "target": "services_studentcrawler_loginstudent",
-      "confidence_score": 1.0
+      "target": "services_studentcrawler_loginstudent"
     },
     {
       "relation": "contains",
@@ -7117,9 +8146,9 @@
       "source_file": "backend/services/studentCrawler.js",
       "source_location": "L117",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_services_studentcrawler_js",
-      "target": "services_studentcrawler_syncstudentdata",
-      "confidence_score": 1.0
+      "target": "services_studentcrawler_syncstudentdata"
     },
     {
       "relation": "imports_from",
@@ -7128,9 +8157,9 @@
       "source_file": "backend/strategies/CrawlerStrategy.js",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_strategies_crawlerstrategy_js",
-      "target": "backend_services_studentcrawler_js",
-      "confidence_score": 1.0
+      "target": "backend_services_studentcrawler_js"
     },
     {
       "relation": "calls",
@@ -7139,9 +8168,9 @@
       "source_file": "backend/services/studentCrawler.js",
       "source_location": "L50",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "services_studentcrawler_loginstudent",
-      "target": "services_studentcrawler_createsessionaxios",
-      "confidence_score": 1.0
+      "target": "services_studentcrawler_createsessionaxios"
     },
     {
       "relation": "calls",
@@ -7150,9 +8179,9 @@
       "source_file": "backend/services/studentCrawler.js",
       "source_location": "L125",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "services_studentcrawler_syncstudentdata",
-      "target": "services_studentcrawler_createsessionaxios",
-      "confidence_score": 1.0
+      "target": "services_studentcrawler_createsessionaxios"
     },
     {
       "relation": "calls",
@@ -7161,9 +8190,9 @@
       "source_file": "backend/services/studentCrawler.js",
       "source_location": "L61",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "services_studentcrawler_loginstudent",
-      "target": "services_studentcrawler_mergecookies",
-      "confidence_score": 1.0
+      "target": "services_studentcrawler_mergecookies"
     },
     {
       "relation": "calls",
@@ -7172,9 +8201,9 @@
       "source_file": "backend/services/studentCrawler.js",
       "source_location": "L118",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "services_studentcrawler_syncstudentdata",
-      "target": "services_studentcrawler_loginstudent",
-      "confidence_score": 1.0
+      "target": "services_studentcrawler_loginstudent"
     },
     {
       "relation": "imports",
@@ -7183,9 +8212,9 @@
       "source_file": "backend/strategies/CrawlerStrategy.js",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_strategies_crawlerstrategy_js",
-      "target": "services_studentcrawler_syncstudentdata",
-      "confidence_score": 1.0
+      "target": "services_studentcrawler_syncstudentdata"
     },
     {
       "relation": "calls",
@@ -7248,9 +8277,9 @@
       "source_file": "backend/services/lecturerCrawler.js",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_services_lecturercrawler_js",
-      "target": "services_lecturercrawler_axios",
-      "confidence_score": 1.0
+      "target": "services_lecturercrawler_axios"
     },
     {
       "relation": "contains",
@@ -7258,9 +8287,9 @@
       "source_file": "backend/services/lecturerCrawler.js",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_services_lecturercrawler_js",
-      "target": "services_lecturercrawler_cheerio",
-      "confidence_score": 1.0
+      "target": "services_lecturercrawler_cheerio"
     },
     {
       "relation": "imports_from",
@@ -7269,9 +8298,9 @@
       "source_file": "backend/services/lecturerCrawler.js",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_services_lecturercrawler_js",
-      "target": "backend_services_parsers_lecturerparser_js",
-      "confidence_score": 1.0
+      "target": "backend_services_parsers_lecturerparser_js"
     },
     {
       "relation": "imports",
@@ -7280,9 +8309,9 @@
       "source_file": "backend/services/lecturerCrawler.js",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_services_lecturercrawler_js",
-      "target": "parsers_lecturerparser_parselecturerschedule",
-      "confidence_score": 1.0
+      "target": "parsers_lecturerparser_parselecturerschedule"
     },
     {
       "relation": "contains",
@@ -7290,9 +8319,9 @@
       "source_file": "backend/services/lecturerCrawler.js",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_services_lecturercrawler_js",
-      "target": "services_lecturercrawler_parselecturerschedule",
-      "confidence_score": 1.0
+      "target": "services_lecturercrawler_parselecturerschedule"
     },
     {
       "relation": "contains",
@@ -7300,9 +8329,9 @@
       "source_file": "backend/services/lecturerCrawler.js",
       "source_location": "L11",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_services_lecturercrawler_js",
-      "target": "services_lecturercrawler_createsessionaxios",
-      "confidence_score": 1.0
+      "target": "services_lecturercrawler_createsessionaxios"
     },
     {
       "relation": "contains",
@@ -7310,9 +8339,9 @@
       "source_file": "backend/services/lecturerCrawler.js",
       "source_location": "L26",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_services_lecturercrawler_js",
-      "target": "services_lecturercrawler_mergecookies",
-      "confidence_score": 1.0
+      "target": "services_lecturercrawler_mergecookies"
     },
     {
       "relation": "contains",
@@ -7320,9 +8349,9 @@
       "source_file": "backend/services/lecturerCrawler.js",
       "source_location": "L46",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_services_lecturercrawler_js",
-      "target": "services_lecturercrawler_loginlecturer",
-      "confidence_score": 1.0
+      "target": "services_lecturercrawler_loginlecturer"
     },
     {
       "relation": "contains",
@@ -7330,9 +8359,9 @@
       "source_file": "backend/services/lecturerCrawler.js",
       "source_location": "L143",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_services_lecturercrawler_js",
-      "target": "services_lecturercrawler_synclecturerdata",
-      "confidence_score": 1.0
+      "target": "services_lecturercrawler_synclecturerdata"
     },
     {
       "relation": "imports_from",
@@ -7341,9 +8370,9 @@
       "source_file": "backend/strategies/CrawlerStrategy.js",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_strategies_crawlerstrategy_js",
-      "target": "backend_services_lecturercrawler_js",
-      "confidence_score": 1.0
+      "target": "backend_services_lecturercrawler_js"
     },
     {
       "relation": "calls",
@@ -7352,9 +8381,9 @@
       "source_file": "backend/services/lecturerCrawler.js",
       "source_location": "L48",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "services_lecturercrawler_loginlecturer",
-      "target": "services_lecturercrawler_createsessionaxios",
-      "confidence_score": 1.0
+      "target": "services_lecturercrawler_createsessionaxios"
     },
     {
       "relation": "calls",
@@ -7363,9 +8392,9 @@
       "source_file": "backend/services/lecturerCrawler.js",
       "source_location": "L59",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "services_lecturercrawler_loginlecturer",
-      "target": "services_lecturercrawler_mergecookies",
-      "confidence_score": 1.0
+      "target": "services_lecturercrawler_mergecookies"
     },
     {
       "relation": "calls",
@@ -7374,9 +8403,9 @@
       "source_file": "backend/services/lecturerCrawler.js",
       "source_location": "L144",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "services_lecturercrawler_synclecturerdata",
-      "target": "services_lecturercrawler_loginlecturer",
-      "confidence_score": 1.0
+      "target": "services_lecturercrawler_loginlecturer"
     },
     {
       "relation": "imports",
@@ -7385,9 +8414,9 @@
       "source_file": "backend/strategies/CrawlerStrategy.js",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_strategies_crawlerstrategy_js",
-      "target": "services_lecturercrawler_synclecturerdata",
-      "confidence_score": 1.0
+      "target": "services_lecturercrawler_synclecturerdata"
     },
     {
       "relation": "calls",
@@ -7417,9 +8446,9 @@
       "source_file": "backend/services/parsers/lecturerParser.js",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_services_parsers_lecturerparser_js",
-      "target": "parsers_lecturerparser_cheerio",
-      "confidence_score": 1.0
+      "target": "parsers_lecturerparser_cheerio"
     },
     {
       "relation": "contains",
@@ -7427,9 +8456,9 @@
       "source_file": "backend/services/parsers/lecturerParser.js",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_services_parsers_lecturerparser_js",
-      "target": "parsers_lecturerparser_splitcellbybr",
-      "confidence_score": 1.0
+      "target": "parsers_lecturerparser_splitcellbybr"
     },
     {
       "relation": "contains",
@@ -7437,9 +8466,9 @@
       "source_file": "backend/services/parsers/lecturerParser.js",
       "source_location": "L15",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_services_parsers_lecturerparser_js",
-      "target": "parsers_lecturerparser_parselecturerschedule",
-      "confidence_score": 1.0
+      "target": "parsers_lecturerparser_parselecturerschedule"
     },
     {
       "relation": "contains",
@@ -7447,9 +8476,9 @@
       "source_file": "backend/services/parsers/studentParser.js",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_services_parsers_studentparser_js",
-      "target": "parsers_studentparser_cheerio",
-      "confidence_score": 1.0
+      "target": "parsers_studentparser_cheerio"
     },
     {
       "relation": "contains",
@@ -7457,9 +8486,9 @@
       "source_file": "backend/services/parsers/studentParser.js",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_services_parsers_studentparser_js",
-      "target": "parsers_studentparser_splitcellbybr",
-      "confidence_score": 1.0
+      "target": "parsers_studentparser_splitcellbybr"
     },
     {
       "relation": "contains",
@@ -7467,9 +8496,9 @@
       "source_file": "backend/services/parsers/studentParser.js",
       "source_location": "L16",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_services_parsers_studentparser_js",
-      "target": "parsers_studentparser_parseschedule",
-      "confidence_score": 1.0
+      "target": "parsers_studentparser_parseschedule"
     },
     {
       "relation": "contains",
@@ -7477,9 +8506,9 @@
       "source_file": "backend/services/parsers/studentParser.js",
       "source_location": "L83",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_services_parsers_studentparser_js",
-      "target": "parsers_studentparser_parseexams",
-      "confidence_score": 1.0
+      "target": "parsers_studentparser_parseexams"
     },
     {
       "relation": "contains",
@@ -7487,9 +8516,9 @@
       "source_file": "backend/services/parsers/studentParser.js",
       "source_location": "L133",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_services_parsers_studentparser_js",
-      "target": "parsers_studentparser_parsegrades",
-      "confidence_score": 1.0
+      "target": "parsers_studentparser_parsegrades"
     },
     {
       "relation": "contains",
@@ -7497,9 +8526,9 @@
       "source_file": "backend/services/parsers/studentParser.js",
       "source_location": "L190",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_services_parsers_studentparser_js",
-      "target": "parsers_studentparser_parsefinance",
-      "confidence_score": 1.0
+      "target": "parsers_studentparser_parsefinance"
     },
     {
       "relation": "contains",
@@ -7507,9 +8536,9 @@
       "source_file": "backend/strategies/ScheduleStrategy.js",
       "source_location": "L4",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_strategies_schedulestrategy_js",
-      "target": "strategies_schedulestrategy_schedulestrategy",
-      "confidence_score": 1.0
+      "target": "strategies_schedulestrategy_schedulestrategy"
     },
     {
       "relation": "imports_from",
@@ -7518,9 +8547,9 @@
       "source_file": "backend/strategies/CrawlerStrategy.js",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_strategies_crawlerstrategy_js",
-      "target": "backend_strategies_schedulestrategy_js",
-      "confidence_score": 1.0
+      "target": "backend_strategies_schedulestrategy_js"
     },
     {
       "relation": "imports_from",
@@ -7529,9 +8558,9 @@
       "source_file": "backend/strategies/ApiStrategy.js",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_strategies_apistrategy_js",
-      "target": "backend_strategies_schedulestrategy_js",
-      "confidence_score": 1.0
+      "target": "backend_strategies_schedulestrategy_js"
     },
     {
       "relation": "method",
@@ -7539,9 +8568,9 @@
       "source_file": "backend/strategies/ScheduleStrategy.js",
       "source_location": "L12",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "strategies_schedulestrategy_schedulestrategy",
-      "target": "strategies_schedulestrategy_schedulestrategy_getschedule",
-      "confidence_score": 1.0
+      "target": "strategies_schedulestrategy_schedulestrategy_getschedule"
     },
     {
       "relation": "contains",
@@ -7549,9 +8578,9 @@
       "source_file": "backend/strategies/CrawlerStrategy.js",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_strategies_crawlerstrategy_js",
-      "target": "strategies_crawlerstrategy_schedulestrategy",
-      "confidence_score": 1.0
+      "target": "strategies_crawlerstrategy_schedulestrategy"
     },
     {
       "relation": "contains",
@@ -7559,9 +8588,9 @@
       "source_file": "backend/strategies/CrawlerStrategy.js",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_strategies_crawlerstrategy_js",
-      "target": "strategies_crawlerstrategy_syncstudentdata",
-      "confidence_score": 1.0
+      "target": "strategies_crawlerstrategy_syncstudentdata"
     },
     {
       "relation": "contains",
@@ -7569,9 +8598,9 @@
       "source_file": "backend/strategies/CrawlerStrategy.js",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_strategies_crawlerstrategy_js",
-      "target": "strategies_crawlerstrategy_synclecturerdata",
-      "confidence_score": 1.0
+      "target": "strategies_crawlerstrategy_synclecturerdata"
     },
     {
       "relation": "contains",
@@ -7579,9 +8608,9 @@
       "source_file": "backend/strategies/CrawlerStrategy.js",
       "source_location": "L4",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_strategies_crawlerstrategy_js",
-      "target": "strategies_crawlerstrategy_schedule",
-      "confidence_score": 1.0
+      "target": "strategies_crawlerstrategy_schedule"
     },
     {
       "relation": "contains",
@@ -7589,9 +8618,9 @@
       "source_file": "backend/strategies/CrawlerStrategy.js",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_strategies_crawlerstrategy_js",
-      "target": "strategies_crawlerstrategy_exam",
-      "confidence_score": 1.0
+      "target": "strategies_crawlerstrategy_exam"
     },
     {
       "relation": "contains",
@@ -7599,9 +8628,9 @@
       "source_file": "backend/strategies/CrawlerStrategy.js",
       "source_location": "L6",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_strategies_crawlerstrategy_js",
-      "target": "strategies_crawlerstrategy_grade",
-      "confidence_score": 1.0
+      "target": "strategies_crawlerstrategy_grade"
     },
     {
       "relation": "contains",
@@ -7609,9 +8638,9 @@
       "source_file": "backend/strategies/CrawlerStrategy.js",
       "source_location": "L7",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_strategies_crawlerstrategy_js",
-      "target": "strategies_crawlerstrategy_finance",
-      "confidence_score": 1.0
+      "target": "strategies_crawlerstrategy_finance"
     },
     {
       "relation": "contains",
@@ -7619,9 +8648,9 @@
       "source_file": "backend/strategies/CrawlerStrategy.js",
       "source_location": "L12",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_strategies_crawlerstrategy_js",
-      "target": "strategies_crawlerstrategy_crawlerstrategy",
-      "confidence_score": 1.0
+      "target": "strategies_crawlerstrategy_crawlerstrategy"
     },
     {
       "relation": "imports_from",
@@ -7630,9 +8659,9 @@
       "source_file": "backend/strategies/StrategyManager.js",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_strategies_strategymanager_js",
-      "target": "backend_strategies_crawlerstrategy_js",
-      "confidence_score": 1.0
+      "target": "backend_strategies_crawlerstrategy_js"
     },
     {
       "relation": "method",
@@ -7640,9 +8669,9 @@
       "source_file": "backend/strategies/CrawlerStrategy.js",
       "source_location": "L13",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "strategies_crawlerstrategy_crawlerstrategy",
-      "target": "strategies_crawlerstrategy_crawlerstrategy_getschedule",
-      "confidence_score": 1.0
+      "target": "strategies_crawlerstrategy_crawlerstrategy_getschedule"
     },
     {
       "relation": "contains",
@@ -7650,9 +8679,9 @@
       "source_file": "backend/strategies/StrategyManager.js",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_strategies_strategymanager_js",
-      "target": "strategies_strategymanager_crawlerstrategy",
-      "confidence_score": 1.0
+      "target": "strategies_strategymanager_crawlerstrategy"
     },
     {
       "relation": "imports_from",
@@ -7661,9 +8690,9 @@
       "source_file": "backend/strategies/StrategyManager.js",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_strategies_strategymanager_js",
-      "target": "backend_strategies_apistrategy_js",
-      "confidence_score": 1.0
+      "target": "backend_strategies_apistrategy_js"
     },
     {
       "relation": "contains",
@@ -7671,9 +8700,9 @@
       "source_file": "backend/strategies/StrategyManager.js",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_strategies_strategymanager_js",
-      "target": "strategies_strategymanager_apistrategy",
-      "confidence_score": 1.0
+      "target": "strategies_strategymanager_apistrategy"
     },
     {
       "relation": "contains",
@@ -7681,9 +8710,9 @@
       "source_file": "backend/strategies/StrategyManager.js",
       "source_location": "L7",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_strategies_strategymanager_js",
-      "target": "strategies_strategymanager_strategymanager",
-      "confidence_score": 1.0
+      "target": "strategies_strategymanager_strategymanager"
     },
     {
       "relation": "method",
@@ -7691,9 +8720,9 @@
       "source_file": "backend/strategies/StrategyManager.js",
       "source_location": "L8",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "strategies_strategymanager_strategymanager",
-      "target": "strategies_strategymanager_strategymanager_constructor",
-      "confidence_score": 1.0
+      "target": "strategies_strategymanager_strategymanager_constructor"
     },
     {
       "relation": "method",
@@ -7701,9 +8730,9 @@
       "source_file": "backend/strategies/StrategyManager.js",
       "source_location": "L19",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "strategies_strategymanager_strategymanager",
-      "target": "strategies_strategymanager_strategymanager_getstrategy",
-      "confidence_score": 1.0
+      "target": "strategies_strategymanager_strategymanager_getstrategy"
     },
     {
       "relation": "contains",
@@ -7711,9 +8740,9 @@
       "source_file": "backend/strategies/ApiStrategy.js",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_strategies_apistrategy_js",
-      "target": "strategies_apistrategy_schedulestrategy",
-      "confidence_score": 1.0
+      "target": "strategies_apistrategy_schedulestrategy"
     },
     {
       "relation": "contains",
@@ -7721,9 +8750,9 @@
       "source_file": "backend/strategies/ApiStrategy.js",
       "source_location": "L6",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_strategies_apistrategy_js",
-      "target": "strategies_apistrategy_apistrategy",
-      "confidence_score": 1.0
+      "target": "strategies_apistrategy_apistrategy"
     },
     {
       "relation": "method",
@@ -7731,8 +8760,38 @@
       "source_file": "backend/strategies/ApiStrategy.js",
       "source_location": "L7",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "strategies_apistrategy_apistrategy",
-      "target": "strategies_apistrategy_apistrategy_getschedule",
+      "target": "strategies_apistrategy_apistrategy_getschedule"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/middleware/auth.js",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "backend_middleware_auth_js",
+      "target": "middleware_auth_jwt",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/middleware/auth.js",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "backend_middleware_auth_js",
+      "target": "middleware_auth_user",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/middleware/auth.js",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "backend_middleware_auth_js",
+      "target": "middleware_auth_authmiddleware",
       "confidence_score": 1.0
     },
     {
@@ -7741,9 +8800,9 @@
       "source_file": "backend/utils/security.js",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_utils_security_js",
-      "target": "utils_security_crypto",
-      "confidence_score": 1.0
+      "target": "utils_security_crypto"
     },
     {
       "relation": "contains",
@@ -7751,9 +8810,9 @@
       "source_file": "backend/utils/security.js",
       "source_location": "L6",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_utils_security_js",
-      "target": "utils_security_getkey",
-      "confidence_score": 1.0
+      "target": "utils_security_getkey"
     },
     {
       "relation": "contains",
@@ -7761,9 +8820,9 @@
       "source_file": "backend/utils/security.js",
       "source_location": "L19",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_utils_security_js",
-      "target": "utils_security_encrypt",
-      "confidence_score": 1.0
+      "target": "utils_security_encrypt"
     },
     {
       "relation": "contains",
@@ -7771,9 +8830,9 @@
       "source_file": "backend/utils/security.js",
       "source_location": "L39",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_utils_security_js",
-      "target": "utils_security_decrypt",
-      "confidence_score": 1.0
+      "target": "utils_security_decrypt"
     },
     {
       "relation": "calls",
@@ -7782,9 +8841,9 @@
       "source_file": "backend/utils/security.js",
       "source_location": "L21",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "utils_security_encrypt",
-      "target": "utils_security_getkey",
-      "confidence_score": 1.0
+      "target": "utils_security_getkey"
     },
     {
       "relation": "calls",
@@ -7793,9 +8852,9 @@
       "source_file": "backend/utils/security.js",
       "source_location": "L41",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "utils_security_decrypt",
-      "target": "utils_security_getkey",
-      "confidence_score": 1.0
+      "target": "utils_security_getkey"
     },
     {
       "relation": "contains",
@@ -9748,9 +10807,9 @@
       "source_file": ".brain/session.json",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "brain_session_working_on",
-      "target": "brain_session_working_on_current_plan_path",
-      "confidence_score": 1.0
+      "target": "brain_session_working_on_current_plan_path"
     },
     {
       "relation": "contains",
@@ -9758,9 +10817,9 @@
       "source_file": ".brain/session.json",
       "source_location": "L6",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "brain_session_working_on",
-      "target": "brain_session_working_on_current_phase",
-      "confidence_score": 1.0
+      "target": "brain_session_working_on_current_phase"
     },
     {
       "relation": "contains",
@@ -12704,5 +13763,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "0bd9548777bbce55cd91e883d87d89bc6356e6a3"
+  "built_at_commit": "08af6d2f55a512f48ac8b297de8033213a27052e"
 }
