@@ -2,9 +2,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
-import DashboardScreen from './screens/DashboardScreen';
+import AppNavigator from './navigation/AppNavigator';
+import LecturerNavigator from './navigation/LecturerNavigator';
 import LoginScreen from './screens/LoginScreen';
 import { logout } from './services/api';
+import { Colors } from './theme/colors';
 
 export default function App() {
   const [loading, setLoading] = useState(true);
@@ -42,32 +44,33 @@ export default function App() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2e7d32" />
+        <StatusBar style="dark" />
+        <ActivityIndicator size="large" color={Colors.primary} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <StatusBar style="auto" />
+    <>
+      <StatusBar style="dark" />
       {user ? (
-        <DashboardScreen user={user} onLogout={handleLogout} />
+        user.role === 'lecturer' ? (
+          <LecturerNavigator user={user} onLogout={handleLogout} />
+        ) : (
+          <AppNavigator user={user} onLogout={handleLogout} />
+        )
       ) : (
         <LoginScreen onLoginSuccess={handleLoginSuccess} />
       )}
-    </View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-  },
   loadingContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f8fafc',
+    backgroundColor: Colors.background,
   },
 });

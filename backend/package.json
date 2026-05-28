@@ -19,6 +19,7 @@
     "node-cron": "^3.0.3",
     "pg": "^8.21.0",
     "pg-hstore": "^2.3.4",
+    "puppeteer-core": "^25.1.0",
     "sequelize": "^6.37.8"
   },
   "devDependencies": {

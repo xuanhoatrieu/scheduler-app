@@ -23,6 +23,10 @@ This file maps product behavior to proof. Do not mark a row implemented until te
 | **US-005** | Strategy Pattern for crawler vs API | yes | yes | no | no | implemented | `backend/test_strategy.js` |
 | **US-006** | Express REST APIs (Auth, Schedules, Finances) | no | yes | no | no | implemented | `backend/test_api_integration.js` |
 | **US-007** | Expo Mobile screens with offline cache | no | no | no | yes | implemented | `mobile/App.js` |
+| **US-008** | Upgrade Expo SDK 54 | no | no | no | yes | implemented | `mobile/package.json` |
+| **US-009** | Multi-Semester Historical Crawling (Grades + Finance) | yes | yes | no | no | implemented | `backend/services/studentCrawler.js`, `backend/strategies/CrawlerStrategy.js`, `backend/routes/schedule.js` |
+| **US-010** | Premium UI/UX Redesign with Bottom Tab Navigation | no | no | no | yes | implemented | `mobile/navigation/AppNavigator.js`, `mobile/screens/GradesScreen.js`, `mobile/screens/FinanceScreen.js`, `mobile/screens/ProfileScreen.js` |
+| **US-011** | Dockerize & Production Deploy Config | no | yes | no | yes | implemented | `backend/Dockerfile`, `docker-compose.yml`, `.github/workflows/docker-publish.yml` |
 
 ## Evidence Rules
 

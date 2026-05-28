@@ -59,6 +59,19 @@ router.post('/login', async (req, res) => {
       { expiresIn: '30d' }
     );
 
+    // 4. Background: Kích hoạt đồng bộ dữ liệu lịch sử TẤT CẢ các kỳ (không blocking)
+    if (user.role === 'student') {
+      setImmediate(async () => {
+        try {
+          console.log(`🔄 [Auth] Background sync history bắt đầu cho ${user.username}...`);
+          await strategy.syncHistory(user, password);
+          console.log(`✅ [Auth] Background sync history hoàn tất cho ${user.username}!`);
+        } catch (err) {
+          console.warn(`⚠️ [Auth] Background sync history thất bại cho ${user.username}:`, err.message);
+        }
+      });
+    }
+
     res.json({
       success: true,
       token,

@@ -1,139 +1,150 @@
-const axios = require('axios');
+const puppeteer = require('puppeteer-core');
 const cheerio = require('cheerio');
 const { parseLecturerSchedule } = require('./parsers/lecturerParser');
 
 const SSO_URL = 'https://sso.tuaf.edu.vn';
 const GV_URL = 'https://giangvien.tuaf.edu.vn';
+const CHROME_PATH = '/usr/bin/google-chrome';
 
 /**
- * Tạo instance Axios chuyên biệt cho cổng SSO / Giảng viên
- */
-const createSessionAxios = (cookieStr = '', base = SSO_URL) => {
-  return axios.create({
-    baseURL: base,
-    withCredentials: true,
-    maxRedirects: 0, // Tắt tự động redirect để bắt cookie chuyển tiếp
-    validateStatus: (status) => status < 500,
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-      'Accept-Language': 'vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7',
-      ...(cookieStr ? { Cookie: cookieStr } : {})
-    }
-  });
-};
-
-const mergeCookies = (...headerSets) => {
-  const map = {};
-  for (const headers of headerSets) {
-    if (!headers) continue;
-    const arrayHeaders = Array.isArray(headers) ? headers : [headers];
-    for (const raw of arrayHeaders) {
-      const [pair] = raw.split(';');
-      const [k, v] = pair.split('=');
-      if (k) map[k.trim()] = v ? v.trim() : '';
-    }
-  }
-  return Object.entries(map).map(([k, v]) => `${k}=${v}`).join('; ');
-};
-
-/**
- * Đăng nhập SSO Giảng viên và trích xuất cookie phiên của cổng giảng viên
+ * Đăng nhập SSO Giảng viên bằng Puppeteer headless browser.
+ * Cổng GV dùng SPA + OIDC client-side → cần browser thật để xử lý JS.
+ *
  * @param {string} username - Tài khoản giảng viên
  * @param {string} password - Mật khẩu giảng viên
- * @returns {Object} { success: boolean, cookie: string, fullName: string, error?: string }
+ * @returns {Object} { success, cookies[], fullName, browser, page }
  */
 const loginLecturer = async (username, password) => {
+  let browser;
   try {
-    const ssoHttp = createSessionAxios();
+    console.log('🔐 [Lecturer] Khởi động Puppeteer headless...');
+    browser = await puppeteer.launch({
+      executablePath: CHROME_PATH,
+      headless: 'new',
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--single-process'
+      ]
+    });
 
-    // 1. Gửi GET để nhận Token CSRF từ SSO
-    const ssoPage = await ssoHttp.get('/Account/Login?ReturnUrl=%2F');
-    const $sso = cheerio.load(ssoPage.data);
-    const token = $sso('input[name="__RequestVerificationToken"]').val();
+    const page = await browser.newPage();
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
-    if (!token) {
-      return { success: false, error: 'Không lấy được CSRF Token bảo mật từ máy chủ SSO.' };
+    // Bước 1: Truy cập cổng GV — SPA sẽ tự redirect sang SSO login
+    console.log('  📄 Truy cập cổng giảng viên...');
+    await page.goto(GV_URL, { waitUntil: 'networkidle2', timeout: 30000 });
+
+    // Kiểm tra xem đã redirect sang SSO login chưa
+    const currentUrl = page.url();
+    console.log(`  📍 Current URL: ${currentUrl}`);
+
+    if (currentUrl.includes('sso.tuaf.edu.vn')) {
+      // Đang ở trang SSO login
+      console.log('  ✅ Đang ở trang SSO, điền thông tin đăng nhập...');
+
+      // Điền username + password
+      await page.waitForSelector('input[name="Username"]', { timeout: 10000 });
+      await page.type('input[name="Username"]', username, { delay: 50 });
+      await page.type('input[name="Password"]', password, { delay: 50 });
+
+      // Click login
+      await Promise.all([
+        page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 }),
+        page.click('button[type="submit"], button[name="button"]')
+      ]);
+
+      const afterLoginUrl = page.url();
+      console.log(`  📍 After login URL: ${afterLoginUrl}`);
+
+      // Kiểm tra lỗi đăng nhập
+      if (afterLoginUrl.includes('sso.tuaf.edu.vn/Account/Login')) {
+        const errorText = await page.evaluate(() => {
+          const el = document.querySelector('.alert-danger, .text-danger, .validation-summary-errors');
+          return el ? el.textContent.trim() : '';
+        });
+        await browser.close();
+        return { success: false, error: errorText || 'Sai tài khoản hoặc mật khẩu.' };
+      }
     }
 
-    const cookieSSO1 = mergeCookies(ssoPage.headers['set-cookie']);
+    // Bước 2: Chờ cổng GV load xong sau OIDC callback
+    console.log('  ⏳ Chờ cổng GV xử lý OIDC callback...');
 
-    // 2. Chuẩn bị FormData đăng nhập SSO
-    const formData = new URLSearchParams();
-    formData.append('ReturnUrl', '/');
-    formData.append('Username', username);
-    formData.append('Password', password);
-    formData.append('RememberLogin', 'true');
-    formData.append('button', 'login');
-    formData.append('__RequestVerificationToken', token);
-
-    // 3. POST Đăng nhập lên SSO
-    const loginRes = await createSessionAxios(cookieSSO1, SSO_URL).post('/Account/Login?ReturnUrl=%2F', formData.toString(), {
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Referer': `${SSO_URL}/Account/Login?ReturnUrl=%2F`
-      }
-    });
-
-    const cookieSSO2 = mergeCookies(ssoPage.headers['set-cookie'], loginRes.headers['set-cookie']);
-
-    // 4. Nếu đăng nhập thành công, SSO trả về Redirect 302
-    if (loginRes.status !== 302) {
-      const $res = cheerio.load(loginRes.data);
-      const errMsg = $res('.alert-danger, .text-danger, .validation-summary-errors').text().trim();
-      return { success: false, error: errMsg || 'Đăng nhập SSO thất bại. Vui lòng kiểm tra lại tài khoản.' };
+    // Chờ trang GV load (sau khi OIDC redirect xong)
+    try {
+      await page.waitForFunction(
+        () => window.location.hostname === 'giangvien.tuaf.edu.vn' && !window.location.pathname.includes('signin-oidc'),
+        { timeout: 20000 }
+      );
+    } catch (e) {
+      // Nếu vẫn ở /signin-oidc, chờ thêm
+      console.log('  ⏳ Chờ redirect hoàn tất...');
+      await new Promise(r => setTimeout(r, 5000));
     }
 
-    // 5. Theo luồng Redirect (đọc location header) để lấy cookie phiên của giangvien.tuaf.edu.vn
-    const redirectUrl = loginRes.headers['location'];
-    const finalRedirectUrl = redirectUrl.startsWith('http') ? redirectUrl : GV_URL + redirectUrl;
-    console.log(`SSO Authenticated! Redirecting to OIDC endpoint: ${finalRedirectUrl}`);
+    const finalUrl = page.url();
+    console.log(`  📍 Final URL: ${finalUrl}`);
 
-    // Gửi request tới URL redirect (thường là giangvien.tuaf.edu.vn/signin-oidc) để lấy cookie chính thức
-    // Để cho an toàn và hoạt động độc lập, chúng ta mô phỏng việc follow redirect bằng Axios
-    const gvHttp = axios.create({
-      withCredentials: true,
-      maxRedirects: 5,
-      validateStatus: (status) => status < 400,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-      }
-    });
+    // Bước 3: Lấy cookies từ browser
+    const allCookies = await page.cookies();
+    const cookieString = allCookies.map(c => `${c.name}=${c.value}`).join('; ');
 
-    // Thực hiện gọi URL redirect kèm cookie SSO
-    const oidcRes = await gvHttp.get(finalRedirectUrl, {
-      headers: { Cookie: cookieSSO2 }
-    });
+    // Bước 4: Lấy tên giảng viên từ giao diện
+    let fullName = 'Giảng viên TUAF';
+    try {
+      // Chờ giao diện load
+      await new Promise(r => setTimeout(r, 5000));
+      fullName = await page.evaluate(() => {
+        // Thử nhiều selector phổ biến trên cổng GV
+        const selectors = [
+          '.user-name-text', '.user-name', '.dropdown-toggle .d-xl-inline-block',
+          '.dropdown-toggle', '.user-info', '.display-name',
+          '#userName', '.navbar-text', '.profile-name', '.header-profile-user',
+          '.text-start .ms-1', 'span.ms-1', '.user-name-sub-text'
+        ];
+        for (const sel of selectors) {
+          const el = document.querySelector(sel);
+          const text = el ? el.textContent.trim() : '';
+          // Tên hợp lệ: > 3 ký tự, < 50, không phải menu text
+          if (text.length > 3 && text.length < 50 && !text.includes('Đăng') && !text.includes('Menu')) {
+            return text;
+          }
+        }
+        // Thử lấy từ sessionStorage (GV portal lưu 'enjsufo')
+        const userInfo = sessionStorage.getItem('enjsufo');
+        if (userInfo) {
+          try {
+            const parsed = JSON.parse(userInfo);
+            return parsed.hoTen || parsed.fullName || parsed.name || parsed.tenGiangVien || '';
+          } catch (e) {}
+        }
+        // Thử lấy từ tất cả text elements chứa 'Giảng viên'
+        const allText = document.body.innerText;
+        const match = allText.match(/(?:Xin chào|Chào)\s*[,:]?\s*([^\n]{3,40})/i);
+        if (match) return match[1].trim();
+        return '';
+      }) || 'Giảng viên TUAF';
+    } catch (e) {
+      console.warn('  ⚠️ Không lấy được tên GV từ giao diện');
+    }
 
-    const cookieGV = mergeCookies(oidcRes.headers['set-cookie']);
-    
-    // 6. Truy cập trang chủ Giảng viên để lấy họ tên giảng viên
-    const homeRes = await axios.get(GV_URL + '/GiangVien/Home', {
-      headers: { 
-        Cookie: cookieGV,
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-      }
-    });
-
-    const $home = cheerio.load(homeRes.data);
-    const fullName = $home('.dropdown-toggle, .user-name, td:contains("Họ tên") + td').first().text().trim() || 'Giảng viên TUAF';
+    console.log(`  👤 Giảng viên: ${fullName}`);
 
     return {
       success: true,
-      cookie: cookieGV,
-      fullName
+      cookies: allCookies,
+      cookieString,
+      fullName,
+      browser,
+      page
     };
   } catch (error) {
-    console.error('Login Lecturer Error:', error);
-    // Để chạy thử độc lập (Mock fallback) phòng trường hợp giao thức SSO redirect OIDC bị chặn trong môi trường server sandbox:
-    if (username === 'xuanhoatrieu' && password === 'xuanhoatrieu') {
-      return {
-        success: true,
-        cookie: 'mock-lecturer-cookie-session-id',
-        fullName: 'Thầy Triệu Xuân Hòa'
-      };
-    }
-    return { success: false, error: `Đăng nhập hệ thống SSO thất bại: ${error.message}` };
+    console.error('❌ Login Lecturer Error:', error.message);
+    if (browser) await browser.close();
+    return { success: false, error: `Đăng nhập thất bại: ${error.message}` };
   }
 };
 
@@ -147,69 +158,125 @@ const syncLecturerData = async (username, password, options = { semester: '2', s
     throw new Error(loginResult.error);
   }
 
-  const { cookie, fullName } = loginResult;
+  const { cookieString, fullName, browser, page } = loginResult;
   let scheduleList = [];
 
-  // Nếu là cookie mock -> Trả về dữ liệu mock chất lượng cao để hiển thị mượt mà
-  if (cookie === 'mock-lecturer-cookie-session-id') {
-    scheduleList = [
-      {
-        courseName: 'Phát triển ứng dụng di động',
-        credits: 3,
-        classCode: 'Lập trình di động nâng cao_K56',
-        studyTime: '26/02/2026 - 15/06/2026',
-        dayOfWeek: 2,
-        periodText: '1-3',
-        room: 'Phòng 402-A1',
-        teacherName: fullName,
-        semester: `HocKy${options.semester}`,
-        schoolYear: `${options.schoolYear}-${parseInt(options.schoolYear) + 1}`,
-        batch: 'Dothoc1'
-      },
-      {
-        courseName: 'Trí tuệ nhân tạo (AI)',
-        credits: 3,
-        classCode: 'AI & Data Science_K56',
-        studyTime: '26/02/2026 - 15/06/2026',
-        dayOfWeek: 4,
-        periodText: '6-8',
-        room: 'Phòng thực hành máy tính 3',
-        teacherName: fullName,
-        semester: `HocKy${options.semester}`,
-        schoolYear: `${options.schoolYear}-${parseInt(options.schoolYear) + 1}`,
-        batch: 'Dothoc1'
-      }
-    ];
-  } else {
-    // Luồng cào thật
-    const http = axios.create({
-      baseURL: GV_URL,
-      headers: { 
-        Cookie: cookie,
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-      }
-    });
-
+  try {
+    // Dùng Puppeteer page đã login để navigate đến trang lịch dạy
     console.log('⏳ Đang cào lịch dạy giảng viên...');
-    for (let batch = 1; batch <= 6; batch++) {
+
+    // URL chính xác sau khi Puppeteer redirect: /LichGiangDay/Index
+    // Thử nhiều URL patterns
+    const scheduleUrls = [
+      `${GV_URL}/LichGiangDay/Index`,
+      `${GV_URL}/LichGiangDay`,
+      `${GV_URL}/TraCuuLichDay/ThongTinLichDay`,
+    ];
+
+    for (const schedUrl of scheduleUrls) {
+      if (scheduleList.length > 0) break;
       try {
-        const path = `/TraCuuLichDay/ThongTinLichDay?HocKy=${options.semester}&NamHoc=${options.schoolYear}&Dothoc=${batch}`;
-        const res = await http.get(path);
-        if (res.status === 200 && res.data.length > 500) {
-          const batchSchedules = parseLecturerSchedule(res.data);
+        console.log(`  🔍 Thử: ${schedUrl}`);
+        await page.goto(schedUrl, { waitUntil: 'networkidle2', timeout: 20000 });
+
+        // Chờ SPA render — tìm select box học kỳ hoặc table
+        await new Promise(r => setTimeout(r, 3000));
+
+        // Thử chọn học kỳ và năm học qua form controls
+        try {
+          await page.evaluate((sem, year) => {
+            // Tìm và set giá trị cho select/dropdown học kỳ
+            const selects = document.querySelectorAll('select');
+            for (const sel of selects) {
+              const label = (sel.previousElementSibling || {}).textContent || '';
+              const name = sel.name || sel.id || '';
+              if (name.toLowerCase().includes('hocky') || label.includes('Học kỳ')) {
+                sel.value = sem;
+                sel.dispatchEvent(new Event('change', { bubbles: true }));
+              }
+              if (name.toLowerCase().includes('namhoc') || label.includes('Năm học')) {
+                sel.value = year;
+                sel.dispatchEvent(new Event('change', { bubbles: true }));
+              }
+            }
+            // Click nút tìm kiếm nếu có
+            const btn = document.querySelector('button[type=submit], .btn-search, .btn-primary, #btnSearch, #btnTimKiem');
+            if (btn) btn.click();
+          }, options.semester, options.schoolYear);
+        } catch (e) { /* form controls might not exist */ }
+
+        // Chờ kết quả render
+        await new Promise(r => setTimeout(r, 5000));
+
+        const html = await page.content();
+        console.log(`  📄 Page: ${html.length} bytes | URL: ${page.url()}`);
+
+        if (html.length > 2000) {
+          const batchSchedules = parseLecturerSchedule(html);
           if (batchSchedules.length > 0) {
             batchSchedules.forEach(item => {
               item.semester = `HocKy${options.semester}`;
               item.schoolYear = `${options.schoolYear}-${parseInt(options.schoolYear) + 1}`;
-              item.batch = `Dothoc${batch}`;
+              item.batch = 'Dothoc1';
               item.teacherName = fullName;
             });
-            scheduleList = [...scheduleList, ...batchSchedules];
+            scheduleList = batchSchedules;
+            console.log(`  ✅ Tìm thấy ${batchSchedules.length} lịch dạy!`);
           }
         }
       } catch (err) {
-        console.warn(`⚠️ Lỗi khi cào lịch dạy đợt ${batch}:`, err.message);
+        console.warn(`  ⚠️ ${schedUrl}: ${err.message}`);
       }
+    }
+
+    // Fallback: Thử intercept AJAX requests từ SPA
+    if (scheduleList.length === 0) {
+      console.log('  ℹ️ Thử intercept AJAX data từ SPA...');
+      try {
+        let ajaxData = null;
+        page.on('response', async (response) => {
+          const url = response.url();
+          if (url.includes('LichGiang') || url.includes('LichDay') || url.includes('GetLich')) {
+            try {
+              const json = await response.json();
+              if (Array.isArray(json) && json.length > 0) {
+                ajaxData = json;
+                console.log(`  ✅ Intercepted AJAX: ${url} (${json.length} records)`);
+              }
+            } catch (e) {}
+          }
+        });
+
+        // Reload trang để bắt AJAX calls
+        await page.goto(`${GV_URL}/LichGiangDay/Index`, { waitUntil: 'networkidle2', timeout: 20000 });
+        await new Promise(r => setTimeout(r, 8000));
+
+        if (ajaxData) {
+          scheduleList = ajaxData.map(item => ({
+            courseName: item.tenHocPhan || item.TenHocPhan || item.tenMon || item.TenMon || '',
+            credits: item.soTinChi || item.SoTinChi || 0,
+            classCode: item.maLop || item.MaLop || item.tenLop || item.TenLop || '',
+            studyTime: item.thoiGian || item.ThoiGian || '',
+            dayOfWeek: item.thu || item.Thu || 2,
+            periodText: item.tiet || item.Tiet || '',
+            room: item.phong || item.Phong || item.diaDiem || item.DiaDiem || '',
+            teacherName: fullName,
+            semester: `HocKy${options.semester}`,
+            schoolYear: `${options.schoolYear}-${parseInt(options.schoolYear) + 1}`,
+            batch: 'Dothoc1'
+          }));
+        }
+      } catch (e) {
+        console.warn('  ⚠️ AJAX intercept failed:', e.message);
+      }
+    }
+
+    console.log(`  📊 Kết quả: ${scheduleList.length} lịch dạy`);
+  } finally {
+    // Đóng browser
+    if (browser) {
+      await browser.close();
+      console.log('  🔒 Browser đã đóng');
     }
   }
 

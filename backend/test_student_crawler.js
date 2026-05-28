@@ -31,6 +31,10 @@ async function run() {
     }
     console.log(`📝 Exam schedules:    ${data.examList.length} exams`);
     console.log(`🎓 Grades crawled:    ${data.gradeList.length} courses`);
+    console.log(`📚 Curriculum (CTĐT): ${data.curriculumList ? data.curriculumList.length : 0} courses`);
+    if (data.curriculumList && data.curriculumList.length > 0) {
+      console.log('   Sample curriculum course:', JSON.stringify(data.curriculumList[0], null, 2));
+    }
     console.log('💰 Tuition Finance:', JSON.stringify(data.financeData, null, 2));
     console.log('==================================================');
   } catch (error) {

@@ -1,0 +1,1983 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="author" content="Công ty Cổ phần Giải pháp Giáo dục Nam Việt." />
+    <link href="/Templates/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/Templates/js/vendor/nivo-slider/nivo-slider.css" type="text/css" />
+    <link rel="stylesheet" href="/Templates/js/vendor/datepicker/css/datepicker.css" type="text/css" />
+    <link rel="stylesheet" href="/Templates/js/vendor/nivo-slider/themes/default/default.css" type="text/css" />
+    <link href="/Templates/css/main.css" rel="stylesheet" />
+    <link href="/Templates/css/font-awesome.min.css" rel="stylesheet" />
+    <link href="/Templates/css/SinhVien.css" rel="stylesheet" />
+    <link href="/Content/css/bootstrap-treenav.css" rel="stylesheet" />
+    <link href="/Content/Stepbystep/Stepbystep.css" rel="stylesheet" />
+    <link href="/Content/toastr.css" rel="stylesheet" />
+    <link href="/Areas/Admin/Content/plugins/morris/morris.css" rel="stylesheet" />
+    <script src="/Scripts/jquery-2.2.3.js"></script>
+    
+    <link href="/Templates/css/Master.css" rel="stylesheet" />
+    <script src="/Scripts/bootstrap.min.js"></script>
+    <script src="/Scripts/toastr.js"></script>
+    <title>Cổng thông tin</title>
+    <link rel="icon" type="image/x-icon" href="/FileManager/Upload/images/logoTruong.png" />
+    <link href="/Content/select2-4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+</head>
+<body>
+    
+    <a href="#" class="back-to-top" style="display: none;">Back to Top</a>
+
+
+
+
+
+
+<section style="background: #12466D url(/FileManager/Upload/images/bg_header.png);" >
+    <div class="container">
+        <div class="row">
+            <div class="col-md-12" style="padding:0;margin:0">
+                <a title="Trường Đại Học ">
+                    <img src="/FileManager/Upload/images/logoTruongDHThuDo.png" alt="logo" class="img-responsive">
+                </a>
+            </div>
+             
+        </div>
+    </div>
+</section>
+    <header style="background-color:#3b5998">
+        <div class="container">
+            <div class="row top-menu">
+                <nav class="navbar navbar-blue" role="navigation" style="margin-bottom:0px">
+                    <div class="container-fluid">
+                        <!-- Brand and toggle get grouped for better mobile display -->
+                        <div class="navbar-header">
+                            
+                            
+                        </div>
+
+                        <!-- Collect the nav links, forms, and other content for toggling -->
+                        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+
+<style>
+    .styMenu {
+        float: left;
+        padding-top: 4px;
+        padding-left: 4px;
+        height: 38px;
+    }
+
+    .styMenuCon {
+        padding-left: 30px;
+    }
+</style>
+<div>
+    <div style="float:left">
+        <ul class="nav navbar-nav">
+            <li class="dropdown">
+                <a href="/" style="margin-left:-50px">
+                    <div style="float:left;">
+                        <img class="clImage" src="/FileManager/img/home-4-24.png" />
+                    </div>
+                    <div class="styMenu">TRANG CHỦ</div>
+                </a>
+            </li>
+            <li class="dropdown">
+                <a href="javascript:void(0)" class="dropdown-toggle" data-toggle="dropdown">
+                    <div style="float:left;">
+                        <img src="/FileManager/img/literature-24.png" />
+                    </div>
+                    <div class="styMenu">CHƯƠNG TRÌNH ĐÀO TẠO</div>
+                </a>
+                <ul class="dropdown-menu" role="menu">
+                    <li>
+                        <a href="/SinhVien/DaoTaoToanTruong">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_toantruong.png" />
+                            </div>
+                            <div class="">Toàn trường</div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/SinhVien/ChuyenNganhChinh">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_chuyennganhchinh.png" />
+                            </div>
+                            <div class="styMenuCon">Chuyên ngành chính</div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/SinhVien/ChuyenNganh2">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_chuyennganh2.png" />
+                            </div>
+                            <div class="styMenuCon">Chuyên ngành thứ 2</div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/SoSanhChuyenNganh/Index">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_chuyennganh2.png" />
+                            </div>
+                            <div class="styMenuCon">So sánh 2 chuyên ngành</div>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+            <li class="dropdown">
+                <a href="javascript:void(0)" class="dropdown-toggle" data-toggle="dropdown">
+                    <div style="float:left;">
+                        <img src="/FileManager/img/rsz_register.png" />
+                    </div>
+                    <div class="styMenu">ĐĂNG KÍ HỌC</div>
+                </a>
+                <ul class="dropdown-menu" role="menu">
+
+                    
+                    <li>
+                        <a href="/DangKy/ChuyenNganhChinh">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_results.png" />
+                            </div>
+                            <div class="styMenuCon">Chuyên ngành chính</div>
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="/DangKyNganh2/Index">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_results.png" />
+                            </div>
+                            <div class="styMenuCon">Chuyên ngành 2</div>
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="/DangKyHocChuyenSau/Index">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_results.png" />
+                            </div>
+                            <div class="styMenuCon">Đăng ký ôn thi CĐR NNTH</div>
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="/DangKyHocLaiCaiThien2/ChuyenNganhChinh">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_results.png" />
+                            </div>
+                            <div class="styMenuCon">Đăng ký Học lại / cải thiện điểm</div>
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="/DangKyHocLaiCaiThien/Index">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_results.png" />
+                            </div>
+                            <div class="styMenuCon">Đăng ký nguyện vọng học lại, cải thiện</div>
+                        </a>
+                    </li>
+
+                    
+
+                    <!--<li>
+    <a href="javascript:void(0)">-->
+                    
+                    <!--<div style="float:left;">
+                <img class="" src="/FileManager/img/rsz_results.png" />
+            </div>
+            <div class="styMenuCon">Khảo sát nhu cầu đăng ký học</div>
+        </a>
+    </li>
+
+    <li>
+        <a href="javascript:void(0)">-->
+                    
+                    <!--<div style="float:left;">
+            <img class="" src="/FileManager/img/rsz_results.png" />
+        </div>
+        <div class="styMenuCon">Kết quả đăng ký học</div>
+    </a>
+        </li>-->
+
+                </ul>
+            </li>
+            <li class="dropdown">
+                <a href="javascript:void(0)" class="dropdown-toggle" data-toggle="dropdown">
+                    <div style="float:left;">
+                        <img src="/FileManager/img/rsz_profile.png" />
+                    </div>
+                    <div class="styMenu">THÔNG TIN SINH VIÊN</div>
+                </a>
+                <ul class="dropdown-menu" role="menu">
+
+                    <li>
+                        <a href="/SinhVien/ThongTinSinhVien">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_calendar.png" />
+                            </div>
+                            <div class="styMenuCon">Thông tin sinh viên</div>
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="/TraCuuDiemSV/Index">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_notepad.png" />
+                            </div>
+                            <div class="styMenuCon">Kết quả học tập</div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/TraCuuChungChi/Index">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_notepad.png" />
+                            </div>
+                            <div class="styMenuCon">Tra cứu chứng chỉ</div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/TraCuuDiemSV/DiemRenLuyen">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_profile.png" />
+                            </div>
+                            <div class="styMenuCon">Điểm rèn luyện</div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/TraCuuLichHoc/Index">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_calendar.png" />
+                            </div>
+                            <div class="styMenuCon">Thông tin lịch học</div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/TraCuuLichThi/Index">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_calendar.png" />
+                            </div>
+                            <div class="styMenuCon">Lịch thi sinh viên</div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/SinhVien/HocBong_KhenThuong_KyLuat">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_hocbong.png" />
+                            </div>
+                            <div class="styMenuCon">Học bổng-Khen thưởng-Kỷ luật</div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/KyTucXa/Index">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_hocbong.png" />
+                            </div>
+                            <div class="styMenuCon">Thông tin nội ngoại trú</div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/HoSoSucKhoe/Index">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_notepad.png" />
+                            </div>
+                            <div class="styMenuCon">Hồ sơ sức khỏe</div>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+            <li class="dropdown">
+                <a href="javascript:void(0)" class="dropdown-toggle" data-toggle="dropdown">
+                    <div style="float:left;">
+                        <img src="/FileManager/img/checklist.png" />
+                    </div>
+                    <div class="styMenu">ĐÁNH GIÁ</div>
+                </a>
+                <ul class="dropdown-menu" role="menu">
+
+                    <li>
+                        <a href="/DichVu/Home">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_danhgia.png" />
+                            </div>
+                            <div class="styMenuCon">Khảo sát đánh giá</div>
+                        </a>
+                    </li>
+
+                </ul>
+            </li>
+            <li class="dropdown">
+                <a href="javascript:void(0)" class="dropdown-toggle" data-toggle="dropdown">
+                    <div style="float:left;">
+                        <img src="/FileManager/img/rsz_money.png" />
+                    </div>
+                    <div class="styMenu">TÀI CHÍNH</div>
+                </a>
+                <ul class="dropdown-menu" role="menu">
+                    <li>
+                        <a href="/TraCuuHocPhiSV/Index">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_tructiep.png" />
+                            </div>
+                            <div class="styMenuCon">Thông tin tài chính</div>
+                        </a>
+                    </li>
+<li>
+                        <a href="/DangKyNopHocPhiSV/Index">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_tructiep.png" />
+                            </div>
+                            <div class="styMenuCon">Đăng ký nộp học phí</div>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+
+            <li class="dropdown">
+                <a href="javascript:void(0)" class="dropdown-toggle" data-toggle="dropdown">
+                    <div style="float:left;">
+                        <img src="/FileManager/img/rsz_tongdaidichvu.png" />
+                    </div>
+                    <div class="styMenu">DỊCH VỤ</div>
+                </a>
+                <ul class="dropdown-menu" role="menu">
+                    <li>
+                        <a href="/ThongTin/ThongBao?CatID=5">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_news.png" />
+                            </div>
+                            <div class="styMenuCon">Tin mới nhất</div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/ThongTin/ThongBao?CatID=2">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_megaphone.png" />
+                            </div>
+                            <div class="styMenuCon">Thông báo</div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/ThongTin/ThongBao?CatID=1">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_vanban.png" />
+                            </div>
+                            <div class="styMenuCon">Văn bản biểu mẫu</div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/SinhVien/CuuSinhVien">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_cuusinhvien.png" />
+                            </div>
+                            <div class="styMenuCon">Cựu sinh viên</div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/Dangkygiayto/Index">
+                            <div style="float:left;">
+                                <img src="/FileManager/img/rsz_register.png" />
+                            </div>
+                            <div class="styMenuCon">Đăng ký giấy tờ liên quan</div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/ThanhToanTrucTuyen/Index">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_tructuyen.png" />
+                            </div>
+                            <div class="styMenuCon">Nộp học phí trực tuyến</div>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+
+            
+
+        </ul>
+    </div>
+
+    <div style="float:right">
+        <ul id="ulMenu2" class="nav navbar-nav navbar-right" style="">
+            <li class="dropdown">
+                <a href="/SinhVien/ThongTinSinhVien" class="dropdown" data-toggle="dropdown">
+                    <div>
+                        <div style="float:left;">
+                            <img src="/FileManager/img/rsz_user.png" />
+                        </div>
+                        <div class="styMenu" style="text-align:center;vertical-align:middle;margin-top:-10px">
+                            Dương Văn Trường<br />CN&amp;ĐMST 56
+                        </div>
+                    </div>
+                </a>
+                <ul class="dropdown-menu dropdown-loggedin" role="menu" style="width:155px;">
+                    <li>
+                        <a href="#" onclick="DoiMatKhau()">
+                            <div style="float:left;">
+                                <img src="/FileManager/img/rsz_user.png" />
+                            </div>
+                            <div class="styMenuCon">Đổi mật khẩu</div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/DangNhap/Signout">
+                            <div style="float:left;">
+                                <img src="/FileManager/img/rsz_logout.png" />
+                            </div>
+                            <div class="styMenuCon">Thoát</div>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+        </ul>
+    </div>
+
+    <div style="float:right;">
+
+    </div>
+</div>
+<div class="modal fade" id="myModalDoiMatKhau">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="form-group">
+                    <h2 class="modal-title" style="color:#3b55aa">Thay đổi mật khẩu</h2>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="exampleInputEmail1">Mật khẩu cũ</label>
+                    <input type="password" class="form-control" id="txtPass" placeholder="Mật khẩu cũ" />
+                </div>
+                <div class="form-group">
+                    <label for="exampleInputPassword1">Mật khẩu mới </label>
+                    <input type="password" class="form-control" id="txtNewPass" placeholder="Mật khẩu mới" />
+                </div>
+                <div class="form-group">
+                    <label for="exampleInputPassword1">Nhập lại mật khẩu </label>
+                    <input type="password" class="form-control" id="txtRePass" placeholder="Nhập lại mật khẩu" />
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="btnThayPass">Đồng ý</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Thoát</button>
+            </div>
+        </div>
+    </div>
+</div>
+<script type="text/javascript">
+    $(document).ready(function () {
+        $('[data-toggle="tooltip1"]').tooltip();
+        $('[data-toggle="tooltip2"]').tooltip();
+    });
+    function DoiMatKhau() {
+        $('#myModalDoiMatKhau').modal('show');
+
+    }
+    $('#btnThayPass').on('click', function (e) {
+
+        var Pass = $('#txtPass').val();
+        var newPass = $('#txtNewPass').val();
+        var RePass = $('#txtRePass').val();
+        if (newPass != RePass) {
+            ShowToastMessage('', 'Nhập lại mật khẩu không khớp !', 'error');
+            return;
+        }
+        if (newPass == "" || Pass == "" || RePass == "") {
+            ShowToastMessage('', 'Mật khẩu không được để trống!', 'error');
+            return;
+        }
+        $.ajax({
+            type: 'POST',
+            url: '../SinhVien/ThayDoiMatKhau',
+            data: JSON.stringify({ NewPass: newPass, PassOld: Pass }),
+            contentType: 'application/json',
+            success: function (result) {
+
+                if (result == "True") {
+                    setTimeout(function () {
+                        ShowToastMessage('', 'Cập nhật thành công !', 'success');
+                    }, 100);
+                    setTimeout(function () {
+                        ShowToastMessage('', 'Bạn sẽ thoát sau 3s !', 'warning');
+                    }, 800);
+                    setTimeout(function () {
+                        ShowToastMessage('', 'Bạn sẽ thoát sau 2s !', 'warning');
+                    }, 2900);
+                    setTimeout(function () {
+                        ShowToastMessage('', 'Bạn sẽ thoát sau 1s !', 'warning');
+                    }, 4000);
+                    setTimeout(function () {
+                        window.location = '/DangNhap/Signout';
+                    }, 5500);
+
+                }
+                else {
+                    ShowToastMessage('', 'Mật khẩu cũ không đúng !', 'error');
+                }
+                $('#myModalDoiMatKhau').modal('hide');
+            },
+            error: function (result) {
+                ShowToastMessage('', 'Có lỗi xảy ra !', 'error');
+                return;
+            }
+        });
+    });
+</script>
+
+
+
+
+                        </div>
+                        <!-- /.navbar-collapse -->
+                    </div>
+                    <!-- /.container-fluid -->
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div id="divcontenr">
+            
+<script type="text/javascript">
+    var IDKiemTral = '2';
+</script>
+<div class="row">
+    <ol id="breadcumb" class="breadcrumb">
+        <li><a href="#">Thông tin chi tiết điểm sinh viên</a></li>
+    </ol>
+</div>
+
+<div class="row news-listing">
+    <div class="col-md-12 fullwidth">
+        <div class="news">
+            <div class="row">
+                <div class="col-md-12" style="font-weight:bold;text-align:center;vertical-align:middle;color:red;font-size:16px;font-family:'Times New Roman'">
+                    Sinh viên cần tiến hành đánh giá môn học cần xem điểm. Click "<a>Vote</a>" để tiến hành đánh giá nếu chưa đánh giá !
+                </div>
+            </div>
+            <div class="row" style="margin-top:25px">
+                <div class="col-md-10 col-md-offset-1">
+                    <div class="row fullwidth form-group">
+                        <div class="col-md-3 fullwidth">
+                            <span class="NoiDungHoSo">Mã sinh viên:</span>
+                            <span class="NoiDungHoSo label" style="color: red; margin-left: 42px" id="MaSinhVien">DTN245748004</span>
+                        </div>
+                        <div class="col-md-3 fullwidth">
+                            <span class="NoiDungHoSo">Xếp loại học tập:</span>
+                            <span class="NoiDungHoSo label" style="color:red" id="XepLoaiHTH4">Trung b&#236;nh</span>
+                        </div>
+                        
+                        <div class="col-md-3 fullwidth">
+                            <span class="NoiDungHoSo">TBC học tập (Hệ 4):</span>
+                            <span class="NoiDungHoSo label" style="margin-left: 8px;color:red" id="TBHTH4">2.17</span>
+                        </div>
+                    </div>
+                    <div class="row fullwidth form-group">
+                        <div class="col-md-3 fullwidth">
+                            <span class="NoiDungHoSo">TBC tích lũy (Hệ 4):</span>
+                            <span class="NoiDungHoSo label" style="color:red" id="TBCTichLuy">2.24 </span>
+                        </div>
+                        <div class="col-md-3 fullwidth">
+                            <span class="NoiDungHoSo">Số tín chỉ tích lũy:</span>
+                            <span class="NoiDungHoSo label" style="margin-left: 25px; color: red" id="TinChiTichLuy">62 / 64</span>
+                        </div>
+                        <div class="col-md-3 fullwidth">
+                            <span class="NoiDungHoSo">Số tín chỉ học tập:</span>
+                            <span class="NoiDungHoSo label" style="margin-left: 32px;color: red" id="TinChiHocTap">67</span>
+                        </div>
+                        <div class="col-md-3 fullwidth">
+                            <span class="NoiDungHoSo">TBC tích lũy (Hệ 10):</span>
+                            <span class="NoiDungHoSo label" style=" color:red" id="TBCTichLuyH10">6.55</span>
+                        </div>
+                    </div>
+                    <div class="row fullwidth form-group" style="margin-top:10px">
+                        <div class="col-md-12 fullwidth">
+                            <table class="table-bordered" style="font-family:'Times New Roman';font-size:14px;">
+                                <tr>
+                                    <td style="width:180px;padding:5px">Số tín chỉ tích lũy: A / B</td>
+                                    <td>
+                                        <table>
+                                            <tr>
+                                                <td style="padding:5px">A: Tổng số tín chỉ các học phần tích lũy tính vào TBCHT Sinh viên đạt từ điểm D trở lên</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding:5px">B: Tổng số tín chỉ các học phần tính vào TBCHT Sinh viên đã học .</td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+
+                            </table>
+                        </div>
+                    </div>
+                    <div class="row fullwidth form-group" style="margin-top:15px">
+                        <div class="col-md-1  fullwidth" style="text-align:center">
+                            <label class="control-label NoiDungHoSo" style="padding-top:7px">Học kỳ</label>
+                        </div>
+                        <div class="col-md-3">
+
+<select class="form-control combobox" name="cmbHocKy" id="cmbHocKy">
+    <option value="-1">--- Chọn học kỳ ---</option>
+            <option value="1">Kỳ 1</option>
+            <option value="2">Kỳ 2</option>
+            <option value="3">Kỳ 3</option>
+
+</select>
+
+
+
+
+
+
+                        </div>
+                        <div class="col-md-1 form-group fullwidth" style="text-align:center">
+                            <label class="control-label NoiDungHoSo" style="padding-top:7px">Năm học</label>
+                        </div>
+                        <div class="col-md-3">
+
+<select class="form-control combobox" name="cmbNamHoc" id="cmbNamHoc">
+    <option value="0">--- Chọn năm học ---</option>
+            <option value="2018">2018-2019</option>
+            <option value="2019">2019-2020</option>
+            <option value="2020">2020-2021</option>
+            <option value="2021">2021-2022</option>
+            <option value="2022">2022-2023</option>
+            <option value="2023">2023-2024</option>
+            <option value="2024">2024-2025</option>
+            <option value="2025">2025-2026</option>
+            <option value="2026">2026-2027</option>
+            <option value="2027">2027-2028</option>
+            <option value="2028">2028-2029</option>
+            <option value="2029">2029-2030</option>
+            <option value="2030">2030-2031</option>
+            <option value="2031">2031-2032</option>
+
+</select>
+
+
+
+
+
+
+                        </div>
+                        <div class="col-md-1 form-group fullwidth" style="text-align:center">
+                            <label class="control-label NoiDungHoSo" style="padding-top:7px">Ngành học</label>
+                        </div>
+                        <div class="col-md-3">
+                            
+<select class="form-control combobox" name="cmbChuyenNganh" id="cmbChuyenNganh">
+    
+            <option value="0" selected="selected">Chuy&#234;n ng&#224;nh ch&#237;nh</option>
+            <option value="1">Chuy&#234;n ng&#224;nh 2</option>
+            <option value="2">Ngo&#224;i chuy&#234;n ng&#224;nh</option>
+
+</select>
+
+
+
+
+
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row" style="padding-left:50px;font-weight:bold;font-size:14px;font-family:'Times New Roman'">
+                <a class="btn btn-danger" onclick="print()"><i class="fa fa-print"></i>&nbsp;In bảng điểm tạm thời</a>
+            </div>
+            <div class="row" style="margin-top:20px">
+
+                <a style="padding-left:50px;font-weight:bold;font-size:14px;font-family:'Times New Roman'"><i class="glyphicon glyphicon-list-alt"></i> Danh sách điểm học phần đã học</a>
+            </div>
+            <div class="row" style="margin-top:20px" id="daTa">
+
+
+
+<div class="col-md-10 col-md-offset-1">
+    <div class="row fullwidth form-group">
+
+        <div class="col-md-3 fullwidth">
+            <span class="NoiDungHoSo">Xếp loại học tập:</span>
+            <span class="NoiDungHoSo label" style="color:red" id="XepLoaiHTH4">Trung b&#236;nh</span>
+        </div>
+        
+        <div class="col-md-3 fullwidth">
+            <span class="NoiDungHoSo">TBC học tập (Hệ 4):</span>
+            <span class="NoiDungHoSo label" style="margin-left: 8px;color:red" id="TBHTH4">2.17</span>
+        </div>
+    </div>
+    <div class="row fullwidth form-group">
+        <div class="col-md-3 fullwidth">
+            <span class="NoiDungHoSo">TBC tích lũy (Hệ 4):</span>
+            <span class="NoiDungHoSo label" style="color:red" id="TBCTichLuy">2.24 </span>
+        </div>
+        <div class="col-md-3 fullwidth">
+            <span class="NoiDungHoSo">Số tín chỉ tích lũy:</span>
+            <span class="NoiDungHoSo label" style="margin-left: 25px; color: red" id="TinChiTichLuy">62 / 64</span>
+        </div>
+        <div class="col-md-3 fullwidth">
+            <span class="NoiDungHoSo">Số tín chỉ học tập:</span>
+            <span class="NoiDungHoSo label" style="margin-left: 32px;color: red" id="TinChiHocTap">67</span>
+        </div>
+        <div class="col-md-3 fullwidth">
+            <span class="NoiDungHoSo">TBC tích lũy (Hệ 10):</span>
+            <span class="NoiDungHoSo label" style=" color: red" id="TBCTichLuyH10">6.55</span>
+        </div>
+    </div>
+    <div class="row fullwidth form-group">
+        <div class="col-md-3 fullwidth">
+            <span class="NoiDungHoSo">Điểm hoạt động ngoại khóa:</span>
+            <span class="NoiDungHoSo label" style="color:red" id="DiemHDNgoaiKhoa"></span>
+        </div>
+    </div>
+</div>
+
+<script>
+    function danhgia(hocky, namhoc, idmon) {
+        window.open('/DichVu/DanhGiaMonHoc/Index?Hoc_ky=' + hocky + '&Nam_hoc=' + namhoc + '&ID_mon=' + idmon, '_blank');
+    }
+</script>
+<div class="col-md-12 fullwidth">
+    <table class="table table-bordered table-hover table-striped table-condensed" cellspacing="0" rules="all" border="1" id="ctl00_ContentCP_ctl00_gvDiem" style="width:100%;border-collapse:collapse;">
+        <tbody>
+            <tr class="table-header">
+                <th scope="col" style="width: 40px;">STT</th>
+                <th scope="col">Ký hiệu</th>
+                <th scope="col">Tên học phần</th>
+                <th scope="col" style="width:90px;">Số tín chỉ</th>
+                <th scope="col">Điểm thành phần</th>
+                <th scope="col">Điểm thi</th>
+                <th scope="col">TBCHP</th>
+                <th scope="col" style="width:90px;">Điểm số</th>
+                <th scope="col">Điểm chữ</th>
+                <th scope="col" style="width:90px;">Môn tự chọn</th>
+            </tr>
+
+                <tr>
+                    <td align="center" style="vertical-align:middle">1</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">KT703041</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">Ph&#226;n t&#237;ch hoat động kinh doanh</td>
+                    <td align="center" style="vertical-align:middle">3</td>
+
+                    <td align="left" style="vertical-align: middle;">CC : 9  - GK : 6.5  </td>
+                            <td align="center" style="vertical-align:middle">4.3</td>
+                            <td align="center" style="vertical-align:middle">5.9</td>
+                            <td align="center" style="vertical-align:middle">2</td>
+                            <td align="center" style="vertical-align:middle">C</td>
+                        <td align="center" style="vertical-align: middle; ">
+
+                        </td>
+
+                </tr>
+                <tr>
+                    <td align="center" style="vertical-align:middle">2</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">CB703004</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">Triết học M&#225;c - L&#234;nin</td>
+                    <td align="center" style="vertical-align:middle">3</td>
+
+                    <td align="left" style="vertical-align: middle;">CC : 10  - GK : 7  </td>
+                            <td align="center" style="vertical-align:middle">4.5</td>
+                            <td align="center" style="vertical-align:middle">6.4</td>
+                            <td align="center" style="vertical-align:middle">2</td>
+                            <td align="center" style="vertical-align:middle">C</td>
+                        <td align="center" style="vertical-align: middle; ">
+
+                        </td>
+
+                </tr>
+                <tr>
+                    <td align="center" style="vertical-align:middle">3</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">NN702008</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">Tin học đại cương</td>
+                    <td align="center" style="vertical-align:middle">2</td>
+
+                    <td align="left" style="vertical-align: middle;">CC : 8.5  - GK : 4  </td>
+                            <td align="center" style="vertical-align:middle">2.5</td>
+                            <td align="center" style="vertical-align:middle">4.2</td>
+                            <td align="center" style="vertical-align:middle">1</td>
+                            <td align="center" style="vertical-align:middle">D</td>
+                        <td align="center" style="vertical-align: middle; ">
+
+                        </td>
+
+                </tr>
+                <tr>
+                    <td align="center" style="vertical-align:middle">4</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">CB703009</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">X&#225;c suất thống k&#234;</td>
+                    <td align="center" style="vertical-align:middle">3</td>
+
+                    <td align="left" style="vertical-align: middle;">CC : 9.5  - GK : 6  </td>
+                            <td align="center" style="vertical-align:middle">3.5</td>
+                            <td align="center" style="vertical-align:middle">5.5</td>
+                            <td align="center" style="vertical-align:middle">2</td>
+                            <td align="center" style="vertical-align:middle">C</td>
+                        <td align="center" style="vertical-align: middle; ">
+
+                        </td>
+
+                </tr>
+                <tr>
+                    <td align="center" style="vertical-align:middle">5</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">NN703011</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">Tiếng Anh 1</td>
+                    <td align="center" style="vertical-align:middle">3</td>
+
+                    <td align="left" style="vertical-align: middle;">CC : 9  - GK : 7.5  </td>
+                            <td align="center" style="vertical-align:middle">5</td>
+                            <td align="center" style="vertical-align:middle">6.6</td>
+                            <td align="center" style="vertical-align:middle">2</td>
+                            <td align="center" style="vertical-align:middle">C</td>
+                        <td align="center" style="vertical-align: middle; ">
+
+                        </td>
+
+                </tr>
+                <tr>
+                    <td align="center" style="vertical-align:middle">6</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">TN702015</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">Ph&#225;p luật đại cương</td>
+                    <td align="center" style="vertical-align:middle">2</td>
+
+                    <td align="left" style="vertical-align: middle;">CC : 10  - GK : 8  </td>
+                            <td align="center" style="vertical-align:middle">4.8</td>
+                            <td align="center" style="vertical-align:middle">6.8</td>
+                            <td align="center" style="vertical-align:middle">2</td>
+                            <td align="center" style="vertical-align:middle">C</td>
+                        <td align="center" style="vertical-align: middle; ">
+
+                        </td>
+
+                </tr>
+                <tr>
+                    <td align="center" style="vertical-align:middle">7</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">MT702020</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">Sinh th&#225;i m&#244;i trường</td>
+                    <td align="center" style="vertical-align:middle">2</td>
+
+                    <td align="left" style="vertical-align: middle;">CC : 10  - GK : 9.2  </td>
+                            <td align="center" style="vertical-align:middle">6.6</td>
+                            <td align="center" style="vertical-align:middle">8.1</td>
+                            <td align="center" style="vertical-align:middle">3</td>
+                            <td align="center" style="vertical-align:middle">B</td>
+                        <td align="center" style="vertical-align: middle; ">
+
+                        </td>
+
+                </tr>
+                <tr>
+                    <td align="center" style="vertical-align:middle">8</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">CB701025</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">B&#243;ng chuyền</td>
+                    <td align="center" style="vertical-align:middle">1</td>
+
+                    <td align="left" style="vertical-align: middle;">CC : 7  - GK : 4  </td>
+                            <td align="center" style="vertical-align:middle">4</td>
+                            <td align="center" style="vertical-align:middle">4.6</td>
+                            <td align="center" style="vertical-align:middle">1</td>
+                            <td align="center" style="vertical-align:middle">D</td>
+                        <td align="center" style="vertical-align: middle; ">
+
+                        </td>
+
+                </tr>
+                <tr>
+                    <td align="center" style="vertical-align:middle">9</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">CB702002</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">Kinh tế ch&#237;nh trị M&#225;c - L&#234; nin</td>
+                    <td align="center" style="vertical-align:middle">2</td>
+
+                    <td align="left" style="vertical-align: middle;">CC : 10  - GK : 5.5  </td>
+                            <td align="center" style="vertical-align:middle">6.5</td>
+                            <td align="center" style="vertical-align:middle">6.9</td>
+                            <td align="center" style="vertical-align:middle">2</td>
+                            <td align="center" style="vertical-align:middle">C</td>
+                        <td align="center" style="vertical-align: middle; ">
+
+                        </td>
+
+                </tr>
+                <tr>
+                    <td align="center" style="vertical-align:middle">10</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">NN703012</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">Tiếng Anh 2</td>
+                    <td align="center" style="vertical-align:middle">3</td>
+
+                    <td align="left" style="vertical-align: middle;">CC : 10  - GK : 8  </td>
+                            <td align="center" style="vertical-align:middle">3.3</td>
+                            <td align="center" style="vertical-align:middle">6.1</td>
+                            <td align="center" style="vertical-align:middle">2</td>
+                            <td align="center" style="vertical-align:middle">C</td>
+                        <td align="center" style="vertical-align: middle; ">
+
+                        </td>
+
+                </tr>
+                <tr>
+                    <td align="center" style="vertical-align:middle">11</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">KN702017</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">Khoa học quản l&#253;</td>
+                    <td align="center" style="vertical-align:middle">2</td>
+
+                    <td align="left" style="vertical-align: middle;">CC : 9  - GK : 9  </td>
+                            <td align="center" style="vertical-align:middle">7</td>
+                            <td align="center" style="vertical-align:middle">8</td>
+                            <td align="center" style="vertical-align:middle">3</td>
+                            <td align="center" style="vertical-align:middle">B</td>
+                        <td align="center" style="vertical-align: middle; ">
+
+                        </td>
+
+                </tr>
+                <tr>
+                    <td align="center" style="vertical-align:middle">12</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">CB702018</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">Kỹ năng mềm</td>
+                    <td align="center" style="vertical-align:middle">2</td>
+
+                    <td align="left" style="vertical-align: middle;">CC : 9  - GK : 9  </td>
+                            <td align="center" style="vertical-align:middle">8</td>
+                            <td align="center" style="vertical-align:middle">8.5</td>
+                            <td align="center" style="vertical-align:middle">4</td>
+                            <td align="center" style="vertical-align:middle">A</td>
+                        <td align="center" style="vertical-align: middle; ">
+
+                        </td>
+
+                </tr>
+                <tr>
+                    <td align="center" style="vertical-align:middle">13</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">CB702024</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">X&#227; hội học đại cương</td>
+                    <td align="center" style="vertical-align:middle">2</td>
+
+                    <td align="left" style="vertical-align: middle;">CC : 9  - GK : 7.5  </td>
+                            <td align="center" style="vertical-align:middle">5.5</td>
+                            <td align="center" style="vertical-align:middle">6.8</td>
+                            <td align="center" style="vertical-align:middle">2</td>
+                            <td align="center" style="vertical-align:middle">C</td>
+                        <td align="center" style="vertical-align: middle; ">
+
+                        </td>
+
+                </tr>
+                <tr>
+                    <td align="center" style="vertical-align:middle">14</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">CB701028</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">Cầu l&#244;ng</td>
+                    <td align="center" style="vertical-align:middle">1</td>
+
+                    <td align="left" style="vertical-align: middle;">CC : 8  - GK : 4  </td>
+                            <td align="center" style="vertical-align:middle">5</td>
+                            <td align="center" style="vertical-align:middle">5.3</td>
+                            <td align="center" style="vertical-align:middle">1</td>
+                            <td align="center" style="vertical-align:middle">D</td>
+                        <td align="center" style="vertical-align: middle; ">
+
+                        </td>
+
+                </tr>
+                <tr>
+                    <td align="center" style="vertical-align:middle">15</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">CB702010</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">To&#225;n kinh tế</td>
+                    <td align="center" style="vertical-align:middle">2</td>
+
+                    <td align="left" style="vertical-align: middle;">CC : 9.5  - GK : 2  </td>
+                            <td align="center" style="vertical-align:middle">2</td>
+                            <td align="center" style="vertical-align:middle">3.5</td>
+                            <td align="center" style="vertical-align:middle">0</td>
+                            <td align="center" style="vertical-align:middle">F</td>
+                        <td align="center" style="vertical-align: middle; ">
+
+                        </td>
+
+                </tr>
+                <tr>
+                    <td align="center" style="vertical-align:middle">16</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">QT703036</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">Lập tr&#236;nh cơ bản</td>
+                    <td align="center" style="vertical-align:middle">3</td>
+
+                    <td align="left" style="vertical-align: middle;">CC : 8  - GK : 5  </td>
+                            <td align="center" style="vertical-align:middle">6</td>
+                            <td align="center" style="vertical-align:middle">6.1</td>
+                            <td align="center" style="vertical-align:middle">2</td>
+                            <td align="center" style="vertical-align:middle">C</td>
+                        <td align="center" style="vertical-align: middle; ">
+
+                        </td>
+
+                </tr>
+                <tr>
+                    <td align="center" style="vertical-align:middle">17</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">NN702013</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">Tiếng Anh 3</td>
+                    <td align="center" style="vertical-align:middle">2</td>
+
+                    <td align="left" style="vertical-align: middle;">CC : 8  - GK : 6  </td>
+                            <td align="center" style="vertical-align:middle">2</td>
+                            <td align="center" style="vertical-align:middle">4.4</td>
+                            <td align="center" style="vertical-align:middle">1</td>
+                            <td align="center" style="vertical-align:middle">D</td>
+                        <td align="center" style="vertical-align: middle; ">
+
+                        </td>
+
+                </tr>
+                <tr>
+                    <td align="center" style="vertical-align:middle">18</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">KN702014</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">Đổi mới s&#225;ng tạo v&#224; khởi nghiệp</td>
+                    <td align="center" style="vertical-align:middle">2</td>
+
+                    <td align="left" style="vertical-align: middle;">CC : 10  - GK : 7  </td>
+                            <td align="center" style="vertical-align:middle">6</td>
+                            <td align="center" style="vertical-align:middle">7.1</td>
+                            <td align="center" style="vertical-align:middle">3</td>
+                            <td align="center" style="vertical-align:middle">B</td>
+                        <td align="center" style="vertical-align: middle; ">
+
+                        </td>
+
+                </tr>
+                <tr>
+                    <td align="center" style="vertical-align:middle">19</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">CB701026</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">B&#243;ng đ&#225;</td>
+                    <td align="center" style="vertical-align:middle">1</td>
+
+                    <td align="left" style="vertical-align: middle;">CC : 7  - GK : 4  </td>
+                            <td align="center" style="vertical-align:middle">6</td>
+                            <td align="center" style="vertical-align:middle">5.6</td>
+                            <td align="center" style="vertical-align:middle">2</td>
+                            <td align="center" style="vertical-align:middle">C</td>
+                        <td align="center" style="vertical-align: middle; ">
+
+                        </td>
+
+                </tr>
+                <tr>
+                    <td align="center" style="vertical-align:middle">20</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">QT703035</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">Cấu tr&#250;c dữ liệu v&#224; giải thuật</td>
+                    <td align="center" style="vertical-align:middle">3</td>
+
+                    <td align="left" style="vertical-align: middle;">CC : 10  - GK : 7  </td>
+                            <td align="center" style="vertical-align:middle">7.5</td>
+                            <td align="center" style="vertical-align:middle">7.9</td>
+                            <td align="center" style="vertical-align:middle">3</td>
+                            <td align="center" style="vertical-align:middle">B</td>
+                        <td align="center" style="vertical-align: middle; ">
+
+                        </td>
+
+                </tr>
+                <tr>
+                    <td align="center" style="vertical-align:middle">21</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">QT703050</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">Ph&#226;n t&#237;ch v&#224; thiết kế hệ thống th&#244;ng tin</td>
+                    <td align="center" style="vertical-align:middle">3</td>
+
+                    <td align="left" style="vertical-align: middle;">CC : 10  - GK : 8  </td>
+                            <td align="center" style="vertical-align:middle">4.5</td>
+                            <td align="center" style="vertical-align:middle">6.7</td>
+                            <td align="center" style="vertical-align:middle">2</td>
+                            <td align="center" style="vertical-align:middle">C</td>
+                        <td align="center" style="vertical-align: middle; ">
+
+                        </td>
+
+                </tr>
+                <tr>
+                    <td align="center" style="vertical-align:middle">22</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">QT703051</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">Nền tảng của Tr&#237; tuệ nh&#226;n tạo</td>
+                    <td align="center" style="vertical-align:middle">3</td>
+
+                    <td align="left" style="vertical-align: middle;">CC : 3.5  - GK : 7  </td>
+                            <td align="center" style="vertical-align:middle">3</td>
+                            <td align="center" style="vertical-align:middle">4.3</td>
+                            <td align="center" style="vertical-align:middle">1</td>
+                            <td align="center" style="vertical-align:middle">D</td>
+                        <td align="center" style="vertical-align: middle; ">
+
+                        </td>
+
+                </tr>
+                <tr>
+                    <td align="center" style="vertical-align:middle">23</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">CD703052</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">Lập tr&#236;nh Python cho học m&#225;y</td>
+                    <td align="center" style="vertical-align:middle">3</td>
+
+                    <td align="left" style="vertical-align: middle;">CC : 5.9  - GK : 5  </td>
+                            <td align="center" style="vertical-align:middle">4</td>
+                            <td align="center" style="vertical-align:middle">4.7</td>
+                            <td align="center" style="vertical-align:middle">1</td>
+                            <td align="center" style="vertical-align:middle">D</td>
+                        <td align="center" style="vertical-align: middle; ">
+
+                        </td>
+
+                </tr>
+                <tr>
+                    <td align="center" style="vertical-align:middle">24</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">CD703035</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">Cơ sở dữ liệu</td>
+                    <td align="center" style="vertical-align:middle">3</td>
+
+                    <td align="left" style="vertical-align: middle;">CC : 9  - GK : 9.6  </td>
+                            <td align="center" style="vertical-align:middle">4.5</td>
+                            <td align="center" style="vertical-align:middle">6.9</td>
+                            <td align="center" style="vertical-align:middle">2</td>
+                            <td align="center" style="vertical-align:middle">C</td>
+                        <td align="center" style="vertical-align: middle; ">
+
+                        </td>
+
+                </tr>
+                <tr>
+                    <td align="center" style="vertical-align:middle">25</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">CB702001</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">Chủ nghĩa x&#227; hội khoa học</td>
+                    <td align="center" style="vertical-align:middle">2</td>
+
+                    <td align="left" style="vertical-align: middle;">CC : 9.8  - GK : 5  </td>
+                            <td align="center" style="vertical-align:middle">5.5</td>
+                            <td align="center" style="vertical-align:middle">6.2</td>
+                            <td align="center" style="vertical-align:middle">2</td>
+                            <td align="center" style="vertical-align:middle">C</td>
+                        <td align="center" style="vertical-align: middle; ">
+
+                        </td>
+
+                </tr>
+                <tr>
+                    <td align="center" style="vertical-align:middle">26</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">QT703061</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">Mạng m&#225;y t&#237;nh v&#224; Truyền th&#244;ng</td>
+                    <td align="center" style="vertical-align:middle">3</td>
+
+                    <td align="left" style="vertical-align: middle;">CC : 10  - GK : 9.2  </td>
+                            <td align="center" style="vertical-align:middle">8.5</td>
+                            <td align="center" style="vertical-align:middle">9</td>
+                            <td align="center" style="vertical-align:middle">4</td>
+                            <td align="center" style="vertical-align:middle">A</td>
+                        <td align="center" style="vertical-align: middle; ">
+
+                        </td>
+
+                </tr>
+                <tr>
+                    <td align="center" style="vertical-align:middle">27</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">CD703065</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">Lập tr&#236;nh website</td>
+                    <td align="center" style="vertical-align:middle">3</td>
+
+                    <td align="left" style="vertical-align: middle;">CC : 9  - GK : 6  </td>
+                            <td align="center" style="vertical-align:middle">7</td>
+                            <td align="center" style="vertical-align:middle">7.1</td>
+                            <td align="center" style="vertical-align:middle">3</td>
+                            <td align="center" style="vertical-align:middle">B</td>
+                        <td align="center" style="vertical-align: middle; ">
+
+                        </td>
+
+                </tr>
+                <tr>
+                    <td align="center" style="vertical-align:middle">28</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">AI703006</td>
+                    <td align="left" style="padding-left:8px; vertical-align:middle">AI trong quản trị doanh nghiệp</td>
+                    <td align="center" style="vertical-align:middle">3</td>
+
+                    <td align="left" style="vertical-align: middle;">CC : 8.5  - GK : 7  </td>
+                            <td align="center" style="vertical-align:middle">7.5</td>
+                            <td align="center" style="vertical-align:middle">7.6</td>
+                            <td align="center" style="vertical-align:middle">3</td>
+                            <td align="center" style="vertical-align:middle">B</td>
+                        <td align="center" style="vertical-align: middle; ">
+
+                        </td>
+
+                </tr>
+        </tbody>
+    </table>
+</div>
+            </div>
+            <div class="row" style="margin-top:20px;">
+                <a style="padding-left: 50px;font-weight:bold; font-size: 14px; font-family: 'Times New Roman'"><i class="glyphicon glyphicon-list-alt"></i> Danh sách học phần chưa học hoặc chưa có điểm</a>
+            </div>
+            <div class="row" style="margin-top:20px;" id="monchuahoc">
+
+<table class="table table-bordered table-header table-hover table-responsive table-striped">
+    <tr>
+        <th style="width:140px">Khối kiến thức</th>
+        <th style="width:80px">Kỳ thứ</th>
+        <th style="width:100px">Mã học phần</th>
+        <th>Tên học phần</th>
+        <th style="width:100px">Số tín chỉ</th>
+        <th style="width:100px">Tổng số tiết</th>
+        <th style="width:80px">Tự chọn</th>
+        
+    </tr>
+    <tbody>
+            <tr>
+                    <td rowspan="9" style="text-align:center;background-color:#ffffff;vertical-align:middle;"></td>
+                                    <td rowspan="20" style="text-align:center;vertical-align:middle;background-color:#ffffff">0</td>
+                <td>CB704006</td>
+                <td>H&#243;a học</td>
+                <td style="text-align:center">4</td>
+                <td style="text-align:center">70</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                                <td>CB702007</td>
+                <td>Sinh học</td>
+                <td style="text-align:center">2</td>
+                <td style="text-align:center">35</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                                <td>KM702016</td>
+                <td>An to&#224;n vệ sinh lao động</td>
+                <td style="text-align:center">2</td>
+                <td style="text-align:center">30</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                                <td>KM703046</td>
+                <td>Biến đổi kh&#237; hậu</td>
+                <td style="text-align:center">3</td>
+                <td style="text-align:center">55</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                                <td>KM703073</td>
+                <td>Gi&#225;o dục truyền th&#244;ng m&#244;i trường</td>
+                <td style="text-align:center">3</td>
+                <td style="text-align:center">60</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                                <td>KM703078</td>
+                <td>Quản l&#253; m&#244;i trường v&#224; ph&#225;t triển bền vững</td>
+                <td style="text-align:center">3</td>
+                <td style="text-align:center">45</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                                <td>KN703055</td>
+                <td>Thống k&#234; doanh nghiệp</td>
+                <td style="text-align:center">2</td>
+                <td style="text-align:center">30</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                                <td>KT703041</td>
+                <td>Ph&#226;n t&#237;ch hoat động kinh doanh</td>
+                <td style="text-align:center">3</td>
+                <td style="text-align:center">54</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                                <td>GDQP</td>
+                <td>Gi&#225;o dục quốc ph&#242;ng - An ninh</td>
+                <td style="text-align:center">1</td>
+                <td style="text-align:center">30</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                    <td rowspan="2" style="text-align:center;background-color:#ffffff;vertical-align:middle;">Khối kiến thức gi&#225;o dục đại cương</td>
+                                <td>NN703008</td>
+                <td>Nhập m&#244;n C&#244;ng nghệ số v&#224; Tr&#237; tuệ nh&#226;n tạo</td>
+                <td style="text-align:center">3</td>
+                <td style="text-align:center">75</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                                <td>CB702011</td>
+                <td>Giải t&#237;ch</td>
+                <td style="text-align:center">2</td>
+                <td style="text-align:center">30</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                    <td rowspan="4" style="text-align:center;background-color:#ffffff;vertical-align:middle;">Khối kiến thức gi&#225;o dục thể chất</td>
+                                <td>CB701027</td>
+                <td>Golf</td>
+                <td style="text-align:center">1</td>
+                <td style="text-align:center">30</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                                <td>CB701029</td>
+                <td>B&#243;ng n&#233;m</td>
+                <td style="text-align:center">1</td>
+                <td style="text-align:center">30</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                                <td>CB701030</td>
+                <td>Pickleball</td>
+                <td style="text-align:center">1</td>
+                <td style="text-align:center">30</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                                <td>CB701031</td>
+                <td>V&#245; thuật</td>
+                <td style="text-align:center">1</td>
+                <td style="text-align:center">30</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                    <td rowspan="1" style="text-align:center;background-color:#ffffff;vertical-align:middle;">Khối kiến thức tự chọn cơ sở ng&#224;nh</td>
+                                <td>CD703080</td>
+                <td>Hệ quản trị cơ sở dữ liệu</td>
+                <td style="text-align:center">3</td>
+                <td style="text-align:center">60</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                    <td rowspan="4" style="text-align:center;background-color:#ffffff;vertical-align:middle;">Khối kiến thức tự chọn đại cương</td>
+                                <td>CB702021</td>
+                <td>T&#226;m l&#253; học đại cương</td>
+                <td style="text-align:center">2</td>
+                <td style="text-align:center">30</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                                <td>CB702022</td>
+                <td>To&#225;n cao cấp</td>
+                <td style="text-align:center">2</td>
+                <td style="text-align:center">30</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                                <td>CB702023</td>
+                <td>Vật l&#253;</td>
+                <td style="text-align:center">2</td>
+                <td style="text-align:center">30</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                                <td>KH702019</td>
+                <td>Phương ph&#225;p tiếp cận khoa học</td>
+                <td style="text-align:center">2</td>
+                <td style="text-align:center">30</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                    <td rowspan="1" style="text-align:center;background-color:#ffffff;vertical-align:middle;">Khối kiến thức cơ sở ng&#224;nh</td>
+                                    <td rowspan="1" style="text-align:center;vertical-align:middle;background-color:#ffffff">2</td>
+                <td>QT703036</td>
+                <td>Lập tr&#236;nh cơ bản</td>
+                <td style="text-align:center">3</td>
+                <td style="text-align:center">60</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                    <td rowspan="1" style="text-align:center;background-color:#ffffff;vertical-align:middle;">Khối kiến thức gi&#225;o dục đại cương</td>
+                                    <td rowspan="4" style="text-align:center;vertical-align:middle;background-color:#ffffff">3</td>
+                <td>KN702014</td>
+                <td>Đổi mới s&#225;ng tạo v&#224; khởi nghiệp</td>
+                <td style="text-align:center">2</td>
+                <td style="text-align:center">30</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                    <td rowspan="1" style="text-align:center;background-color:#ffffff;vertical-align:middle;">Khối kiến thức r&#232;n nghề</td>
+                                <td>CD702101</td>
+                <td>R&#232;n nghề 1: X&#226;y dựng dự &#225;n khởi nghiệp đổi mới s&#225;ng tạo</td>
+                <td style="text-align:center">2</td>
+                <td style="text-align:center">60</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                    <td rowspan="2" style="text-align:center;background-color:#ffffff;vertical-align:middle;">Khối kiến thức tự chọn cơ sở ng&#224;nh</td>
+                                <td>CB703011</td>
+                <td>To&#225;n rời rạc</td>
+                <td style="text-align:center">3</td>
+                <td style="text-align:center">45</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                                <td>CD703052</td>
+                <td>Lập tr&#236;nh Python cho học m&#225;y</td>
+                <td style="text-align:center">3</td>
+                <td style="text-align:center">60</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                    <td rowspan="3" style="text-align:center;background-color:#ffffff;vertical-align:middle;">Khối kiến thức chuy&#234;n ng&#224;nh</td>
+                                    <td rowspan="6" style="text-align:center;vertical-align:middle;background-color:#ffffff">4</td>
+                <td>CD703065</td>
+                <td>Lập tr&#236;nh website</td>
+                <td style="text-align:center">3</td>
+                <td style="text-align:center">75</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                                <td>AI704001</td>
+                <td>Học m&#225;y</td>
+                <td style="text-align:center">4</td>
+                <td style="text-align:center">75</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                                <td>AI703006</td>
+                <td>AI trong quản trị doanh nghiệp</td>
+                <td style="text-align:center">3</td>
+                <td style="text-align:center">60</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                    <td rowspan="1" style="text-align:center;background-color:#ffffff;vertical-align:middle;">Khối kiến thức cơ sở ng&#224;nh</td>
+                                <td>QT703061</td>
+                <td>Mạng m&#225;y t&#237;nh v&#224; Truyền th&#244;ng</td>
+                <td style="text-align:center">3</td>
+                <td style="text-align:center">60</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                    <td rowspan="1" style="text-align:center;background-color:#ffffff;vertical-align:middle;">Khối kiến thức r&#232;n nghề</td>
+                                <td>CD703102</td>
+                <td>RN2: Ph&#225;t triển ứng dụng t&#237;ch hợp IoT v&#224; AI</td>
+                <td style="text-align:center">3</td>
+                <td style="text-align:center">90</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                    <td rowspan="1" style="text-align:center;background-color:#ffffff;vertical-align:middle;">Khối kiến thức tự chọn cơ sở ng&#224;nh</td>
+                                <td>KQ703060</td>
+                <td>Quản trị nh&#226;n sự trong doanh nghiệp</td>
+                <td style="text-align:center">3</td>
+                <td style="text-align:center">45</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                    <td rowspan="1" style="text-align:center;background-color:#ffffff;vertical-align:middle;">Khối kiến thức bổ trợ</td>
+                                    <td rowspan="7" style="text-align:center;vertical-align:middle;background-color:#ffffff">5</td>
+                <td>AI703010</td>
+                <td>Lập tr&#236;nh xử l&#253; dữ liệu</td>
+                <td style="text-align:center">3</td>
+                <td style="text-align:center">75</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                    <td rowspan="3" style="text-align:center;background-color:#ffffff;vertical-align:middle;">Khối kiến thức chuy&#234;n ng&#224;nh</td>
+                                <td>CD704095</td>
+                <td>Ph&#225;t triển phần mềm cho thiết bị di động</td>
+                <td style="text-align:center">4</td>
+                <td style="text-align:center">90</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                                <td>CD704078</td>
+                <td>C&#244;ng nghệ IoT</td>
+                <td style="text-align:center">4</td>
+                <td style="text-align:center">75</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                                <td>KQ703072</td>
+                <td>Thương mại điện tử</td>
+                <td style="text-align:center">3</td>
+                <td style="text-align:center">45</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                    <td rowspan="1" style="text-align:center;background-color:#ffffff;vertical-align:middle;">Khối kiến thức gi&#225;o dục đại cương</td>
+                                <td>CB702005</td>
+                <td>Tư tưởng Hồ Ch&#237; Minh</td>
+                <td style="text-align:center">2</td>
+                <td style="text-align:center">30</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                    <td rowspan="1" style="text-align:center;background-color:#ffffff;vertical-align:middle;">Khối kiến thức TTNN</td>
+                                <td>CD704099</td>
+                <td>TTNN 1: Ph&#226;n t&#237;ch v&#224; thiết kế hệ thống th&#244;ng tin phục vụ đổi mới s&#225;ng tạo</td>
+                <td style="text-align:center">4</td>
+                <td style="text-align:center">120</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                    <td rowspan="1" style="text-align:center;background-color:#ffffff;vertical-align:middle;">Khối kiến thức tự chọn chuy&#234;n ng&#224;nh</td>
+                                <td>AI703005</td>
+                <td>Điện to&#225;n đ&#225;m m&#226;y</td>
+                <td style="text-align:center">3</td>
+                <td style="text-align:center">60</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                    <td rowspan="1" style="text-align:center;background-color:#ffffff;vertical-align:middle;">Khối kiến thức bổ trợ</td>
+                                    <td rowspan="7" style="text-align:center;vertical-align:middle;background-color:#ffffff">6</td>
+                <td>QT703052</td>
+                <td>Quản l&#253; dự &#225;n c&#244;ng nghệ th&#244;ng tin</td>
+                <td style="text-align:center">3</td>
+                <td style="text-align:center">60</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                    <td rowspan="2" style="text-align:center;background-color:#ffffff;vertical-align:middle;">Khối kiến thức chuy&#234;n ng&#224;nh</td>
+                                <td>KN703038</td>
+                <td>Luật kinh doanh</td>
+                <td style="text-align:center">3</td>
+                <td style="text-align:center">54</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                                <td>QT703077</td>
+                <td>C&#244;ng nghệ Blockchain</td>
+                <td style="text-align:center">3</td>
+                <td style="text-align:center">60</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                    <td rowspan="1" style="text-align:center;background-color:#ffffff;vertical-align:middle;">Khối kiến thức gi&#225;o dục đại cương</td>
+                                <td>CB702003</td>
+                <td>Lịch sử Đảng cộng sản Việt Nam</td>
+                <td style="text-align:center">2</td>
+                <td style="text-align:center">30</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                    <td rowspan="1" style="text-align:center;background-color:#ffffff;vertical-align:middle;">Khối kiến thức TTNN</td>
+                                <td>CD704100</td>
+                <td>TTNN 2: Triển khai v&#224; quản l&#253; dự &#225;n c&#244;ng nghệ th&#244;ng tin trong doanh nghiệp</td>
+                <td style="text-align:center">4</td>
+                <td style="text-align:center">120</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                    <td rowspan="2" style="text-align:center;background-color:#ffffff;vertical-align:middle;">Khối kiến thức tự chọn chuy&#234;n ng&#224;nh</td>
+                                <td>KN703077</td>
+                <td>Kinh tế tuần ho&#224;n</td>
+                <td style="text-align:center">3</td>
+                <td style="text-align:center">45</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                                <td>CD703078</td>
+                <td>Ph&#226;n t&#237;ch dữ liệu lớn</td>
+                <td style="text-align:center">3</td>
+                <td style="text-align:center">60</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                    <td rowspan="3" style="text-align:center;background-color:#ffffff;vertical-align:middle;">Khối kiến thức bổ trợ</td>
+                                    <td rowspan="7" style="text-align:center;vertical-align:middle;background-color:#ffffff">7</td>
+                <td>CD704094</td>
+                <td>Kiểm định chất lượng phần mềm</td>
+                <td style="text-align:center">3</td>
+                <td style="text-align:center">60</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                                <td>AI703012</td>
+                <td>Thực tế ảo v&#224; ứng dụng</td>
+                <td style="text-align:center">3</td>
+                <td style="text-align:center">60</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                                <td>KN703079</td>
+                <td>Quản trị thương hiệu</td>
+                <td style="text-align:center">3</td>
+                <td style="text-align:center">60</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                    <td rowspan="1" style="text-align:center;background-color:#ffffff;vertical-align:middle;">Khối kiến thức cơ sở ng&#224;nh</td>
+                                <td>CD703053</td>
+                <td>C&#244;ng nghệ phần mềm</td>
+                <td style="text-align:center">3</td>
+                <td style="text-align:center">60</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                    <td rowspan="2" style="text-align:center;background-color:#ffffff;vertical-align:middle;">Khối kiến thức tự chọn chuy&#234;n ng&#224;nh</td>
+                                <td>CD703079</td>
+                <td>Kiến tr&#250;c m&#225;y t&#237;nh v&#224; nguy&#234;n l&#253; Hệ điều h&#224;nh</td>
+                <td style="text-align:center">3</td>
+                <td style="text-align:center">60</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                                <td>KN703043</td>
+                <td>Khởi sự kinh doanh</td>
+                <td style="text-align:center">3</td>
+                <td style="text-align:center">54</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                    <td rowspan="1" style="text-align:center;background-color:#ffffff;vertical-align:middle;">Khối kiến thức tự chọn cơ sở ng&#224;nh</td>
+                                <td>KN703051</td>
+                <td>Marketing</td>
+                <td style="text-align:center">3</td>
+                <td style="text-align:center">60</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+            <tr>
+                    <td rowspan="1" style="text-align:center;background-color:#ffffff;vertical-align:middle;">Kh&#243;a luận tốt nghiệp</td>
+                                    <td rowspan="1" style="text-align:center;vertical-align:middle;background-color:#ffffff">8</td>
+                <td>CD710104</td>
+                <td>Thực tập tốt nghiệp</td>
+                <td style="text-align:center">10</td>
+                <td style="text-align:center">300</td>
+                <td style="text-align:center">
+
+                </td>
+                
+            </tr>
+    </tbody>
+</table>
+
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+
+    //$(document).ready(function () {
+    //    $('[data-toggle="tooltip"]').tooltip();
+    //    ShowToastMessage('Bạn cần phải "Đánh Giá Hoạt Động Giảng Dạy" môn học mới có thể xem được điểm của môn đó!', 'Thông báo', 'warning');
+    //});
+    $(document).on('change', '#cmbNamHoc', function () {
+        // ShowToastMessage('Bạn cần phải "Đánh Giá Hoạt Động Giảng Dạy" môn học mới có thể xem được điểm của môn đó!', 'Thông báo', 'warning');
+        var NamHoc = $('#cmbNamHoc').val();
+        var HocKy = $('#cmbHocKy').val();
+        var ChuyenNganh = $('#cmbChuyenNganh').val();
+        $('#daTa').load("../TraCuuDiemSV/ThongTinDiemSinhVien?HocKy=" + HocKy + "&NamHoc=" + NamHoc + "&ChuyenNganh=" + ChuyenNganh);
+        $('#monchuahoc').load("../TraCuuDiemSV/HocPhanChuaHoc?ChuyenNganh=" + ChuyenNganh);
+    })
+    $(document).on('change', '#cmbHocKy', function () {
+        //  ShowToastMessage('Bạn cần phải "Đánh Giá Hoạt Động Giảng Dạy" môn học mới có thể xem được điểm của môn đó!', 'Thông báo', 'warning');
+        var NamHoc = $('#cmbNamHoc').val();
+        var HocKy = $('#cmbHocKy').val();
+        var ChuyenNganh = $('#cmbChuyenNganh').val();
+        $('#daTa').load("../TraCuuDiemSV/ThongTinDiemSinhVien?HocKy=" + HocKy + "&NamHoc=" + NamHoc + "&ChuyenNganh=" + ChuyenNganh);
+        $('#monchuahoc').load("../TraCuuDiemSV/HocPhanChuaHoc?ChuyenNganh=" + ChuyenNganh);
+    })
+    $(document).on('change', '#cmbChuyenNganh', function () {
+        //  ShowToastMessage('Bạn cần phải "Đánh Giá Hoạt Động Giảng Dạy" môn học mới có thể xem được điểm của môn đó!', 'Thông báo', 'warning');
+        var NamHoc = $('#cmbNamHoc').val();
+        var HocKy = $('#cmbHocKy').val();
+        var ChuyenNganh = $('#cmbChuyenNganh').val();
+        $('#daTa').load("../TraCuuDiemSV/ThongTinDiemSinhVien?HocKy=" + HocKy + "&NamHoc=" + NamHoc + "&ChuyenNganh=" + ChuyenNganh);
+        $('#monchuahoc').load("../TraCuuDiemSV/HocPhanChuaHoc?ChuyenNganh=" + ChuyenNganh);
+    })
+
+    function print() {
+        window.open('/TraCuuDiemSV/InBangDiem?ChuyenNganh=' + $('#cmbChuyenNganh').val(), '_blank')
+    }
+</script>
+
+        </div>
+
+    </div>
+
+    <div id="forrrrrr" style="position: unset;left: 0;bottom: 0;width: 100%;">
+
+<style>
+    .image {
+        width: 15px;
+        height: 15px;
+        margin-top: 2px;
+        margin-bottom: 2px;
+    }
+</style>
+<section style="background:url('/FileManager//img/foteranh.png')">
+    <div class="container">
+
+        <div class="row">
+            <div class="col-md-12 fullwidth">
+                <div class="row fullwidth">
+
+                    <div class="col-md-6 " style="margin-top:20px">
+                        <div style="margin-top:3px">
+                            <img src="/FileManager/img/website.png" class="image" />&nbsp;&nbsp;
+                            <span style="font-weight:bold;">Website</span>&nbsp;&nbsp;
+                            <i class="fa fa-angle-double-right" aria-hidden="true" style="margin-left:13px"></i>&nbsp;&nbsp;
+                            <span style="font-weight:bold;font-size:13px;color:#ba6100">
+                                <a href="https://tuaf.edu.vn/" target="_blank">https://tuaf.edu.vn/</a>
+                            </span>
+                        </div>
+                        <div style=" ">
+                            <img src="/FileManager/img/address.png" class="image" />&nbsp;&nbsp;
+                            <span style="font-weight:bold;">Địa chỉ</span>&nbsp;&nbsp;
+                            <i class="fa fa-angle-double-right" aria-hidden="true" style="margin-left:20px"></i>&nbsp;&nbsp;
+                            <span style="font-weight:bold;font-size:13px;color:#2f2f2f">
+                                Xã Quyết Thắng, TP Thái Nguyên
+                            </span>
+                        </div>
+
+                    </div>
+                    <div class="col-md-3 " style="margin-top:20px">
+
+                        <div style=" ">
+                            <img src="/FileManager/img/phone.png" class="image" />&nbsp;&nbsp;
+                            <span style="font-weight:bold;">Điện thoại</span>&nbsp;&nbsp;
+                            <i class="fa fa-angle-double-right" aria-hidden="true" style="margin-left:2px"></i>&nbsp;&nbsp;
+                            <span style="font-weight:bold;font-size:13px;color:#b74e4e">
+                                (+84)208.6275.999
+                            </span>
+                        </div>
+                        <div style=" ">
+                            <img src="/FileManager/img/email.png" class="image" />&nbsp;&nbsp;
+                            <span style="font-weight:bold;">Email</span>&nbsp;&nbsp;
+                            <i class="fa fa-angle-double-right" aria-hidden="true" style="margin-left:27px"></i>&nbsp;&nbsp;
+                            <span style="font-weight:bold;font-size:13px;color:#4b89b6">
+                                dhnl@tuaf.edu.vn
+                            </span>
+                        </div>
+
+
+                    </div>
+                    <div class="col-md-3 " style="margin-top:20px">
+                        <div style=" ">
+                            <img src="/FileManager/img/fax.png" class="image" />&nbsp;&nbsp;
+                            <span style="font-weight:bold;">Fax</span>&nbsp;&nbsp;
+                            <i class="fa fa-angle-double-right" aria-hidden="true" style="margin-left:38px"></i>&nbsp;&nbsp;
+                            <span style="font-weight:bold;font-size:13px;color:#9a662e">
+                                (+84)208.2490.866
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row" style="border-top:1px solid #e9e9e9;text-align:center;vertical-align:middle;margin-top:5px;margin-bottom:3px;color:#706f6f;font-family:'Times New Roman', Times, 'Microsoft Sans Serif'">
+            Đơn vị phát triển: <a href="http://namvietjsc.edu.vn/" style="text-decoration:none;font-weight:bold;color:#2045ad" target="_blank">CÔNG TY CỔ PHẦN GIẢI PHÁP GIÁO DỤC  - Y TẾ NAM VIỆT</a>&nbsp;&nbsp;&nbsp;&nbsp;
+            <i class="fa fa-globe" aria-hidden="true"></i>&nbsp;&nbsp;262 Nguyễn Huy Tưởng, Thanh Xuân Trung, Thanh Xuân, Hà Nội&nbsp;&nbsp;
+            <i class="fa fa-phone" aria-hidden="true"></i>&nbsp;&nbsp;<span style="color:red;font-weight:bold">0432 065 065</span>&nbsp;&nbsp;
+            <i class="fa fa-fax" aria-hidden="true"></i>&nbsp;&nbsp;Fax:&nbsp;0432 020 066
+        </div>
+    </div>
+</section>
+
+    </div>
+
+    <script src="/Templates/js/vendor/datepicker/js/bootstrap-datepicker.js"></script>
+    <script src="/Templates/js/vendor/nivo-slider/jquery.nivo.slider.pack.js" type="text/javascript"></script>
+    <script src="/Templates/js/main.js"></script>
+    <script src="/Scripts/toastr.min.js"></script>
+    <script src="/Scripts/StepByStep/StepByStep.js"></script>
+
+    <link href="/Templates/datepicker/bootstrap-datepicker.min.css" rel="stylesheet" />
+    <script src="/Templates/datepicker/bootstrap-datepicker.min.js"></script>
+    <script src="/Templates/datepicker/bootstrap-datepicker.vi.min.js"></script>
+    <link href="/Templates/datepicker/datepicker.css" rel="stylesheet" />
+
+    
+    <script>
+
+        $(document).ready(function () {
+            $('#divcontenr').css("min-height", $(window).height() - 119 - 55 - 95);
+        })
+
+
+        var updateSuccess = "Cập nhật thành công.";
+        var updateError = "Cập nhật thất bại.";
+        var activeSuccess = "Kích hoạt thành công.";
+        var activeError = "Kích hoạt thất bại.";
+        var deleteSuccess = "Xóa thành công.";
+        var deleteError = "Xóa thất bại.";
+
+        function ShowToastMessage(value, label, type) {
+            toastr[type](value, label)
+            toastr.options = {
+                "closeButton": false,
+                "debug": false,
+                "newestOnTop": false,
+                "progressBar": false,
+                "positionClass": "toast-top-right",
+                "preventDuplicates": false,
+                "onclick": null,
+                "showDuration": "300",
+                "hideDuration": "1000",
+                "timeOut": "1000",
+                "extendedTimeOut": "1000",
+                "showEasing": "swing",
+                "hideEasing": "linear",
+                "showMethod": "fadeIn",
+                "hideMethod": "fadeOut"
+            }
+        }
+    </script>
+
+    
+</body>
+
+</html>
+<script src="../Scripts/TreeView/bootstrap-treenav.js"></script>
+<script src="/Content/select2-4.1.0-rc.0/dist/js/select2.min.js"></script>
+

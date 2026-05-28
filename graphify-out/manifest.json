@@ -135,8 +135,8 @@
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/.brain/brain.json": {
-    "mtime": 1779879152.9568248,
-    "ast_hash": "8f2ed31315948d8d96143023e2ed317b",
+    "mtime": 1779984008.1877165,
+    "ast_hash": "a87ed7c53d81038052dc1b83899a52b3",
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/README.md": {
@@ -170,8 +170,8 @@
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/docs/TEST_MATRIX.md": {
-    "mtime": 1779879185.7582483,
-    "ast_hash": "8db373b4831d901e482996cb3c75b79b",
+    "mtime": 1779894123.0408423,
+    "ast_hash": "1b66b263002fb2a9a84a709a92fea99b",
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/docs/ARCHITECTURE.md": {
@@ -275,23 +275,23 @@
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/backend/package.json": {
-    "mtime": 1779889753.0088332,
-    "ast_hash": "21213ef8e056dceb657c31f11f5beb04",
+    "mtime": 1779952160.0067115,
+    "ast_hash": "1155e6639f6ff5f1f613227e5a71dcd1",
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/backend/server.js": {
-    "mtime": 1779890369.2246852,
-    "ast_hash": "644c8b84835224ea3110c0eb2e589e09",
+    "mtime": 1779985230.4907932,
+    "ast_hash": "bdbb9645611aa5b9193a7bc92d80eefc",
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/mobile/app.json": {
-    "mtime": 1779885563.6920877,
-    "ast_hash": "9f593cd4abb6e0590a2098dd642c7203",
+    "mtime": 1779894101.2945926,
+    "ast_hash": "f27f7bfd9d0fd23b22f15b3bc1c3fa24",
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/mobile/package.json": {
-    "mtime": 1779885558.8610225,
-    "ast_hash": "d30c560c21edac2aa7dae8d878917ad2",
+    "mtime": 1779894095.9955318,
+    "ast_hash": "7d7ab088157b1ccdcebcd9fab3919f68",
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/mobile/babel.config.js": {
@@ -300,13 +300,13 @@
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/mobile/App.js": {
-    "mtime": 1779890450.026512,
-    "ast_hash": "00cfe6384b9f820d33e4e653be9ac77b",
+    "mtime": 1779922103.9588795,
+    "ast_hash": "235d89c187a8ddc8e5feae4d4136f943",
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/.brain/session.json": {
-    "mtime": 1779890405.291053,
-    "ast_hash": "6cc753865ae4f9f95f257ad38deba53a",
+    "mtime": 1779984020.036863,
+    "ast_hash": "d6e62dfe876c8aacf735978467797419",
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/docs/DESIGN.md": {
@@ -335,8 +335,8 @@
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/plans/260527-1054-tuaf-schedule/phase-08-testing.md": {
-    "mtime": 1779879273.5123768,
-    "ast_hash": "39e987a94a9709e466335b55fc4472e4",
+    "mtime": 1779890496.0519865,
+    "ast_hash": "aeccd1472a434aa7b5b5541b84e11071",
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/plans/260527-1054-tuaf-schedule/phase-05-strategy-pattern.md": {
@@ -360,13 +360,13 @@
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/plans/260527-1054-tuaf-schedule/plan.md": {
-    "mtime": 1779890395.9589577,
-    "ast_hash": "5667cf157c1ac52a4b6b717f2c7ce79f",
+    "mtime": 1779890504.313072,
+    "ast_hash": "9d68cdafc8725b6cb321aa38bfcafca2",
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/plans/260527-1054-tuaf-schedule/phase-07-mobile-app.md": {
-    "mtime": 1779879273.5103767,
-    "ast_hash": "9078e8e388ab0ea57e652c9531a58255",
+    "mtime": 1779890463.9046547,
+    "ast_hash": "47fd6f5a33d73f2fff85be45933d1003",
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/plans/260527-1054-tuaf-schedule/phase-04-lecturer-sso.md": {
@@ -395,8 +395,8 @@
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/backend/test_student_crawler.js": {
-    "mtime": 1779886310.43902,
-    "ast_hash": "a413f8acc3b3c3ad608c2a2d0fd070b9",
+    "mtime": 1779954153.7741978,
+    "ast_hash": "c300176ff045c660e13621de16453f41",
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/backend/test_strategy.js": {
@@ -405,8 +405,8 @@
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/backend/models/Schedule.js": {
-    "mtime": 1779890140.956405,
-    "ast_hash": "ec3b6b310ac16511f8ae754f5c7c2272",
+    "mtime": 1779954359.814613,
+    "ast_hash": "4ad66df0d667a2b5dc76b709b98920be",
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/backend/models/Grade.js": {
@@ -415,8 +415,8 @@
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/backend/models/Finance.js": {
-    "mtime": 1779890152.631519,
-    "ast_hash": "0227933a9fc51e6688b36b913996ad17",
+    "mtime": 1779893597.3360076,
+    "ast_hash": "be569db09ad0b35032c23b00281d1c10",
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/backend/models/Exam.js": {
@@ -435,13 +435,13 @@
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/backend/services/studentCrawler.js": {
-    "mtime": 1779886305.3449526,
-    "ast_hash": "eab103578db2b4810d30ba6be9c27640",
+    "mtime": 1779954381.668858,
+    "ast_hash": "0bfe407d06d8b5c9e82bffd874e4f6b3",
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/backend/services/lecturerCrawler.js": {
-    "mtime": 1779889576.7594206,
-    "ast_hash": "533f5ef05a76ff309dc2b07db0c7b35e",
+    "mtime": 1779952326.812677,
+    "ast_hash": "795b7513559852c62761d64e2e804215",
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/backend/services/parsers/lecturerParser.js": {
@@ -450,8 +450,8 @@
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/backend/services/parsers/studentParser.js": {
-    "mtime": 1779886387.5850368,
-    "ast_hash": "7c54c34eead4c29076b0984d4f1ed97d",
+    "mtime": 1779897012.8189838,
+    "ast_hash": "e7bc5fb5cc1aa4ae4a260ffa243a420d",
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/backend/strategies/ScheduleStrategy.js": {
@@ -460,8 +460,8 @@
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/backend/strategies/CrawlerStrategy.js": {
-    "mtime": 1779890162.5376163,
-    "ast_hash": "8fe190e963011927bfe77e3ddcd49270",
+    "mtime": 1779954365.1956735,
+    "ast_hash": "ad55f69100eab076eee45a8da36814d2",
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/backend/strategies/StrategyManager.js": {
@@ -490,13 +490,13 @@
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/backend/routes/auth.js": {
-    "mtime": 1779890359.2675838,
-    "ast_hash": "1b817b6bdc28ad9ddf62b95d2cefca11",
+    "mtime": 1779893633.896395,
+    "ast_hash": "2551b5792fce194229970c64a1265f04",
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/backend/routes/schedule.js": {
-    "mtime": 1779890364.7876399,
-    "ast_hash": "a2a909062f556be91c293c9aee8c0480",
+    "mtime": 1779921973.4562292,
+    "ast_hash": "35cbf0b62fb56231925c242f647ddb8f",
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/backend/middleware/auth.js": {
@@ -505,8 +505,8 @@
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/mobile/services/api.js": {
-    "mtime": 1779890422.2242265,
-    "ast_hash": "b7dc90c3c95963715756979f5a654669",
+    "mtime": 1779956826.0419703,
+    "ast_hash": "3ca78a4839cad61f09a174d11ec834b6",
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/mobile/components/ScheduleCard.js": {
@@ -520,8 +520,213 @@
     "semantic_hash": ""
   },
   "/home/trieuhoa/lichhoc-app/mobile/screens/LoginScreen.js": {
-    "mtime": 1779890434.2593498,
-    "ast_hash": "8528a905340b9cb2b1fdcd256b274e3e",
+    "mtime": 1779897988.588318,
+    "ast_hash": "5d36614820ba6e68c329f4a07147faad",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/docs/api/openapi.yaml": {
+    "mtime": 1779890657.8036716,
+    "ast_hash": "e7af419271a9eb0d97911173f95459ac",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/docs/api/endpoints.md": {
+    "mtime": 1779890652.049611,
+    "ast_hash": "40a94032e90871d6f4f585db96602d5d",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/mobile/metro.config.js": {
+    "mtime": 1779892055.341732,
+    "ast_hash": "040129582cb149654d3b3539322b1498",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/docs/stories/US-008-upgrade-expo-sdk-54.md": {
+    "mtime": 1779892076.452021,
+    "ast_hash": "aa256f877299955985b82fb106d8f811",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/start.sh": {
+    "mtime": 1779953812.5071816,
+    "ast_hash": "472b58922701cd4aed9c0479897c62d6",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/backend/test_history_crawler.js": {
+    "mtime": 1779896937.807415,
+    "ast_hash": "a0818dbf35d0e2c179e46338f49d1a8d",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/backend/test_html.js": {
+    "mtime": 1779896872.2064705,
+    "ast_hash": "697df00b4ad07735c3c9f029cf8156e6",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/backend/test_parse_saved.js": {
+    "mtime": 1779896963.5467849,
+    "ast_hash": "10bc4205523d777552de17e73ed254c1",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/backend/test_ajax_grades.js": {
+    "mtime": 1779896982.69206,
+    "ast_hash": "190ad6932d0304887631c39c731752e2",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/mobile/theme/colors.js": {
+    "mtime": 1779893739.1055288,
+    "ast_hash": "d75398a8f81d2ef0118f8cb558076f15",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/mobile/screens/ProfileScreen.js": {
+    "mtime": 1779894004.4354868,
+    "ast_hash": "9cebf95e30d90510791ab120ba46feca",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/mobile/screens/FinanceScreen.js": {
+    "mtime": 1779893955.3949316,
+    "ast_hash": "860a68fc1015c5520541eeae4c0c7451",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/mobile/screens/ScheduleScreen.js": {
+    "mtime": 1779954418.7652745,
+    "ast_hash": "0b8e85e37b4c3ec4d08e98edbfeedc49",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/mobile/screens/GradesScreen.js": {
+    "mtime": 1779922187.4195096,
+    "ast_hash": "d3241bf213293f783a03f913e09ae355",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/mobile/screens/ExamsScreen.js": {
+    "mtime": 1779893850.7527585,
+    "ast_hash": "e055f8da06dd77ae5b93231869c65928",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/mobile/screens/NotificationsScreen.js": {
+    "mtime": 1779897814.5297563,
+    "ast_hash": "cc496c558ea631d97639d6b69631b648",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/mobile/navigation/AppNavigator.js": {
+    "mtime": 1779896078.6997478,
+    "ast_hash": "68e6cf53caa08872ef2a89741be1ee9d",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/backend/scratch_html/grades_default.html": {
+    "mtime": 1779896878.1725566,
+    "ast_hash": "afef3ab4ae58a8c73128665cebdf3193",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/backend/scratch_html/finance.html": {
+    "mtime": 1779896878.4955611,
+    "ast_hash": "3f0125a34376806dd8503a765f9d0de5",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/backend/scratch_html/home.html": {
+    "mtime": 1779896877.9085526,
+    "ast_hash": "fedb91ae3739c281e2681fba2f1d0df6",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/backend/scratch_html/ajax_grades.html": {
+    "mtime": 1779896977.9759922,
+    "ast_hash": "94dd4ab45778156409cb942de3e6b9a2",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/backend/scratch_html/grades_sem.html": {
+    "mtime": 1779896878.4305604,
+    "ast_hash": "afef3ab4ae58a8c73128665cebdf3193",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/backend/scratch_html/exams.html": {
+    "mtime": 1779896878.547562,
+    "ast_hash": "86198a93bba05ef754439b6a338b5166",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/mobile/assets/logo.png": {
+    "mtime": 1779897228.443602,
+    "ast_hash": "edf0b045a18db3ae281410551bb1fe2f",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/.brain/features.json": {
+    "mtime": 1779927550.4505699,
+    "ast_hash": "1ffebd97be76161c51ef5e7540ac3fa8",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/.brain/knowledge.json": {
+    "mtime": 1779984025.9549365,
+    "ast_hash": "977151e0802cd5a41ae7032d194b9c82",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/.brain/handover.md": {
+    "mtime": 1779984032.5130177,
+    "ast_hash": "44a36f0f28771051ef5193e5467987b3",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/backend/models/Curriculum.js": {
+    "mtime": 1779921855.7940788,
+    "ast_hash": "7eebd7cc57ff1b95ee4464814c49d1d0",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/backend/routes/lecturer.js": {
+    "mtime": 1779921942.4021451,
+    "ast_hash": "7825f89fc340d798f8203fc7095466c5",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/backend/services/parsers/curriculumParser.js": {
+    "mtime": 1779954376.8568041,
+    "ast_hash": "1798dbcdcfd03e34c5fe97781991c4ea",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/mobile/components/CurriculumView.js": {
+    "mtime": 1779922147.9081926,
+    "ast_hash": "c97776b4d21de27d7627a21e5b333295",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/mobile/screens/lecturer/ClassListScreen.js": {
+    "mtime": 1779922074.8836966,
+    "ast_hash": "59562236d5548fe370612adcabf7a285",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/mobile/screens/lecturer/TeachingScheduleScreen.js": {
+    "mtime": 1779922045.145531,
+    "ast_hash": "37ba5a12296484282e81181cdcd02851",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/mobile/navigation/LecturerNavigator.js": {
+    "mtime": 1779922093.2678099,
+    "ast_hash": "25b156ef3c0f1674c7f377b0b52c50f7",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/.brain/project.json": {
+    "mtime": 1779984013.6587842,
+    "ast_hash": "5a02b6adbd8b15fd72d24b9c7b5c1a0d",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/backend/test-oidc.js": {
+    "mtime": 1779952490.4066086,
+    "ast_hash": "594a6e9b806dc57ddfa2fb566dffb483",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/CHANGELOG.md": {
+    "mtime": 1779984001.7286365,
+    "ast_hash": "c8f919df3f9ab36be4ee55d88582a8bb",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/docs/PRODUCTION_DEPLOY_GUIDE.md": {
+    "mtime": 1779983866.0239556,
+    "ast_hash": "617ba5122594c54559943d24d84eebe6",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/docker-compose.yml": {
+    "mtime": 1779985331.53702,
+    "ast_hash": "c33c41f060320271ad82167ab4662d94",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/docs/stories/US-011-docker-production.md": {
+    "mtime": 1779985223.6837108,
+    "ast_hash": "fe7c9c99a79a74fb5700e4e1cec5d0c7",
+    "semantic_hash": ""
+  },
+  "/home/trieuhoa/lichhoc-app/.github/workflows/docker-publish.yml": {
+    "mtime": 1779985251.994054,
+    "ast_hash": "4909ff5b48e3984529b32a3ecd7d2d48",
     "semantic_hash": ""
   }
 }

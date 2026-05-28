@@ -1,0 +1,66 @@
+
+
+
+<div class="col-md-10 col-md-offset-1">
+    <div class="row fullwidth form-group">
+
+        <div class="col-md-3 fullwidth">
+            <span class="NoiDungHoSo">Xếp loại học tập:</span>
+            <span class="NoiDungHoSo label" style="color:red" id="XepLoaiHTH4"></span>
+        </div>
+        
+        <div class="col-md-3 fullwidth">
+            <span class="NoiDungHoSo">TBC học tập (Hệ 4):</span>
+            <span class="NoiDungHoSo label" style="margin-left: 8px;color:red" id="TBHTH4"></span>
+        </div>
+    </div>
+    <div class="row fullwidth form-group">
+        <div class="col-md-3 fullwidth">
+            <span class="NoiDungHoSo">TBC tích lũy (Hệ 4):</span>
+            <span class="NoiDungHoSo label" style="color:red" id="TBCTichLuy"> </span>
+        </div>
+        <div class="col-md-3 fullwidth">
+            <span class="NoiDungHoSo">Số tín chỉ tích lũy:</span>
+            <span class="NoiDungHoSo label" style="margin-left: 25px; color: red" id="TinChiTichLuy"> / </span>
+        </div>
+        <div class="col-md-3 fullwidth">
+            <span class="NoiDungHoSo">Số tín chỉ học tập:</span>
+            <span class="NoiDungHoSo label" style="margin-left: 32px;color: red" id="TinChiHocTap"></span>
+        </div>
+        <div class="col-md-3 fullwidth">
+            <span class="NoiDungHoSo">TBC tích lũy (Hệ 10):</span>
+            <span class="NoiDungHoSo label" style=" color: red" id="TBCTichLuyH10"></span>
+        </div>
+    </div>
+    <div class="row fullwidth form-group">
+        <div class="col-md-3 fullwidth">
+            <span class="NoiDungHoSo">Điểm hoạt động ngoại khóa:</span>
+            <span class="NoiDungHoSo label" style="color:red" id="DiemHDNgoaiKhoa"></span>
+        </div>
+    </div>
+</div>
+
+<script>
+    function danhgia(hocky, namhoc, idmon) {
+        window.open('/DichVu/DanhGiaMonHoc/Index?Hoc_ky=' + hocky + '&Nam_hoc=' + namhoc + '&ID_mon=' + idmon, '_blank');
+    }
+</script>
+<div class="col-md-12 fullwidth">
+    <table class="table table-bordered table-hover table-striped table-condensed" cellspacing="0" rules="all" border="1" id="ctl00_ContentCP_ctl00_gvDiem" style="width:100%;border-collapse:collapse;">
+        <tbody>
+            <tr class="table-header">
+                <th scope="col" style="width: 40px;">STT</th>
+                <th scope="col">Ký hiệu</th>
+                <th scope="col">Tên học phần</th>
+                <th scope="col" style="width:90px;">Số tín chỉ</th>
+                <th scope="col">Điểm thành phần</th>
+                <th scope="col">Điểm thi</th>
+                <th scope="col">TBCHP</th>
+                <th scope="col" style="width:90px;">Điểm số</th>
+                <th scope="col">Điểm chữ</th>
+                <th scope="col" style="width:90px;">Môn tự chọn</th>
+            </tr>
+
+        </tbody>
+    </table>
+</div>

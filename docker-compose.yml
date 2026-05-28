@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  # --- Dịch vụ Cơ sở dữ liệu PostgreSQL ---
+  scheduler-db:
+    image: postgres:14-alpine
+    container_name: scheduler-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-vitts}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-vitts}
+      POSTGRES_DB: ${DB_NAME:-vitts}
+    volumes:
+      - scheduler-db-data:/var/lib/postgresql/data
+    ports:
+      # Bảo mật tuyệt đối: Chỉ expose cổng ra localhost (127.0.0.1) trên host để debug.
+      # Để tránh xung đột cổng 5432 đã dùng ở máy dev, ta map cổng 5433 của host vào container.
+      - "127.0.0.1:5433:5432"
+    networks:
+      - tuaf-ai-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-vitts} -d $${POSTGRES_DB:-vitts}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # --- Dịch vụ Backend API ---
+  scheduler-api:
+    image: ghcr.io/xuanhoatrieu/scheduler-api:latest
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: scheduler-api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      DB_URI: postgresql://${DB_USER:-vitts}:${DB_PASSWORD:-vitts}@scheduler-db:5432/${DB_NAME:-vitts}
+      JWT_SECRET: ${JWT_SECRET}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      DATA_SOURCE: crawler
+    networks:
+      - tuaf-ai-network
+    depends_on:
+      scheduler-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+# Lưu trữ dữ liệu bền vững cho Database
+volumes:
+  scheduler-db-data:
+
+# Sử dụng mạng lưới chung có sẵn của máy chủ TUAF Server
+networks:
+  tuaf-ai-network:
+    external: true
+    name: tuaf-ai-network

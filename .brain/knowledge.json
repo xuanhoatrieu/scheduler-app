@@ -1,0 +1,118 @@
+{
+  "patterns": [
+    {
+      "name": "Strategy Pattern (Dual-Mode Data)",
+      "description": "CrawlerStrategy vs ApiStrategy: Tự động chuyển đổi giữa cào trực tiếp và lấy từ PostgreSQL cache. Khi mở rộng sang API chính thức của trường → chỉ cần thêm Strategy mới.",
+      "files": ["backend/strategies/CrawlerStrategy.js", "backend/strategies/ApiStrategy.js", "backend/strategies/ScheduleStrategy.js"]
+    },
+    {
+      "name": "Split-and-Zip Parser",
+      "description": "splitCellByBr(): Tách bóc các ô bảng HTML gộp nhiều môn/thứ/tiết trong cùng 1 cell bằng cách split theo <br> rồi zip lại thành mảng objects. Giải quyết triệt để lỗi thời khóa biểu bị merge cells.",
+      "files": ["backend/services/parsers/studentParser.js"]
+    },
+    {
+      "name": "Localtunnel Auto-Sync",
+      "description": "start.sh tự động: (1) Khởi backend, (2) Tạo localtunnel tunnel, (3) Lấy URL mới, (4) Inject vào mobile/services/api.js bằng sed, (5) Khởi Expo tunnel. Mỗi lần chạy lại không cần sửa URL thủ công.",
+      "files": ["start.sh", "mobile/services/api.js"]
+    },
+    {
+      "name": "Dual Navigator (Role-based)",
+      "description": "App.js phân luồng Navigator theo user.role: student→AppNavigator (5 tabs), lecturer→LecturerNavigator (4 tabs). Cùng dùng chung NotificationsScreen và ProfileScreen.",
+      "files": ["mobile/App.js", "mobile/navigation/AppNavigator.js", "mobile/navigation/LecturerNavigator.js"]
+    },
+    {
+      "name": "Curriculum Crawler + Fallback",
+      "description": "studentCrawler thử 5 URL paths trên portal SV để tìm trang CTĐT. Nếu không tìm được → API /curriculum fallback dùng bảng điểm phân loại theo letterGrade. curriculumParser dùng heuristics linh hoạt cho nhiều format bảng HTML.",
+      "files": ["backend/services/parsers/curriculumParser.js", "backend/services/studentCrawler.js", "backend/routes/schedule.js"]
+    },
+    {
+      "name": "Segment Control Pattern",
+      "description": "Tab Điểm dùng Segment Control (Bảng Điểm | Chương Trình ĐT) để tích hợp 2 views trong cùng 1 screen. CurriculumView là component riêng biệt, gọi API getCurriculum() riêng.",
+      "files": ["mobile/screens/GradesScreen.js", "mobile/components/CurriculumView.js"]
+    }
+  ],
+  "gotchas": [
+    {
+      "issue": "Expo SDK 54 breaking: SafeAreaView deprecated",
+      "solution": "Thay SafeAreaView từ react-native bằng SafeAreaView từ react-native-safe-area-context",
+      "date": "2026-05-27"
+    },
+    {
+      "issue": "Localtunnel free URL thay đổi mỗi lần restart",
+      "solution": "Tạo start.sh tự động sed URL vào api.js trước khi khởi Expo. Không dùng hardcode.",
+      "date": "2026-05-27"
+    },
+    {
+      "issue": "Login timeout 408/503 khi localtunnel bị ngắt",
+      "solution": "Kiểm tra tunnel PID trước, kill cũ, khởi tạo lại. start.sh đã handle tự động.",
+      "date": "2026-05-27"
+    },
+    {
+      "issue": "Port 8081 bị chiếm bởi app khác (plantdoctor-mobile)",
+      "solution": "Expo tự đề xuất port 8082, nhưng cần cài @expo/ngrok cho tunnel mode hoạt động",
+      "date": "2026-05-27"
+    },
+    {
+      "issue": "babel-preset-expo missing sau upgrade SDK 54",
+      "solution": "Xóa node_modules + package-lock.json, chạy npm install lại sạch",
+      "date": "2026-05-27"
+    },
+    {
+      "issue": "URL trang CTĐT trên portal SV không xác định trước",
+      "solution": "Thử nhiều paths phổ biến. Thêm /SinhVien/ChuyenNganhChinh và /SinhVien/DaoTaoToanTruong vào đầu ctdtPaths của TUAF.",
+      "date": "2026-05-28"
+    },
+    {
+      "issue": "Bảng CTĐT cổng TUAF sử dụng rowspan cho cột đầu tiên (Kỳ học)",
+      "solution": "Hàng đầy đủ có 9 cột, hàng bị khuyết do rowspan có 8 cột. Phải lưu và kế thừa giá trị Kỳ học cho các dòng khuyết tiếp theo.",
+      "date": "2026-05-28"
+    }
+  ],
+  "conventions": {
+    "backend_port": 5000,
+    "api_prefix": "/api",
+    "student_id_prefix": "DTN",
+    "lecturer_input": "lowercase",
+    "schedule_phases": "expandable (co gọn đã qua/chưa tới, mở rộng hiện tại)",
+    "encryption": "AES-256-CBC cho mật khẩu cổng trường",
+    "cron_sync": "3:00 AM hàng ngày",
+    "graphify_cli": "graphify update . (không dùng --update flag cũ)"
+  },
+  "decisions": [
+    {
+      "date": "2026-05-27",
+      "decision": "Nâng cấp Expo SDK 54 ngay từ đầu để tránh tech debt",
+      "reason": "Expo SDK 53 đã deprecated, SDK 54 mới nhất với React 19.1 + RN 0.81"
+    },
+    {
+      "date": "2026-05-27",
+      "decision": "Dùng localtunnel free thay ngrok",
+      "reason": "ngrok free giới hạn bandwidth 1GB/tháng, localtunnel unlimited"
+    },
+    {
+      "date": "2026-05-27",
+      "decision": "8 màn hình riêng biệt thay vì 1 dashboard all-in-one",
+      "reason": "UX tốt hơn, dễ navigate, mỗi tab có chức năng rõ ràng"
+    },
+    {
+      "date": "2026-05-28",
+      "decision": "Dual Navigator: tách AppNavigator(SV) và LecturerNavigator(GV)",
+      "reason": "GV cần tabs khác SV (Lịch Dạy, Lớp Học thay vì Điểm, Học Phí, Thi). Tái sử dụng Notifications + Profile."
+    },
+    {
+      "date": "2026-05-28",
+      "decision": "PA1: Cào CTĐT từ portal thay vì nhập thủ công",
+      "reason": "User xác nhận portal có trang CTĐT. Crawler thử nhiều URL paths + fallback dùng bảng điểm nếu không tìm được."
+    },
+    {
+      "date": "2026-05-28",
+      "decision": "Lưu trường periodText vào Model Schedule để hiển thị thời gian học",
+      "reason": "Giúp sinh viên xem được cụ thể lịch học bắt đầu từ mấy giờ đến mấy giờ thay vì chỉ hiện tên môn và phòng học."
+    },
+    {
+      "date": "2026-05-28",
+      "decision": "Tự động kích hoạt Force Sync khi người dùng đổi sang học kỳ cũ",
+      "reason": "Vì DB ban đầu chỉ cache kỳ hiện tại, khi người dùng đổi kỳ cũ, app tự động sync ngầm giúp hiển thị dữ liệu tức thì, tăng trải nghiệm người dùng."
+    }
+  ]
+}

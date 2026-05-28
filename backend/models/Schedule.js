@@ -39,6 +39,10 @@ const Schedule = sequelize.define('Schedule', {
     type: DataTypes.STRING,
     defaultValue: ''
   },
+  periodText: {
+    type: DataTypes.STRING,
+    defaultValue: ''
+  },
   semester: {
     type: DataTypes.STRING,
     allowNull: false

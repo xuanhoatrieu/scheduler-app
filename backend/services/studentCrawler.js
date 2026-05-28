@@ -1,6 +1,7 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
 const { parseSchedule, parseExams, parseGrades, parseFinance } = require('./parsers/studentParser');
+const { parseCurriculum } = require('./parsers/curriculumParser');
 
 const BASE_URL = 'https://sinhvien.tuaf.edu.vn';
 
@@ -89,9 +90,15 @@ const loginStudent = async (username, password) => {
     const homeRes = await createSessionAxios(cookie2).get('/SinhVien/Home');
     const $home = cheerio.load(homeRes.data);
     
-    const fullName = $home('.dropdown-toggle, .user-name, td:contains("Họ tên") + td').first().text().trim() || 'Sinh viên TUAF';
-    const rawClass = $home('body').text().match(/Lớp\s*:\s*([A-Za-z0-9&.\-\s]+)/i);
-    const className = rawClass ? rawClass[1].trim() : 'Chưa cập nhật';
+    const userMenuHtml = $home('#ulMenu2 .styMenu').html() || '';
+    let fullName = 'Sinh viên TUAF';
+    let className = 'Chưa cập nhật';
+    if (userMenuHtml) {
+      const parts = userMenuHtml.split(/<br\s*\/?>/i).map(x => cheerio.load(`<div>${x}</div>`).text().trim());
+      if (parts[0]) fullName = parts[0];
+      if (parts[1]) className = parts[1];
+    }
+    
     const department = $home('body').text().includes('Công nghệ thông tin') ? 'Khoa Công nghệ thông tin' : 'TUAF';
 
     return {
@@ -128,6 +135,7 @@ const syncStudentData = async (username, password, options = { semester: '2', sc
   let examList = [];
   let gradeList = [];
   let financeData = { totalTuition: 0, paidTuition: 0, debtTuition: 0, invoiceDetails: [] };
+  let curriculumList = [];
 
   // 1. Cào Lịch Học (Duyệt qua Đợt học từ 1 đến 6 của học kỳ)
   console.log(`⏳ Đang cào thời khóa biểu học kỳ ${options.semester} năm học ${options.schoolYear}...`);
@@ -138,7 +146,6 @@ const syncStudentData = async (username, password, options = { semester: '2', sc
       if (res.status === 200 && res.data.length > 500) {
         const batchSchedules = parseSchedule(res.data);
         if (batchSchedules.length > 0) {
-          // Gắn thêm thuộc tính đợt học (batch)
           batchSchedules.forEach(item => {
             item.semester = `HocKy${options.semester}`;
             item.schoolYear = `${options.schoolYear}-${parseInt(options.schoolYear) + 1}`;
@@ -152,12 +159,11 @@ const syncStudentData = async (username, password, options = { semester: '2', sc
     }
   }
 
-  // 2. Cào Lịch Thi (Thăm dò các endpoint lịch thi phổ biến)
-  console.log('⏳ Đang thăm dò và cào lịch thi...');
+  // 2. Cào Lịch Thi (Sử dụng đúng endpoint của cổng TUAF)
+  console.log('⏳ Đang cào lịch thi...');
   const examPaths = [
-    `/TraCuuLichHoc/ThongTinLichThi?HocKy=${options.semester}&NamHoc=${options.schoolYear}`,
-    '/SinhVien/LichThi',
-    '/TraCuuLichHoc/LichThi'
+    `/TraCuuLichThi/Index?HocKy=${options.semester}&NamHoc=${options.schoolYear}`,
+    '/TraCuuLichThi/Index'
   ];
   for (const path of examPaths) {
     try {
@@ -170,7 +176,7 @@ const syncStudentData = async (username, password, options = { semester: '2', sc
             item.schoolYear = `${options.schoolYear}-${parseInt(options.schoolYear) + 1}`;
           });
           examList = parsedExams;
-          break; // Tìm thấy và cào thành công -> thoát
+          break;
         }
       }
     } catch (err) {
@@ -179,11 +185,10 @@ const syncStudentData = async (username, password, options = { semester: '2', sc
   }
 
   // 3. Cào Kết Quả Học Tập (Bảng Điểm)
-  console.log('⏳ Đang thăm dò và cào bảng điểm...');
+  console.log('⏳ Đang cào bảng điểm...');
   const gradePaths = [
-    `/Diem/KetQuaHocTap?HocKy=${options.semester}&NamHoc=${options.schoolYear}`,
-    '/Diem/DiemNganh',
-    '/Diem/KetQuaHocTap'
+    `/TraCuuDiemSV/Index?HocKy=${options.semester}&NamHoc=${options.schoolYear}`,
+    '/TraCuuDiemSV/Index'
   ];
   for (const path of gradePaths) {
     try {
@@ -205,26 +210,72 @@ const syncStudentData = async (username, password, options = { semester: '2', sc
   }
 
   // 4. Cào Tài Chính Học Phí
-  console.log('⏳ Đang thăm dò và cào học phí...');
+  console.log('⏳ Đang cào học phí...');
   const financePaths = [
-    '/HocPhi/CongNoHocPhi',
-    '/Finance/CongNoHocPhi',
-    '/HocPhi/CongNo'
+    '/TraCuuHocPhiSV/Index'
   ];
   for (const path of financePaths) {
     try {
       const res = await http.get(path);
       if (res.status === 200 && res.data.length > 500) {
         const parsedFinance = parseFinance(res.data);
-        if (parsedFinance.totalTuition > 0) {
-          parsedFinance.semester = `HocKy${options.semester}`;
-          financeData = parsedFinance;
-          break;
+        // Lấy thông tin tài chính của kỳ hiện tại trong danh sách allFinances cào được
+        const currentSemKey = `HocKy${options.semester}`;
+        const currentSchoolYearKey = `${options.schoolYear}-${parseInt(options.schoolYear) + 1}`;
+        const currentSemFinance = parsedFinance.allFinances.find(
+          f => f.semester === currentSemKey && f.schoolYear === currentSchoolYearKey
+        );
+
+        if (currentSemFinance) {
+          financeData = {
+            totalTuition: currentSemFinance.totalTuition,
+            paidTuition: currentSemFinance.paidTuition,
+            debtTuition: currentSemFinance.debtTuition,
+            invoiceDetails: []
+          };
+        } else if (parsedFinance.totalTuition > 0) {
+          financeData = {
+            totalTuition: parsedFinance.totalTuition,
+            paidTuition: parsedFinance.paidTuition,
+            debtTuition: parsedFinance.debtTuition,
+            invoiceDetails: []
+          };
         }
+        break;
       }
     } catch (err) {
       console.warn(`⚠️ Lỗi khi cào học phí ở ${path}:`, err.message);
     }
+  }
+
+  // 5. Cào Khung Chương trình Đào tạo (CTĐT)
+  console.log('⏳ Đang cào khung chương trình đào tạo...');
+  const ctdtPaths = [
+    '/SinhVien/ChuyenNganhChinh',
+    '/SinhVien/DaoTaoToanTruong',
+    '/ChuongTrinhDaoTao/Index',
+    '/KhungCTDT/Index',
+    '/CTDT/Index',
+    '/TraCuuChuongTrinhDaoTao/Index',
+    '/SinhVien/ChuongTrinhDaoTao'
+  ];
+  for (const path of ctdtPaths) {
+    try {
+      const res = await http.get(path);
+      if (res.status === 200 && res.data.length > 500) {
+        const parsed = parseCurriculum(res.data);
+        if (parsed.length > 0) {
+          curriculumList = parsed;
+          console.log(`  ✅ Cào CTĐT thành công từ ${path}: ${parsed.length} môn học`);
+          break;
+        }
+      }
+    } catch (err) {
+      // Thử URL tiếp theo
+    }
+  }
+  if (curriculumList.length === 0) {
+    console.warn('  ⚠️ Không tìm được trang CTĐT trên portal, sẽ dùng fallback từ bảng điểm.');
   }
 
   return {
@@ -234,11 +285,127 @@ const syncStudentData = async (username, password, options = { semester: '2', sc
     scheduleList,
     examList,
     gradeList,
-    financeData
+    financeData,
+    curriculumList
+  };
+};
+
+/**
+ * Trích xuất năm nhập học từ MSSV (VD: DTN245748004 → 2024)
+ */
+const extractEnrollmentYear = (username) => {
+  const match = username.match(/[A-Za-z]+(\d{2})/);
+  if (match) {
+    const yearShort = parseInt(match[1]);
+    return yearShort >= 50 ? 1900 + yearShort : 2000 + yearShort;
+  }
+  return new Date().getFullYear() - 3;
+};
+
+/**
+ * Tạo danh sách tất cả các kỳ từ năm nhập học đến hiện tại
+ */
+const generateSemesterList = (enrollmentYear) => {
+  const currentYear = new Date().getFullYear();
+  const semesters = [];
+
+  for (let year = enrollmentYear; year <= currentYear; year++) {
+    semesters.push({ semester: '1', schoolYear: String(year) });
+    semesters.push({ semester: '2', schoolYear: String(year) });
+  }
+
+  return semesters;
+};
+
+/**
+ * Đồng bộ dữ liệu lịch sử TẤT CẢ các kỳ học (Điểm + Học phí)
+ * @param {string} username - Mã sinh viên
+ * @param {string} password - Mật khẩu cổng sinh viên
+ * @returns {Object} { allGrades: [...], allFinance: [...], semesterList: [...] }
+ */
+const syncAllSemesters = async (username, password) => {
+  const loginResult = await loginStudent(username, password);
+  
+  if (!loginResult.success) {
+    throw new Error(loginResult.error);
+  }
+
+  const { cookie, fullName, className, department } = loginResult;
+  const http = createSessionAxios(cookie);
+
+  const enrollmentYear = extractEnrollmentYear(username);
+  const semesterList = generateSemesterList(enrollmentYear);
+
+  console.log(`📚 [History Sync] Bắt đầu đồng bộ lịch sử thông minh cho ${username}...`);
+
+  const allGrades = [];
+  const allFinance = [];
+  let courseMapping = {};
+
+  // 1. Tải toàn bộ học phí và bản đồ môn học -> học kỳ/năm học
+  try {
+    console.log('⏳ Đang cào học phí lịch sử và bản đồ môn học...');
+    const res = await http.get('/TraCuuHocPhiSV/Index');
+    if (res.status === 200 && res.data.length > 500) {
+      const parsedFinance = parseFinance(res.data);
+      if (parsedFinance.allFinances && parsedFinance.allFinances.length > 0) {
+        allFinance.push(...parsedFinance.allFinances);
+      }
+      if (parsedFinance.courseMapping) {
+        courseMapping = parsedFinance.courseMapping;
+        console.log(`  ✅ Cào được bản đồ học phí của ${Object.keys(courseMapping).length} môn học.`);
+      }
+    }
+  } catch (err) {
+    console.warn(`⚠️ Lỗi khi cào học phí lịch sử:`, err.message);
+  }
+
+  // 2. Tải toàn bộ bảng điểm đã học đúng 1 lần duy nhất
+  try {
+    console.log('⏳ Đang cào bảng điểm toàn khóa tích lũy...');
+    const res = await http.get('/TraCuuDiemSV/Index');
+    if (res.status === 200 && res.data.length > 500) {
+      const rawGrades = parseGrades(res.data);
+      console.log(`  ✅ Cào được bảng điểm gốc gồm ${rawGrades.length} môn học.`);
+
+      // Phân bổ từng môn về đúng học kỳ/năm học dựa trên bản đồ courseMapping
+      rawGrades.forEach(item => {
+        const key = item.courseName.toLowerCase();
+        const mapping = courseMapping[key];
+        
+        if (mapping) {
+          item.semester = mapping.semester;
+          item.schoolYear = mapping.schoolYear;
+        } else {
+          // Fallback: Nếu không khớp bản đồ (ví dụ môn GDQP, GDTC, hoặc môn được miễn phí),
+          // ta gán tạm vào Học kỳ 1 của năm nhập học của sinh viên
+          item.semester = 'HocKy1';
+          item.schoolYear = `${enrollmentYear}-${enrollmentYear + 1}`;
+        }
+        allGrades.push(item);
+      });
+    }
+  } catch (err) {
+    console.warn(`⚠️ Lỗi khi cào bảng điểm toàn khóa:`, err.message);
+  }
+
+  console.log(`📚 [History Sync] Đồng bộ hoàn tất! Nhóm được ${allGrades.length} môn điểm chuẩn vào ${allFinance.length} kỳ học phí.`);
+
+  return {
+    fullName,
+    className,
+    department,
+    allGrades,
+    allFinance,
+    semesterList,
+    enrollmentYear
   };
 };
 
 module.exports = {
   loginStudent,
-  syncStudentData
+  syncStudentData,
+  syncAllSemesters,
+  extractEnrollmentYear,
+  generateSemesterList
 };

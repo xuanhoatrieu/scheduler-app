@@ -1,11 +1,62 @@
 {
-  "updated_at": "2026-05-27T14:02:00Z",
+  "updated_at": "2026-05-28T15:57:00Z",
   "working_on": {
-    "feature": "TUAF Schedule Core Setup",
-    "current_plan_path": "plans/260527-1054-tuaf-schedule/",
-    "current_phase": "phase-08",
-    "task": "Nghiệm thu toàn bộ dự án TUAF Schedule",
+    "feature": "Detailed Study Time & Full Curriculum Scraper",
+    "current_phase": "done",
+    "task": "Period Display + Rowspan Parser for Curriculum + Auto-Sync for Old Semesters + Bypass Tunnel Warning + VPS Deployment Guide",
     "status": "done",
-    "notes": "Hệ thống TUAF Schedule đã được hoàn thành xuất sắc 100% tất cả các hạng mục của 8 Phases. Toàn bộ Backend (Express + JWT + Cron Job), Database đệm (PostgreSQL Sequelize ORM), Strategy Pattern điều phối linh hoạt, và giao diện Mobile App Expo (Offline cache, dashboards) đã hoạt động hoàn hảo."
-  }
+    "notes": "Hoàn thành: Thêm trường periodText vào Schedule model và lưu bulkCreate trong CrawlerStrategy. Sửa studentCrawler ctdtPaths trỏ đúng /SinhVien/ChuyenNganhChinh. Sửa curriculumParser bóc tách rowspan (9 cột đầy đủ, 8 cột khuyết) cào thành công 74 môn học. Sửa mobile ScheduleScreen quy đổi tiết->giờ, hiển thị tag giờ học và số tiết học, tích hợp tự động Force Sync khi xem học kỳ cũ chưa có dữ liệu. Viết tài liệu deployment_guide.md chi tiết triển khai lên VPS. Bổ sung headers bypass reminder trong api.js."
+  },
+  "recent_changes": [
+    {
+      "date": "2026-05-28T15:57:00Z",
+      "type": "feature",
+      "description": "Lịch học chi tiết di động: Thêm trường periodText, tích hợp hàm getPeriodTimeStr hiển thị giờ học, tiết học dạng tag đẹp mắt (CourseCard)"
+    },
+    {
+      "date": "2026-05-28T15:30:00Z",
+      "type": "feature",
+      "description": "Sửa lỗi Khung CTĐT đầy đủ: Dùng đúng URL /SinhVien/ChuyenNganhChinh, viết lại giải thuật rowspan parser giúp cào thành công 74 môn học chuyên ngành chính"
+    },
+    {
+      "date": "2026-05-28T15:00:00Z",
+      "type": "feature",
+      "description": "Auto Force-Sync học kỳ cũ: Tự động gọi API cào lịch học kỳ cũ từ portal trường về khi đổi tab học kỳ trên mobile"
+    },
+    {
+      "date": "2026-05-28T14:30:00Z",
+      "type": "documentation",
+      "description": "Tài liệu triển khai VPS: Hướng dẫn deployment chi tiết từ A-Z để release ứng dụng lên VPS chính thức"
+    },
+    {
+      "date": "2026-05-28T14:00:00Z",
+      "type": "bugfix",
+      "description": "Bypass localtunnel reminder: Bổ sung thêm headers Bypass-Tunnel-Reminder và User-Agent để bỏ qua trang cảnh báo của localtunnel"
+    },
+    {
+      "date": "2026-05-28T00:16:00Z",
+      "type": "feature",
+      "description": "Curriculum CTĐT: Parser + Crawler 5 paths + Curriculum model + API /curriculum merge grades + CurriculumView color-coded (4 trạng thái) + Progress bar + Segment Control trong GradesScreen"
+    },
+    {
+      "date": "2026-05-28T00:10:00Z",
+      "type": "feature",
+      "description": "Lecturer Navigator: LecturerNavigator.js (4 tabs: Lịch Dạy, Lớp Học, Thông Báo, Hồ Sơ) + TeachingScheduleScreen + ClassListScreen + API /lecturer/classes + App.js role routing"
+    },
+    {
+      "date": "2026-05-27T22:00:00Z",
+      "type": "feature",
+      "description": "start.sh: Script tự động hoá 100% quy trình khởi chạy (Backend + Localtunnel + auto-sync URL vào mobile + Expo tunnel)"
+    },
+    {
+      "date": "2026-05-27T20:00:00Z",
+      "type": "feature",
+      "description": "Smart Expandable Schedule UI: Co gọn giai đoạn đã kết thúc/chưa tới, mở rộng giai đoạn hiện tại"
+    },
+    {
+      "date": "2026-05-27T19:00:00Z",
+      "type": "feature",
+      "description": "Push Notifications: Nhắc lịch học trước 30 phút và 15 phút (NotificationsScreen.js)"
+    }
+  ]
 }

@@ -15,6 +15,11 @@ const Finance = sequelize.define('Finance', {
     type: DataTypes.STRING,
     allowNull: false
   },
+  schoolYear: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    defaultValue: ''
+  },
   totalTuition: {
     type: DataTypes.INTEGER,
     allowNull: false

@@ -2,11 +2,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
 // Thay đổi IP này phù hợp với địa chỉ IP LAN của máy chủ backend khi chạy Expo Go
-const API_BASE_URL = 'http://10.0.2.2:5000/api'; // localhost trong Android Emulator
+const API_BASE_URL = 'https://wet-dolls-stay.loca.lt/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  timeout: 30000,
+  headers: {
+    'Bypass-Tunnel-Reminder': 'true',
+    'bypass-tunnel-reminder': 'true',
+    'User-Agent': 'TUAF-Schedule-App',
+  },
 });
 
 // Inject Bearer Token vào mọi request
@@ -44,18 +49,23 @@ export const login = async (username, password, role) => {
 /**
  * Lấy thời khóa biểu học tập, tự động fallback đọc offline cache nếu có lỗi
  */
-export const getSchedule = async (forceSync = false) => {
+export const getSchedule = async (forceSync = false, semester = null, schoolYear = null) => {
   try {
-    const response = await api.get(`/schedule?forceSync=${forceSync}`);
+    let url = `/schedule?forceSync=${forceSync}`;
+    if (semester) url += `&semester=${semester}`;
+    if (schoolYear) url += `&schoolYear=${schoolYear}`;
+    const response = await api.get(url);
     const data = response.data.data;
     
     // Cache dữ liệu cục bộ trên điện thoại để đọc offline
-    await AsyncStorage.setItem('cached_schedule', JSON.stringify(data));
+    const cacheKey = semester ? `cached_schedule_${semester}_${schoolYear}` : 'cached_schedule';
+    await AsyncStorage.setItem(cacheKey, JSON.stringify(data));
     
     return { success: true, data, lastSyncedAt: response.data.lastSyncedAt, source: 'network' };
   } catch (error) {
     console.warn('Network error, loading offline schedule cache...');
-    const cached = await AsyncStorage.getItem('cached_schedule');
+    const cacheKey = semester ? `cached_schedule_${semester}_${schoolYear}` : 'cached_schedule';
+    const cached = await AsyncStorage.getItem(cacheKey);
     if (cached) {
       return { success: true, data: JSON.parse(cached), source: 'cache' };
     }
@@ -118,6 +128,95 @@ export const getFinance = async (forceSync = false) => {
 };
 
 /**
+ * Lấy bảng điểm TẤT CẢ các kỳ, bao gồm GPA tích lũy
+ */
+export const getGradesAll = async () => {
+  try {
+    const response = await api.get('/grades/all');
+    const { data, summary } = response.data;
+    await AsyncStorage.setItem('cached_grades_all', JSON.stringify({ data, summary }));
+    return { success: true, data, summary, source: 'network' };
+  } catch (error) {
+    const cached = await AsyncStorage.getItem('cached_grades_all');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      return { success: true, ...parsed, source: 'cache' };
+    }
+    return { success: false, message: 'Lỗi tải bảng điểm tổng hợp!' };
+  }
+};
+
+/**
+ * Lấy lịch sử tài chính TẤT CẢ các kỳ
+ */
+export const getFinanceAll = async () => {
+  try {
+    const response = await api.get('/finance/all');
+    const { data, summary } = response.data;
+    await AsyncStorage.setItem('cached_finance_all', JSON.stringify({ data, summary }));
+    return { success: true, data, summary, source: 'network' };
+  } catch (error) {
+    const cached = await AsyncStorage.getItem('cached_finance_all');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      return { success: true, ...parsed, source: 'cache' };
+    }
+    return { success: false, message: 'Lỗi tải lịch sử tài chính!' };
+  }
+};
+
+/**
+ * Kích hoạt đồng bộ lịch sử toàn bộ các kỳ (có thể mất 20-40 giây)
+ */
+export const syncHistory = async () => {
+  try {
+    const response = await api.post('/sync-history', {}, { timeout: 120000 });
+    return { success: true, ...response.data };
+  } catch (error) {
+    const msg = error.response?.data?.message || 'Lỗi đồng bộ lịch sử!';
+    return { success: false, message: msg };
+  }
+};
+
+/**
+ * Lấy Khung Chương trình Đào tạo, merge với bảng điểm (status cho từng môn)
+ */
+export const getCurriculum = async () => {
+  try {
+    const response = await api.get('/curriculum');
+    const { data, summary, source } = response.data;
+    await AsyncStorage.setItem('cached_curriculum', JSON.stringify({ data, summary, source }));
+    return { success: true, data, summary, source, networkSource: 'network' };
+  } catch (error) {
+    const cached = await AsyncStorage.getItem('cached_curriculum');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      return { success: true, ...parsed, networkSource: 'cache' };
+    }
+    return { success: false, message: 'Lỗi tải chương trình đào tạo!' };
+  }
+};
+
+/**
+ * Lấy danh sách lớp phụ trách (dành cho Giảng viên)
+ */
+export const getLecturerClasses = async () => {
+  try {
+    const response = await api.get('/lecturer/classes');
+    const { data, totalClasses } = response.data;
+    await AsyncStorage.setItem('cached_lecturer_classes', JSON.stringify({ data, totalClasses }));
+    return { success: true, data, totalClasses, source: 'network' };
+  } catch (error) {
+    const cached = await AsyncStorage.getItem('cached_lecturer_classes');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      return { success: true, ...parsed, source: 'cache' };
+    }
+    return { success: false, message: 'Lỗi tải danh sách lớp!' };
+  }
+};
+
+/**
  * Đăng xuất, xóa toàn bộ bộ nhớ cache & tokens
  */
 export const logout = async () => {
@@ -127,4 +226,9 @@ export const logout = async () => {
   await AsyncStorage.removeItem('cached_exams');
   await AsyncStorage.removeItem('cached_grades');
   await AsyncStorage.removeItem('cached_finance');
+  await AsyncStorage.removeItem('cached_grades_all');
+  await AsyncStorage.removeItem('cached_finance_all');
+  await AsyncStorage.removeItem('cached_curriculum');
+  await AsyncStorage.removeItem('cached_lecturer_classes');
 };
+

@@ -1,18 +1,28 @@
 {
   "project": {
     "name": "TUAF Schedule",
-    "description": "Hệ thống xem lịch học và lịch giảng dạy thông minh dành cho Sinh viên & Giảng viên trường Đại học Nông Lâm Thái Nguyên (TUAF).",
-    "created_at": "2026-05-27T10:52:00Z"
+    "description": "Hệ thống xem lịch học và lịch giảng dạy thông minh dành cho Sinh viên & Giảng viên trường Đại học Nông Lâm Thái Nguyên (TUAF). Hỗ trợ đăng nhập SSO, cào dữ liệu TKB/Điểm/Học phí/CTĐT tự động, và giao diện mobile Expo trực quan phân quyền theo vai trò.",
+    "created_at": "2026-05-27T10:52:00Z",
+    "last_saved": "2026-05-28T15:57:00Z",
+    "save_count": 4
   },
   "tech_stack": [
-    "Node.js",
-    "Express.js",
-    "React Native / Expo",
-    "PostgreSQL (vitts-postgres)",
+    "Node.js 20+",
+    "Express.js 4",
+    "React Native 0.81 / Expo SDK 54",
+    "React 19.1",
+    "PostgreSQL 14 (vitts-postgres Docker)",
     "Sequelize ORM",
     "node-cron",
     "JSON Web Token (JWT)",
-    "AES-256-CBC Encryption"
+    "AES-256-CBC Encryption",
+    "axios + cheerio (crawler)",
+    "@react-navigation/native + bottom-tabs",
+    "@react-native-async-storage/async-storage",
+    "react-native-safe-area-context",
+    "expo-font",
+    "@expo/vector-icons",
+    "localtunnel (tunnel development)"
   ],
   "features": [
     "Student Portal Crawler: Tự động đăng nhập và bóc tách dữ liệu Sinh viên (Lịch học, Lịch thi, Điểm, Học phí)",
@@ -22,20 +32,42 @@
     "Strategy Pattern: Tự động điều phối luồng dữ liệu Dual-Mode giữa cào trực tiếp (Crawler) và Database nội bộ (API)",
     "Cron Job Service: Tự động giải mã tài khoản và đồng bộ lúc 3:00 sáng hàng ngày",
     "Express SECURE Rest API: Securing endpoints qua JWT Bearer authentication",
-    "Expo Mobile Application: Giao diện Dashboards phân tab mượt mà, hỗ trợ nhớ session đăng nhập và Offline Caching"
+    "Expo Mobile Application: 8 màn hình đầy đủ (Login, Dashboard, Schedule, Exams, Grades, Finance, Notifications, Profile)",
+    "Smart Expandable Schedule UI: Giao diện lịch học thông minh - co gọn giai đoạn đã kết thúc/chưa tới, mở rộng giai đoạn hiện tại",
+    "Push Notifications: Nhắc lịch học trước 30 phút và 15 phút",
+    "Auto-Start Script: start.sh tự động khởi chạy Backend + Localtunnel + đồng bộ URL + Expo tunnel",
+    "Offline Caching: AsyncStorage lưu trữ offline cho session đăng nhập và dữ liệu",
+    "Login UX: Tiền tố DTN tự động cho sinh viên, input lowercase cho giảng viên",
+    "Dual Navigator: Phân luồng giao diện riêng cho GV (Lịch Dạy, Lớp Học) và SV (Lịch Học, Điểm, Học Phí) dựa trên role đăng nhập",
+    "Curriculum CTĐT: Cào khung chương trình đào tạo từ portal, merge với bảng điểm, hiển thị color-coded (4 trạng thái) + progress bar tín chỉ",
+    "Lecturer API: Danh sách lớp phụ trách GV (/api/lecturer/classes) trích xuất từ lịch dạy",
+    "Detailed Study Time: Hiển thị giờ học, tiết học trực quan và sinh động trong card môn học (cả Expand và Collapse)",
+    "Auto Force-Sync: Tự động cào và đồng bộ lịch học kỳ cũ thời gian thực từ portal trường khi chuyển tab học kỳ",
+    "Rowspan-capable Curriculum Parser: Giải thuật cào và bóc tách CTĐT rowspan chính xác 100%, cào 74 môn học chuyên ngành"
   ],
   "decisions": [
     "Sử dụng PostgreSQL 14 (docker vitts-postgres) thay thế hoàn toàn cho MongoDB do phù hợp hạ tầng thực tế",
     "Áp dụng cơ chế split-and-zip (splitCellByBr) để tách bóc môn học bị gộp nhiều tiết/thứ trong cùng một ô bảng thời khóa biểu",
     "Hiện thực hóa Strategy Pattern để mở rộng hệ thống sang kết nối API chính thức dễ dàng",
-    "Sử dụng lưu trữ đệm JSON động trong PostgreSQL cho bảng lịch sử biên lai hóa đơn học phí của Sinh viên"
+    "Sử dụng lưu trữ đệm JSON động trong PostgreSQL cho bảng lịch sử biên lai hóa đơn học phí của Sinh viên",
+    "Nâng cấp Expo SDK 54 + React 19.1 + React Native 0.81 để đồng bộ với hệ sinh thái mới nhất",
+    "Dùng Localtunnel free thay vì ngrok vì hạn chế bandwidth quota",
+    "Tách giao diện mobile thành 8 màn hình riêng biệt với Bottom Tab Navigation",
+    "Dual Navigator: AppNavigator (5 tabs SV) + LecturerNavigator (4 tabs GV), dùng chung Notifications + Profile",
+    "PA1 Curriculum: Cào CTĐT từ portal (5 URL paths) + fallback dùng bảng điểm. Segment Control tích hợp vào tab Điểm",
+    "Thêm trường periodText vào Schedule model để lưu trữ tiết học cào được, phục vụ hiển thị giờ học chi tiết trên mobile",
+    "Giải thuật Rowspan Parser: Nhận biết hàng 9 cột (đầy đủ) và hàng 8 cột (khuyết do rowspan) để phân tích Khung CTĐT chính xác",
+    "Tự động Force Sync ngầm khi người dùng xem học kỳ cũ mà database chưa có dữ liệu lịch học"
   ],
   "infrastructure": {
     "data_source_mode": "dual_mode",
     "cron_job": "0 3 * * *",
     "encryption": "AES-256-CBC",
     "database": "PostgreSQL 14 (vitts-postgres Docker container)",
-    "port": 5000
+    "port": 5000,
+    "tunnel": "localtunnel (free, dynamic URL per session)",
+    "expo_sdk": "54",
+    "start_script": "start.sh (auto backend + tunnel + expo)"
   },
   "github": {}
 }

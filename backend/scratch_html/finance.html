@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="author" content="Công ty Cổ phần Giải pháp Giáo dục Nam Việt." />
+    <link href="/Templates/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/Templates/js/vendor/nivo-slider/nivo-slider.css" type="text/css" />
+    <link rel="stylesheet" href="/Templates/js/vendor/datepicker/css/datepicker.css" type="text/css" />
+    <link rel="stylesheet" href="/Templates/js/vendor/nivo-slider/themes/default/default.css" type="text/css" />
+    <link href="/Templates/css/main.css" rel="stylesheet" />
+    <link href="/Templates/css/font-awesome.min.css" rel="stylesheet" />
+    <link href="/Templates/css/SinhVien.css" rel="stylesheet" />
+    <link href="/Content/css/bootstrap-treenav.css" rel="stylesheet" />
+    <link href="/Content/Stepbystep/Stepbystep.css" rel="stylesheet" />
+    <link href="/Content/toastr.css" rel="stylesheet" />
+    <link href="/Areas/Admin/Content/plugins/morris/morris.css" rel="stylesheet" />
+    <script src="/Scripts/jquery-2.2.3.js"></script>
+    
+    <link href="/Templates/css/Master.css" rel="stylesheet" />
+    <script src="/Scripts/bootstrap.min.js"></script>
+    <script src="/Scripts/toastr.js"></script>
+    <title>Cổng thông tin</title>
+    <link rel="icon" type="image/x-icon" href="/FileManager/Upload/images/logoTruong.png" />
+    <link href="/Content/select2-4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+</head>
+<body>
+    
+    <a href="#" class="back-to-top" style="display: none;">Back to Top</a>
+
+
+
+
+
+
+<section style="background: #12466D url(/FileManager/Upload/images/bg_header.png);" >
+    <div class="container">
+        <div class="row">
+            <div class="col-md-12" style="padding:0;margin:0">
+                <a title="Trường Đại Học ">
+                    <img src="/FileManager/Upload/images/logoTruongDHThuDo.png" alt="logo" class="img-responsive">
+                </a>
+            </div>
+             
+        </div>
+    </div>
+</section>
+    <header style="background-color:#3b5998">
+        <div class="container">
+            <div class="row top-menu">
+                <nav class="navbar navbar-blue" role="navigation" style="margin-bottom:0px">
+                    <div class="container-fluid">
+                        <!-- Brand and toggle get grouped for better mobile display -->
+                        <div class="navbar-header">
+                            
+                            
+                        </div>
+
+                        <!-- Collect the nav links, forms, and other content for toggling -->
+                        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+
+<style>
+    .styMenu {
+        float: left;
+        padding-top: 4px;
+        padding-left: 4px;
+        height: 38px;
+    }
+
+    .styMenuCon {
+        padding-left: 30px;
+    }
+</style>
+<div>
+    <div style="float:left">
+        <ul class="nav navbar-nav">
+            <li class="dropdown">
+                <a href="/" style="margin-left:-50px">
+                    <div style="float:left;">
+                        <img class="clImage" src="/FileManager/img/home-4-24.png" />
+                    </div>
+                    <div class="styMenu">TRANG CHỦ</div>
+                </a>
+            </li>
+            <li class="dropdown">
+                <a href="javascript:void(0)" class="dropdown-toggle" data-toggle="dropdown">
+                    <div style="float:left;">
+                        <img src="/FileManager/img/literature-24.png" />
+                    </div>
+                    <div class="styMenu">CHƯƠNG TRÌNH ĐÀO TẠO</div>
+                </a>
+                <ul class="dropdown-menu" role="menu">
+                    <li>
+                        <a href="/SinhVien/DaoTaoToanTruong">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_toantruong.png" />
+                            </div>
+                            <div class="">Toàn trường</div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/SinhVien/ChuyenNganhChinh">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_chuyennganhchinh.png" />
+                            </div>
+                            <div class="styMenuCon">Chuyên ngành chính</div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/SinhVien/ChuyenNganh2">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_chuyennganh2.png" />
+                            </div>
+                            <div class="styMenuCon">Chuyên ngành thứ 2</div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/SoSanhChuyenNganh/Index">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_chuyennganh2.png" />
+                            </div>
+                            <div class="styMenuCon">So sánh 2 chuyên ngành</div>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+            <li class="dropdown">
+                <a href="javascript:void(0)" class="dropdown-toggle" data-toggle="dropdown">
+                    <div style="float:left;">
+                        <img src="/FileManager/img/rsz_register.png" />
+                    </div>
+                    <div class="styMenu">ĐĂNG KÍ HỌC</div>
+                </a>
+                <ul class="dropdown-menu" role="menu">
+
+                    
+                    <li>
+                        <a href="/DangKy/ChuyenNganhChinh">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_results.png" />
+                            </div>
+                            <div class="styMenuCon">Chuyên ngành chính</div>
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="/DangKyNganh2/Index">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_results.png" />
+                            </div>
+                            <div class="styMenuCon">Chuyên ngành 2</div>
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="/DangKyHocChuyenSau/Index">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_results.png" />
+                            </div>
+                            <div class="styMenuCon">Đăng ký ôn thi CĐR NNTH</div>
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="/DangKyHocLaiCaiThien2/ChuyenNganhChinh">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_results.png" />
+                            </div>
+                            <div class="styMenuCon">Đăng ký Học lại / cải thiện điểm</div>
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="/DangKyHocLaiCaiThien/Index">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_results.png" />
+                            </div>
+                            <div class="styMenuCon">Đăng ký nguyện vọng học lại, cải thiện</div>
+                        </a>
+                    </li>
+
+                    
+
+                    <!--<li>
+    <a href="javascript:void(0)">-->
+                    
+                    <!--<div style="float:left;">
+                <img class="" src="/FileManager/img/rsz_results.png" />
+            </div>
+            <div class="styMenuCon">Khảo sát nhu cầu đăng ký học</div>
+        </a>
+    </li>
+
+    <li>
+        <a href="javascript:void(0)">-->
+                    
+                    <!--<div style="float:left;">
+            <img class="" src="/FileManager/img/rsz_results.png" />
+        </div>
+        <div class="styMenuCon">Kết quả đăng ký học</div>
+    </a>
+        </li>-->
+
+                </ul>
+            </li>
+            <li class="dropdown">
+                <a href="javascript:void(0)" class="dropdown-toggle" data-toggle="dropdown">
+                    <div style="float:left;">
+                        <img src="/FileManager/img/rsz_profile.png" />
+                    </div>
+                    <div class="styMenu">THÔNG TIN SINH VIÊN</div>
+                </a>
+                <ul class="dropdown-menu" role="menu">
+
+                    <li>
+                        <a href="/SinhVien/ThongTinSinhVien">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_calendar.png" />
+                            </div>
+                            <div class="styMenuCon">Thông tin sinh viên</div>
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="/TraCuuDiemSV/Index">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_notepad.png" />
+                            </div>
+                            <div class="styMenuCon">Kết quả học tập</div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/TraCuuChungChi/Index">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_notepad.png" />
+                            </div>
+                            <div class="styMenuCon">Tra cứu chứng chỉ</div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/TraCuuDiemSV/DiemRenLuyen">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_profile.png" />
+                            </div>
+                            <div class="styMenuCon">Điểm rèn luyện</div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/TraCuuLichHoc/Index">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_calendar.png" />
+                            </div>
+                            <div class="styMenuCon">Thông tin lịch học</div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/TraCuuLichThi/Index">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_calendar.png" />
+                            </div>
+                            <div class="styMenuCon">Lịch thi sinh viên</div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/SinhVien/HocBong_KhenThuong_KyLuat">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_hocbong.png" />
+                            </div>
+                            <div class="styMenuCon">Học bổng-Khen thưởng-Kỷ luật</div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/KyTucXa/Index">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_hocbong.png" />
+                            </div>
+                            <div class="styMenuCon">Thông tin nội ngoại trú</div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/HoSoSucKhoe/Index">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_notepad.png" />
+                            </div>
+                            <div class="styMenuCon">Hồ sơ sức khỏe</div>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+            <li class="dropdown">
+                <a href="javascript:void(0)" class="dropdown-toggle" data-toggle="dropdown">
+                    <div style="float:left;">
+                        <img src="/FileManager/img/checklist.png" />
+                    </div>
+                    <div class="styMenu">ĐÁNH GIÁ</div>
+                </a>
+                <ul class="dropdown-menu" role="menu">
+
+                    <li>
+                        <a href="/DichVu/Home">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_danhgia.png" />
+                            </div>
+                            <div class="styMenuCon">Khảo sát đánh giá</div>
+                        </a>
+                    </li>
+
+                </ul>
+            </li>
+            <li class="dropdown">
+                <a href="javascript:void(0)" class="dropdown-toggle" data-toggle="dropdown">
+                    <div style="float:left;">
+                        <img src="/FileManager/img/rsz_money.png" />
+                    </div>
+                    <div class="styMenu">TÀI CHÍNH</div>
+                </a>
+                <ul class="dropdown-menu" role="menu">
+                    <li>
+                        <a href="/TraCuuHocPhiSV/Index">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_tructiep.png" />
+                            </div>
+                            <div class="styMenuCon">Thông tin tài chính</div>
+                        </a>
+                    </li>
+<li>
+                        <a href="/DangKyNopHocPhiSV/Index">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_tructiep.png" />
+                            </div>
+                            <div class="styMenuCon">Đăng ký nộp học phí</div>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+
+            <li class="dropdown">
+                <a href="javascript:void(0)" class="dropdown-toggle" data-toggle="dropdown">
+                    <div style="float:left;">
+                        <img src="/FileManager/img/rsz_tongdaidichvu.png" />
+                    </div>
+                    <div class="styMenu">DỊCH VỤ</div>
+                </a>
+                <ul class="dropdown-menu" role="menu">
+                    <li>
+                        <a href="/ThongTin/ThongBao?CatID=5">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_news.png" />
+                            </div>
+                            <div class="styMenuCon">Tin mới nhất</div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/ThongTin/ThongBao?CatID=2">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_megaphone.png" />
+                            </div>
+                            <div class="styMenuCon">Thông báo</div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/ThongTin/ThongBao?CatID=1">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_vanban.png" />
+                            </div>
+                            <div class="styMenuCon">Văn bản biểu mẫu</div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/SinhVien/CuuSinhVien">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_cuusinhvien.png" />
+                            </div>
+                            <div class="styMenuCon">Cựu sinh viên</div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/Dangkygiayto/Index">
+                            <div style="float:left;">
+                                <img src="/FileManager/img/rsz_register.png" />
+                            </div>
+                            <div class="styMenuCon">Đăng ký giấy tờ liên quan</div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/ThanhToanTrucTuyen/Index">
+                            <div style="float:left;">
+                                <img class="" src="/FileManager/img/rsz_tructuyen.png" />
+                            </div>
+                            <div class="styMenuCon">Nộp học phí trực tuyến</div>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+
+            
+
+        </ul>
+    </div>
+
+    <div style="float:right">
+        <ul id="ulMenu2" class="nav navbar-nav navbar-right" style="">
+            <li class="dropdown">
+                <a href="/SinhVien/ThongTinSinhVien" class="dropdown" data-toggle="dropdown">
+                    <div>
+                        <div style="float:left;">
+                            <img src="/FileManager/img/rsz_user.png" />
+                        </div>
+                        <div class="styMenu" style="text-align:center;vertical-align:middle;margin-top:-10px">
+                            Dương Văn Trường<br />CN&amp;ĐMST 56
+                        </div>
+                    </div>
+                </a>
+                <ul class="dropdown-menu dropdown-loggedin" role="menu" style="width:155px;">
+                    <li>
+                        <a href="#" onclick="DoiMatKhau()">
+                            <div style="float:left;">
+                                <img src="/FileManager/img/rsz_user.png" />
+                            </div>
+                            <div class="styMenuCon">Đổi mật khẩu</div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/DangNhap/Signout">
+                            <div style="float:left;">
+                                <img src="/FileManager/img/rsz_logout.png" />
+                            </div>
+                            <div class="styMenuCon">Thoát</div>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+        </ul>
+    </div>
+
+    <div style="float:right;">
+
+    </div>
+</div>
+<div class="modal fade" id="myModalDoiMatKhau">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="form-group">
+                    <h2 class="modal-title" style="color:#3b55aa">Thay đổi mật khẩu</h2>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="exampleInputEmail1">Mật khẩu cũ</label>
+                    <input type="password" class="form-control" id="txtPass" placeholder="Mật khẩu cũ" />
+                </div>
+                <div class="form-group">
+                    <label for="exampleInputPassword1">Mật khẩu mới </label>
+                    <input type="password" class="form-control" id="txtNewPass" placeholder="Mật khẩu mới" />
+                </div>
+                <div class="form-group">
+                    <label for="exampleInputPassword1">Nhập lại mật khẩu </label>
+                    <input type="password" class="form-control" id="txtRePass" placeholder="Nhập lại mật khẩu" />
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="btnThayPass">Đồng ý</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Thoát</button>
+            </div>
+        </div>
+    </div>
+</div>
+<script type="text/javascript">
+    $(document).ready(function () {
+        $('[data-toggle="tooltip1"]').tooltip();
+        $('[data-toggle="tooltip2"]').tooltip();
+    });
+    function DoiMatKhau() {
+        $('#myModalDoiMatKhau').modal('show');
+
+    }
+    $('#btnThayPass').on('click', function (e) {
+
+        var Pass = $('#txtPass').val();
+        var newPass = $('#txtNewPass').val();
+        var RePass = $('#txtRePass').val();
+        if (newPass != RePass) {
+            ShowToastMessage('', 'Nhập lại mật khẩu không khớp !', 'error');
+            return;
+        }
+        if (newPass == "" || Pass == "" || RePass == "") {
+            ShowToastMessage('', 'Mật khẩu không được để trống!', 'error');
+            return;
+        }
+        $.ajax({
+            type: 'POST',
+            url: '../SinhVien/ThayDoiMatKhau',
+            data: JSON.stringify({ NewPass: newPass, PassOld: Pass }),
+            contentType: 'application/json',
+            success: function (result) {
+
+                if (result == "True") {
+                    setTimeout(function () {
+                        ShowToastMessage('', 'Cập nhật thành công !', 'success');
+                    }, 100);
+                    setTimeout(function () {
+                        ShowToastMessage('', 'Bạn sẽ thoát sau 3s !', 'warning');
+                    }, 800);
+                    setTimeout(function () {
+                        ShowToastMessage('', 'Bạn sẽ thoát sau 2s !', 'warning');
+                    }, 2900);
+                    setTimeout(function () {
+                        ShowToastMessage('', 'Bạn sẽ thoát sau 1s !', 'warning');
+                    }, 4000);
+                    setTimeout(function () {
+                        window.location = '/DangNhap/Signout';
+                    }, 5500);
+
+                }
+                else {
+                    ShowToastMessage('', 'Mật khẩu cũ không đúng !', 'error');
+                }
+                $('#myModalDoiMatKhau').modal('hide');
+            },
+            error: function (result) {
+                ShowToastMessage('', 'Có lỗi xảy ra !', 'error');
+                return;
+            }
+        });
+    });
+</script>
+
+
+
+
+                        </div>
+                        <!-- /.navbar-collapse -->
+                    </div>
+                    <!-- /.container-fluid -->
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div id="divcontenr">
+            
+<style>
+    .form-group {
+        margin-bottom: 5px;
+    }
+
+    .form-control-static {
+        color: Red;
+    }
+</style>
+<div class="row top-news">
+    
+</div>
+
+<div class="row top-news">
+
+</div>
+<div class="row">
+    <ol id="breadcumb" class="breadcrumb">
+        <li><a href="/index.aspx">Trang chủ</a></li>
+        <li class="active"><span id="lblTieuDe">Thông tin tài chính</span></li>
+    </ol>
+</div>
+<div class="row ">
+    <div class="col-md-12 fullwidth">
+                <div class="news">
+                    <div class="row" style="margin-top:20px">
+                        <div class="form-group">
+                            <label class="col-sm-2 control-label" style="vertical-align:middle">Tổng số tiền phải nộp:</label>
+                            <label class="col-sm-2 control-label" style="vertical-align:middle;color:red;">0,00 ₫</label>
+                        </div>
+                        <div class="form-group">
+                            <label class="col-sm-2 control-label">Tổng số tiền đã nộp: </label>
+                            <label class="col-sm-2 control-label" style="vertical-align:middle;color:red;">0,00 ₫</label>
+                        </div>
+                        <div class="form-group">
+                            <label class="col-sm-2 control-label">Số tiền thừa/thiếu: </label>
+                            <label class="col-sm-2 control-label" style="vertical-align:middle;color:red;">0,00 ₫</label>
+                        </div>
+                    </div>
+                    <div style="margin-top:20px">
+                        <table class="table table-bordered table-hover table-striped table-condensed" cellspacing="0" rules="all" border="1" id="gvTaiChinh" style="width:100%;border-collapse:collapse;">
+                            <tbody>
+                                <tr class="table-header">
+                                    <th scope="col">Học kỳ</th>
+                                    <th scope="col">Năm học</th>
+                                    <th scope="col">Mực học phí</th>
+                                    <th scope="col">Miễn giảm</th>
+                                    <th scope="col">Số tiền phải nộp</th>
+                                    <th scope="col">Số tiền đã nộp</th>
+                                    <th scope="col">Thừa thiếu</th>
+                                </tr>
+                    <tr>
+                        <td align="center" style="width:5%;">1</td>
+                        <td align="center" style="width:10%;">2024-2025</td>
+                    <td align="center" style="width:15%;">7.406.400,00 ₫</td>
+                    <td align="left" style="width:15%;">7.406.400,00 ₫</td>
+                    <td align="center" style="width:20%;">0,00 ₫</td>
+                    <td align="center" style="width:20%;">0,00 ₫</td>
+                    <td align="center" style="width:15%;">0,00 ₫</td>
+
+                    </tr>
+                    <tr>
+                        <td align="center" style="width:5%;">2</td>
+                        <td align="center" style="width:10%;">2024-2025</td>
+                    <td align="center" style="width:15%;">7.869.300,00 ₫</td>
+                    <td align="left" style="width:15%;">7.869.300,00 ₫</td>
+                    <td align="center" style="width:20%;">0,00 ₫</td>
+                    <td align="center" style="width:20%;">0,00 ₫</td>
+                    <td align="center" style="width:15%;">0,00 ₫</td>
+
+                    </tr>
+                    <tr>
+                        <td align="center" style="width:5%;">1</td>
+                        <td align="center" style="width:10%;">2025-2026</td>
+                    <td align="center" style="width:15%;">12.130.800,00 ₫</td>
+                    <td align="left" style="width:15%;">12.130.800,00 ₫</td>
+                    <td align="center" style="width:20%;">0,00 ₫</td>
+                    <td align="center" style="width:20%;">0,00 ₫</td>
+                    <td align="center" style="width:15%;">0,00 ₫</td>
+
+                    </tr>
+                    <tr>
+                        <td align="center" style="width:5%;">2</td>
+                        <td align="center" style="width:10%;">2025-2026</td>
+                    <td align="center" style="width:15%;">12.682.200,00 ₫</td>
+                    <td align="left" style="width:15%;">12.682.200,00 ₫</td>
+                    <td align="center" style="width:20%;">0,00 ₫</td>
+                    <td align="center" style="width:20%;">0,00 ₫</td>
+                    <td align="center" style="width:15%;">0,00 ₫</td>
+
+                    </tr>
+
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+
+        
+        <div class="news">
+            <div class="row">
+                <div class="col-md-6"><label class="form-control-lable" style="color:green">Chi tiết các khoản đã nộp</label></div>
+            </div>
+            <div class="row news-listing" style="margin-top:10px">
+                <div class="col-md-12">
+
+<div id="dsHocPhi">
+    <table class="table table-bordered table-hover table-striped table-condensed" cellspacing="1" cellpadding="1" border="1" id="ctl00_ContentCP_ctl00_grdViewLopDangKy">
+        <tbody>
+            <tr class="table-header">
+                <th scope="col">Năm học</th>
+                <th scope="col">Học kỳ</th>
+                <th scope="col">Ngày nộp</th>
+                
+                <th scope="col">Loại thu</th>
+                <th scope="col">Số tiền nộp</th>
+                <th scope="col">Số tiền miễn giảm</th>
+                <th scope="col">Số tiền phải nộp</th>
+                <th scope="col">Số tiền đã nộp</th>
+                <th scope="col">Thừa / thiếu</th>
+                
+            </tr>
+                <tr>
+                        <td rowspan="15" align="center" valign="middle" style="width:90px;vertical-align:middle">2024-2025</td>
+                                            <td rowspan="7" align="center" style="width:60px;vertical-align:middle">1</td>
+                                            <td rowspan="7"  align="center" style="width:100px;vertical-align:middle"></td>
+                    <td align="left" style="vertical-align: middle">Học ph&#237; : B&#243;ng chuyền</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">462.900,00 ₫</td>
+                <td align="center" style="">462.900,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+
+                    
+                  
+                </tr>
+                <tr>
+                                                            <td align="left" style="vertical-align: middle">Học ph&#237; : Ph&#225;p luật đại cương</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">925.800,00 ₫</td>
+                <td align="center" style="">925.800,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+
+                    
+                  
+                </tr>
+                <tr>
+                                                            <td align="left" style="vertical-align: middle">Học ph&#237; : Sinh th&#225;i m&#244;i trường</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">925.800,00 ₫</td>
+                <td align="center" style="">925.800,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+
+                    
+                  
+                </tr>
+                <tr>
+                                                            <td align="left" style="vertical-align: middle">Học ph&#237; : Tiếng Anh 1</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">1.388.700,00 ₫</td>
+                <td align="center" style="">1.388.700,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+
+                    
+                  
+                </tr>
+                <tr>
+                                                            <td align="left" style="vertical-align: middle">Học ph&#237; : Tin học đại cương</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">925.800,00 ₫</td>
+                <td align="center" style="">925.800,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+
+                    
+                  
+                </tr>
+                <tr>
+                                                            <td align="left" style="vertical-align: middle">Học ph&#237; : Triết học M&#225;c - L&#234;nin</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">1.388.700,00 ₫</td>
+                <td align="center" style="">1.388.700,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+
+                    
+                  
+                </tr>
+                <tr>
+                                                            <td align="left" style="vertical-align: middle">Học ph&#237; : X&#225;c suất thống k&#234;</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">1.388.700,00 ₫</td>
+                <td align="center" style="">1.388.700,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+
+                    
+                  
+                </tr>
+                <tr>
+                                            <td rowspan="8" align="center" style="width:60px;vertical-align:middle">2</td>
+                                            <td rowspan="8"  align="center" style="width:100px;vertical-align:middle"></td>
+                    <td align="left" style="vertical-align: middle">Học ph&#237; : Cầu l&#244;ng</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">462.900,00 ₫</td>
+                <td align="center" style="">462.900,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+
+                    
+                  
+                </tr>
+                <tr>
+                                                            <td align="left" style="vertical-align: middle">Học ph&#237; : Kinh tế ch&#237;nh trị M&#225;c - L&#234; nin</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">925.800,00 ₫</td>
+                <td align="center" style="">925.800,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+
+                    
+                  
+                </tr>
+                <tr>
+                                                            <td align="left" style="vertical-align: middle">Học ph&#237; : Kỹ năng mềm</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">925.800,00 ₫</td>
+                <td align="center" style="">925.800,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+
+                    
+                  
+                </tr>
+                <tr>
+                                                            <td align="left" style="vertical-align: middle">Học ph&#237; : Khoa học quản l&#253;</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">925.800,00 ₫</td>
+                <td align="center" style="">925.800,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+
+                    
+                  
+                </tr>
+                <tr>
+                                                            <td align="left" style="vertical-align: middle">Học ph&#237; : Lập tr&#236;nh cơ bản</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">1.388.700,00 ₫</td>
+                <td align="center" style="">1.388.700,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+
+                    
+                  
+                </tr>
+                <tr>
+                                                            <td align="left" style="vertical-align: middle">Học ph&#237; : To&#225;n kinh tế</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">925.800,00 ₫</td>
+                <td align="center" style="">925.800,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+
+                    
+                  
+                </tr>
+                <tr>
+                                                            <td align="left" style="vertical-align: middle">Học ph&#237; : X&#227; hội học đại cương</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">925.800,00 ₫</td>
+                <td align="center" style="">925.800,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+
+                    
+                  
+                </tr>
+                <tr>
+                                                            <td align="left" style="vertical-align: middle">Học ph&#237; : Tiếng Anh 2</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">1.388.700,00 ₫</td>
+                <td align="center" style="">1.388.700,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+
+                    
+                  
+                </tr>
+                <tr>
+                        <td rowspan="17" align="center" valign="middle" style="width:90px;vertical-align:middle">2025-2026</td>
+                                            <td rowspan="9" align="center" style="width:60px;vertical-align:middle">1</td>
+                                            <td rowspan="9"  align="center" style="width:100px;vertical-align:middle"></td>
+                    <td align="left" style="vertical-align: middle">Học ph&#237; : B&#243;ng đ&#225;</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">551.400,00 ₫</td>
+                <td align="center" style="">551.400,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+
+                    
+                  
+                </tr>
+                <tr>
+                                                            <td align="left" style="vertical-align: middle">Học ph&#237; : Cấu tr&#250;c dữ liệu v&#224; giải thuật</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">1.654.200,00 ₫</td>
+                <td align="center" style="">1.654.200,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+
+                    
+                  
+                </tr>
+                <tr>
+                                                            <td align="left" style="vertical-align: middle">Học ph&#237; : Chủ nghĩa x&#227; hội khoa học</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">1.102.800,00 ₫</td>
+                <td align="center" style="">1.102.800,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+
+                    
+                  
+                </tr>
+                <tr>
+                                                            <td align="left" style="vertical-align: middle">Học ph&#237; : Đổi mới s&#225;ng tạo v&#224; khởi nghiệp</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">1.102.800,00 ₫</td>
+                <td align="center" style="">1.102.800,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+
+                    
+                  
+                </tr>
+                <tr>
+                                                            <td align="left" style="vertical-align: middle">Học ph&#237; : Lập tr&#236;nh Python cho học m&#225;y</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">1.654.200,00 ₫</td>
+                <td align="center" style="">1.654.200,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+
+                    
+                  
+                </tr>
+                <tr>
+                                                            <td align="left" style="vertical-align: middle">Học ph&#237; : Mạng m&#225;y t&#237;nh v&#224; Truyền th&#244;ng</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">1.654.200,00 ₫</td>
+                <td align="center" style="">1.654.200,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+
+                    
+                  
+                </tr>
+                <tr>
+                                                            <td align="left" style="vertical-align: middle">Học ph&#237; : Nền tảng của Tr&#237; tuệ nh&#226;n tạo</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">1.654.200,00 ₫</td>
+                <td align="center" style="">1.654.200,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+
+                    
+                  
+                </tr>
+                <tr>
+                                                            <td align="left" style="vertical-align: middle">Học ph&#237; : Ph&#226;n t&#237;ch v&#224; thiết kế hệ thống th&#244;ng tin</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">1.654.200,00 ₫</td>
+                <td align="center" style="">1.654.200,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+
+                    
+                  
+                </tr>
+                <tr>
+                                                            <td align="left" style="vertical-align: middle">Học ph&#237; : Tiếng Anh 3</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">1.102.800,00 ₫</td>
+                <td align="center" style="">1.102.800,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+
+                    
+                  
+                </tr>
+                <tr>
+                                            <td rowspan="8" align="center" style="width:60px;vertical-align:middle">2</td>
+                                            <td rowspan="8"  align="center" style="width:100px;vertical-align:middle"></td>
+                    <td align="left" style="vertical-align: middle">Học ph&#237; : AI trong quản trị doanh nghiệp</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">1.654.200,00 ₫</td>
+                <td align="center" style="">1.654.200,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+
+                    
+                  
+                </tr>
+                <tr>
+                                                            <td align="left" style="vertical-align: middle">Học ph&#237; : Cơ sở dữ liệu</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">1.654.200,00 ₫</td>
+                <td align="center" style="">1.654.200,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+
+                    
+                  
+                </tr>
+                <tr>
+                                                            <td align="left" style="vertical-align: middle">Học ph&#237; : Học m&#225;y</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">2.205.600,00 ₫</td>
+                <td align="center" style="">2.205.600,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+
+                    
+                  
+                </tr>
+                <tr>
+                                                            <td align="left" style="vertical-align: middle">Học ph&#237; : Lập tr&#236;nh website</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">1.654.200,00 ₫</td>
+                <td align="center" style="">1.654.200,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+
+                    
+                  
+                </tr>
+                <tr>
+                                                            <td align="left" style="vertical-align: middle">Học ph&#237; : Ph&#226;n t&#237;ch hoat động kinh doanh</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">1.654.200,00 ₫</td>
+                <td align="center" style="">1.654.200,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+
+                    
+                  
+                </tr>
+                <tr>
+                                                            <td align="left" style="vertical-align: middle">Học ph&#237; : R&#232;n nghề 1: X&#226;y dựng dự &#225;n khởi nghiệp đổi mới s&#225;ng tạo</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">1.102.800,00 ₫</td>
+                <td align="center" style="">1.102.800,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+
+                    
+                  
+                </tr>
+                <tr>
+                                                            <td align="left" style="vertical-align: middle">Học ph&#237; : To&#225;n rời rạc</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">1.654.200,00 ₫</td>
+                <td align="center" style="">1.654.200,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+
+                    
+                  
+                </tr>
+                <tr>
+                                                            <td align="left" style="vertical-align: middle">Học ph&#237; : Tư tưởng Hồ Ch&#237; Minh</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">1.102.800,00 ₫</td>
+                <td align="center" style="">1.102.800,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+                <td align="center" style="">0,00 ₫</td>
+
+                    
+                  
+                </tr>
+        </tbody>
+    </table>
+</div>
+
+                </div>
+            </div>
+        </div>
+        
+    </div>
+</div>
+
+<style>
+    .table-header td {
+        background-color: #003399 !important;
+        color: #fff !important;
+    }
+</style>
+
+        </div>
+
+    </div>
+
+    <div id="forrrrrr" style="position: unset;left: 0;bottom: 0;width: 100%;">
+
+<style>
+    .image {
+        width: 15px;
+        height: 15px;
+        margin-top: 2px;
+        margin-bottom: 2px;
+    }
+</style>
+<section style="background:url('/FileManager//img/foteranh.png')">
+    <div class="container">
+
+        <div class="row">
+            <div class="col-md-12 fullwidth">
+                <div class="row fullwidth">
+
+                    <div class="col-md-6 " style="margin-top:20px">
+                        <div style="margin-top:3px">
+                            <img src="/FileManager/img/website.png" class="image" />&nbsp;&nbsp;
+                            <span style="font-weight:bold;">Website</span>&nbsp;&nbsp;
+                            <i class="fa fa-angle-double-right" aria-hidden="true" style="margin-left:13px"></i>&nbsp;&nbsp;
+                            <span style="font-weight:bold;font-size:13px;color:#ba6100">
+                                <a href="https://tuaf.edu.vn/" target="_blank">https://tuaf.edu.vn/</a>
+                            </span>
+                        </div>
+                        <div style=" ">
+                            <img src="/FileManager/img/address.png" class="image" />&nbsp;&nbsp;
+                            <span style="font-weight:bold;">Địa chỉ</span>&nbsp;&nbsp;
+                            <i class="fa fa-angle-double-right" aria-hidden="true" style="margin-left:20px"></i>&nbsp;&nbsp;
+                            <span style="font-weight:bold;font-size:13px;color:#2f2f2f">
+                                Xã Quyết Thắng, TP Thái Nguyên
+                            </span>
+                        </div>
+
+                    </div>
+                    <div class="col-md-3 " style="margin-top:20px">
+
+                        <div style=" ">
+                            <img src="/FileManager/img/phone.png" class="image" />&nbsp;&nbsp;
+                            <span style="font-weight:bold;">Điện thoại</span>&nbsp;&nbsp;
+                            <i class="fa fa-angle-double-right" aria-hidden="true" style="margin-left:2px"></i>&nbsp;&nbsp;
+                            <span style="font-weight:bold;font-size:13px;color:#b74e4e">
+                                (+84)208.6275.999
+                            </span>
+                        </div>
+                        <div style=" ">
+                            <img src="/FileManager/img/email.png" class="image" />&nbsp;&nbsp;
+                            <span style="font-weight:bold;">Email</span>&nbsp;&nbsp;
+                            <i class="fa fa-angle-double-right" aria-hidden="true" style="margin-left:27px"></i>&nbsp;&nbsp;
+                            <span style="font-weight:bold;font-size:13px;color:#4b89b6">
+                                dhnl@tuaf.edu.vn
+                            </span>
+                        </div>
+
+
+                    </div>
+                    <div class="col-md-3 " style="margin-top:20px">
+                        <div style=" ">
+                            <img src="/FileManager/img/fax.png" class="image" />&nbsp;&nbsp;
+                            <span style="font-weight:bold;">Fax</span>&nbsp;&nbsp;
+                            <i class="fa fa-angle-double-right" aria-hidden="true" style="margin-left:38px"></i>&nbsp;&nbsp;
+                            <span style="font-weight:bold;font-size:13px;color:#9a662e">
+                                (+84)208.2490.866
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row" style="border-top:1px solid #e9e9e9;text-align:center;vertical-align:middle;margin-top:5px;margin-bottom:3px;color:#706f6f;font-family:'Times New Roman', Times, 'Microsoft Sans Serif'">
+            Đơn vị phát triển: <a href="http://namvietjsc.edu.vn/" style="text-decoration:none;font-weight:bold;color:#2045ad" target="_blank">CÔNG TY CỔ PHẦN GIẢI PHÁP GIÁO DỤC  - Y TẾ NAM VIỆT</a>&nbsp;&nbsp;&nbsp;&nbsp;
+            <i class="fa fa-globe" aria-hidden="true"></i>&nbsp;&nbsp;262 Nguyễn Huy Tưởng, Thanh Xuân Trung, Thanh Xuân, Hà Nội&nbsp;&nbsp;
+            <i class="fa fa-phone" aria-hidden="true"></i>&nbsp;&nbsp;<span style="color:red;font-weight:bold">0432 065 065</span>&nbsp;&nbsp;
+            <i class="fa fa-fax" aria-hidden="true"></i>&nbsp;&nbsp;Fax:&nbsp;0432 020 066
+        </div>
+    </div>
+</section>
+
+    </div>
+
+    <script src="/Templates/js/vendor/datepicker/js/bootstrap-datepicker.js"></script>
+    <script src="/Templates/js/vendor/nivo-slider/jquery.nivo.slider.pack.js" type="text/javascript"></script>
+    <script src="/Templates/js/main.js"></script>
+    <script src="/Scripts/toastr.min.js"></script>
+    <script src="/Scripts/StepByStep/StepByStep.js"></script>
+
+    <link href="/Templates/datepicker/bootstrap-datepicker.min.css" rel="stylesheet" />
+    <script src="/Templates/datepicker/bootstrap-datepicker.min.js"></script>
+    <script src="/Templates/datepicker/bootstrap-datepicker.vi.min.js"></script>
+    <link href="/Templates/datepicker/datepicker.css" rel="stylesheet" />
+
+    
+    <script>
+
+        $(document).ready(function () {
+            $('#divcontenr').css("min-height", $(window).height() - 119 - 55 - 95);
+        })
+
+
+        var updateSuccess = "Cập nhật thành công.";
+        var updateError = "Cập nhật thất bại.";
+        var activeSuccess = "Kích hoạt thành công.";
+        var activeError = "Kích hoạt thất bại.";
+        var deleteSuccess = "Xóa thành công.";
+        var deleteError = "Xóa thất bại.";
+
+        function ShowToastMessage(value, label, type) {
+            toastr[type](value, label)
+            toastr.options = {
+                "closeButton": false,
+                "debug": false,
+                "newestOnTop": false,
+                "progressBar": false,
+                "positionClass": "toast-top-right",
+                "preventDuplicates": false,
+                "onclick": null,
+                "showDuration": "300",
+                "hideDuration": "1000",
+                "timeOut": "1000",
+                "extendedTimeOut": "1000",
+                "showEasing": "swing",
+                "hideEasing": "linear",
+                "showMethod": "fadeIn",
+                "hideMethod": "fadeOut"
+            }
+        }
+    </script>
+
+    
+</body>
+
+</html>
+<script src="../Scripts/TreeView/bootstrap-treenav.js"></script>
+<script src="/Content/select2-4.1.0-rc.0/dist/js/select2.min.js"></script>
+
