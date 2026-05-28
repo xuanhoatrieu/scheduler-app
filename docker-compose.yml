@@ -12,10 +12,9 @@ services:
       POSTGRES_DB: ${DB_NAME:-vitts}
     volumes:
       - scheduler-db-data:/var/lib/postgresql/data
-    ports:
-      # Bảo mật tuyệt đối: Chỉ expose cổng ra localhost (127.0.0.1) trên host để debug.
-      # Để tránh xung đột cổng 5432 đã dùng ở máy dev, ta map cổng 5433 của host vào container.
-      - "127.0.0.1:5433:5432"
+    # ports:
+    #   # Phục vụ debug cục bộ nếu cần. Trên Production VPS khuyên dùng comment lại để tránh xung đột cổng.
+    #   - "127.0.0.1:5433:5432"
     networks:
       - tuaf-ai-network
     healthcheck:
