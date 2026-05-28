@@ -1,10 +1,10 @@
 {
   "meta": {
-    "name": "TUAF Schedule",
+    "name": "TUAF Scheduler",
     "description": "Hệ thống xem lịch học và lịch giảng dạy thông minh dành cho Sinh viên & Giảng viên trường Đại học Nông Lâm Thái Nguyên (TUAF). Hỗ trợ đăng nhập SSO, cào dữ liệu TKB/Điểm/Học phí/CTĐT tự động, giao diện mobile Expo phân quyền theo role.",
     "created_at": "2026-05-27T10:52:00Z",
-    "last_saved": "2026-05-28T15:57:00Z",
-    "save_count": 4
+    "last_saved": "2026-05-28T16:30:00Z",
+    "save_count": 5
   },
   "tech_stack": [
     "Node.js 20+",
