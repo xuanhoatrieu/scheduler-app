@@ -426,3 +426,184 @@ teacher.tuaf.edu.vn   A   116.104.85.226
 
 → Caddy tự xin cert Let's Encrypt cho subdomain mới (~30 giây). URL `https://teacher.tuaf.edu.vn/` sẵn sàng.
 
+
+---
+
+## Dùng chung Postgres (Supabase) — KHÔNG tự deploy DB riêng
+
+Server đã có **Supabase Postgres 15 + pgvector** chạy sẵn. App mới phải dùng chung instance này, KHÔNG tạo container Postgres riêng (tốn RAM + bảo trì).
+
+### Thông tin kết nối
+
+| Field | Giá trị |
+|:--|:--|
+| **Container** | `tuaf-supabase-db` |
+| **Host (từ container khác)** | `tuaf-supabase-db` (qua network `tuaf-ai-network`) |
+| **Host (từ host server)** | `localhost:5433` |
+| **Port nội bộ** | `5432` |
+| **Superuser** | `postgres` |
+| **Password** | xem `SUPABASE_DB_PASSWORD` trong `docker/.env` |
+| **Default DB** | `postgres` |
+
+### Quy ước app dùng chung DB
+
+**Bước 1 — Tạo database riêng cho app (1 lần, làm trên server):**
+
+```bash
+docker exec -it tuaf-supabase-db psql -U postgres -c "CREATE DATABASE teacher_assistant;"
+docker exec -it tuaf-supabase-db psql -U postgres -c "CREATE USER teacher_user WITH PASSWORD '<sinh-mật-khẩu-mạnh>';"
+docker exec -it tuaf-supabase-db psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE teacher_assistant TO teacher_user;"
+docker exec -it tuaf-supabase-db psql -U postgres -d teacher_assistant -c "GRANT ALL ON SCHEMA public TO teacher_user;"
+```
+
+→ Mỗi app: **1 database riêng + 1 user riêng**. Không dùng user `postgres` superuser, không dùng chung DB `postgres`.
+
+**Bước 2 — App connect qua network:**
+
+`apps/<app-name>/.env`:
+```env
+DATABASE_URL=postgresql://teacher_user:<password>@tuaf-supabase-db:5432/teacher_assistant
+```
+
+`docker-compose.yml`:
+```yaml
+services:
+  teacher-api:
+    image: ghcr.io/<owner>/ai-teacher-assistant:latest
+    container_name: teacher-api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    networks:
+      - tuaf-ai-network        # PHẢI cùng network với Postgres
+```
+
+**Bước 3 — App tự chạy migration trong code:**
+
+```python
+# Python (Alembic / SQLAlchemy)
+on_startup → run alembic upgrade head
+
+# Node.js (Prisma)
+on startup → npx prisma migrate deploy
+
+# Go (golang-migrate)
+m.Up() trong main()
+```
+
+### Sử dụng pgvector (đã có sẵn extension)
+
+App AI cần vector search → KHÔNG cần extension riêng. Chỉ enable trong DB của app:
+
+```sql
+-- Chạy 1 lần khi setup DB
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- Tạo bảng có vector column
+CREATE TABLE embeddings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    content TEXT,
+    embedding VECTOR(1024),     -- BGE-M3 dim
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- HNSW index cho similarity search nhanh
+CREATE INDEX ON embeddings USING hnsw (embedding vector_cosine_ops);
+```
+
+### Sử dụng chung Redis
+
+Server cũng có Redis 7 (`tuaf-rag-redis`). Connect:
+
+```env
+REDIS_URL=redis://:<password>@tuaf-rag-redis:6379/<db_index>
+```
+
+→ Mỗi app dùng **DB index riêng** (Redis có 16 DB: 0-15). Quy ước:
+- `db=0` — rag-api (dùng rồi)
+- `db=1` — teacher-api
+- `db=2` — plant-api
+- `db=3` — scheduler-web
+- ... reserved cho app sau
+
+### Backup chung
+
+Admin server backup `tuaf-supabase-db` định kỳ — bao gồm cả DB của các app. App dev không cần lo backup riêng.
+
+### Quy tắc tránh xung đột
+
+| Việc | Đúng | Sai |
+|:--|:--|:--|
+| **DB name** | `teacher_assistant`, `plantdoctor`, `scheduler` (lowercase, snake_case) | `TeacherDB`, `My-App-DB` |
+| **DB user** | `<app>_user`, `<app>_ro` (read-only) | dùng chung `postgres` superuser |
+| **Schema** | dùng `public` mặc định, hoặc tạo schema theo tên app | tạo schema trong DB chung của app khác |
+| **Extension** | `CREATE EXTENSION IF NOT EXISTS` | hardcode UUID v4 trong app code |
+
+
+---
+
+## Checklist Deploy App Mới
+
+Đưa cho dev mỗi app:
+
+```
+[ ] Dockerfile EXPOSE 1 port HTTP, listen 0.0.0.0
+[ ] App có endpoint GET /health → 200
+[ ] App đọc X-Forwarded-Proto/Port để sinh URL đúng
+[ ] CORS allow *.tuaf.edu.vn (nếu cần cross-origin)
+[ ] GitHub Actions build + push ghcr.io/<owner>/<app>:latest
+[ ] Soạn docker-compose.yml theo template
+[ ] DB: tạo database + user riêng trên tuaf-supabase-db
+[ ] Redis: chọn DB index chưa dùng
+[ ] .env riêng cho production (gitignore)
+[ ] Báo subdomain + container_name + internal port để Caddy mở
+[ ] DNS A record: <app>.tuaf.edu.vn → 116.104.85.226
+```
+
+## Troubleshooting
+
+### App chạy nhưng Caddy 502 Bad Gateway
+
+```bash
+# Test Caddy có gọi được app không
+docker exec tuaf-caddy wget -qO- http://<container_name>:8080/health
+```
+
+- Nếu 502 → App chưa lên hoặc listen sai port
+- Nếu connection refused → App listen `127.0.0.1` thay vì `0.0.0.0`
+- Nếu timeout → App không cùng network `tuaf-ai-network`
+
+### App restart liên tục
+
+```bash
+docker logs <container_name> --tail 100
+```
+
+Common: thiếu env var, healthcheck fail, DB connection refused (app start trước DB).
+
+### App không kết nối được Postgres
+
+```bash
+# Test từ container app
+docker exec <app_container> psql "$DATABASE_URL" -c "SELECT 1;"
+```
+
+- Connection refused → sai host (phải `tuaf-supabase-db`, không phải `localhost`)
+- Auth failed → sai password
+- DB not exist → chưa `CREATE DATABASE`
+
+### Cert Let's Encrypt fail
+
+```bash
+docker logs tuaf-caddy --tail 50 | grep -E "acme|tls"
+```
+
+- DNS chưa propagate → đợi 5-10 phút
+- Rate limit Let's Encrypt (5 cert/tuần/domain) → đợi 1 tuần hoặc dùng staging
+- Port 443 không reachable từ ngoài → check firewall IT
+
+## Liên hệ
+
+Vấn đề về Caddy / DNS / Postgres / Redis: liên hệ admin server `chat.tuaf.edu.vn`.
+Vấn đề về app riêng: dev của app đó tự xử lý.
+
