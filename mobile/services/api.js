@@ -1,8 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
-// Thay đổi IP này phù hợp với địa chỉ IP LAN của máy chủ backend khi chạy Expo Go
-const API_BASE_URL = 'https://wet-dolls-stay.loca.lt/api';
+// Địa chỉ máy chủ API production chính thức
+const API_BASE_URL = 'https://scheduler.tuaf.edu.vn/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
