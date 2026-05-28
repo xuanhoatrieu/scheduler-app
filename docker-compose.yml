@@ -1,28 +1,4 @@
-version: '3.8'
-
 services:
-  # --- Dịch vụ Cơ sở dữ liệu PostgreSQL ---
-  scheduler-db:
-    image: postgres:14-alpine
-    container_name: scheduler-db
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${DB_USER:-vitts}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-vitts}
-      POSTGRES_DB: ${DB_NAME:-vitts}
-    volumes:
-      - scheduler-db-data:/var/lib/postgresql/data
-    # ports:
-    #   # Phục vụ debug cục bộ nếu cần. Trên Production VPS khuyên dùng comment lại để tránh xung đột cổng.
-    #   - "127.0.0.1:5433:5432"
-    networks:
-      - tuaf-ai-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-vitts} -d $${POSTGRES_DB:-vitts}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   # --- Dịch vụ Backend API ---
   scheduler-api:
     image: ghcr.io/xuanhoatrieu/scheduler-api:latest
@@ -34,15 +10,13 @@ services:
     environment:
       NODE_ENV: production
       PORT: 5000
-      DB_URI: postgresql://${DB_USER:-vitts}:${DB_PASSWORD:-vitts}@scheduler-db:5432/${DB_NAME:-vitts}
+      # Đọc toàn bộ chuỗi kết nối DB_URI từ file .env
+      DB_URI: ${DB_URI}
       JWT_SECRET: ${JWT_SECRET}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
       DATA_SOURCE: crawler
     networks:
       - tuaf-ai-network
-    depends_on:
-      scheduler-db:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:5000/health"]
       interval: 30s
@@ -50,11 +24,7 @@ services:
       retries: 3
       start_period: 20s
 
-# Lưu trữ dữ liệu bền vững cho Database
-volumes:
-  scheduler-db-data:
-
-# Sử dụng mạng lưới chung có sẵn của máy chủ TUAF Server
+# Sử dụng mạng lưới chung có sẵn của máy chủ TUAF Server (kết nối proxy Caddy và Supabase)
 networks:
   tuaf-ai-network:
     external: true
