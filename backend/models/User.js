@@ -20,7 +20,7 @@ const User = sequelize.define('User', {
     allowNull: false
   },
   role: {
-    type: DataTypes.ENUM('student', 'lecturer'),
+    type: DataTypes.ENUM('student', 'lecturer', 'inspector', 'admin'),
     allowNull: false
   },
   fullName: {
@@ -39,6 +39,12 @@ const User = sequelize.define('User', {
     type: DataTypes.DATE,
     allowNull: true,
     defaultValue: null
+  },
+  tuafStudentId: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    defaultValue: null,
+    comment: 'ID_sv/ID_cb UUID từ SQL Server TUAF — cache lại để không lookup mỗi lần'
   }
 });
 

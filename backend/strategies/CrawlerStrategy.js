@@ -92,9 +92,13 @@ class CrawlerStrategy extends ScheduleStrategy {
       await Finance.create({
         userId: user.id,
         semester: formattedSemester,
-        totalTuition: financeData.totalTuition,
-        paidTuition: financeData.paidTuition,
-        debtTuition: financeData.debtTuition,
+        schoolYear: schoolYear || '',
+        totalTuition: financeData.totalTuition || 0,
+        mustPayTuition: financeData.mustPayTuition || 0,
+        discountTuition: financeData.discountTuition || 0,
+        paidTuition: financeData.paidTuition || 0,
+        refundTuition: financeData.refundTuition || 0,
+        debtTuition: financeData.debtTuition || 0,
         invoiceDetails: financeData.invoiceDetails || []
       });
     }
@@ -186,9 +190,12 @@ class CrawlerStrategy extends ScheduleStrategy {
         userId: user.id,
         semester: finance.semester,
         schoolYear: finance.schoolYear || '',
-        totalTuition: finance.totalTuition,
-        paidTuition: finance.paidTuition,
-        debtTuition: finance.debtTuition,
+        totalTuition: finance.totalTuition || 0,
+        mustPayTuition: finance.mustPayTuition || 0,
+        discountTuition: finance.discountTuition || 0,
+        paidTuition: finance.paidTuition || 0,
+        refundTuition: finance.refundTuition || 0,
+        debtTuition: finance.debtTuition || 0,
         invoiceDetails: finance.invoiceDetails || []
       });
     }

@@ -1,7 +1,11 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'tuaf_schedule_secret_key_2026';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('❌ JWT_SECRET environment variable is required!');
+  process.exit(1);
+}
 
 /**
  * Middleware xác thực token JWT và gán user vào req.user
@@ -33,8 +37,7 @@ const authMiddleware = async (req, res, next) => {
   } catch (error) {
     res.status(401).json({
       success: false,
-      message: 'Token không hợp lệ hoặc đã hết hạn!',
-      error: error.message
+      message: 'Token không hợp lệ hoặc đã hết hạn!'
     });
   }
 };

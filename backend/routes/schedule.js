@@ -14,15 +14,22 @@ const strategyManager = require('../strategies/StrategyManager');
 const handleForceSync = async (user, req) => {
   const semester = req.query.semester || '2';
   const schoolYear = req.query.schoolYear || '2025';
+  const dataSource = process.env.DATA_SOURCE || 'database';
   
-  console.log(`🔄 [API Sync] Đang kích hoạt ép buộc đồng bộ thời gian thực cho ${user.username}...`);
+  console.log(`🔄 [API Sync] Đang kích hoạt ép buộc đồng bộ cho ${user.username} (mode: ${dataSource})...`);
   const decryptedPassword = decrypt(user.encryptedPassword);
   const strategy = strategyManager.getStrategy();
   
-  return await strategy.getSchedule(user, decryptedPassword, {
-    semester,
-    schoolYear
-  });
+  try {
+    return await strategy.getSchedule(user, decryptedPassword, { semester, schoolYear });
+  } catch (err) {
+    if (dataSource === 'database') {
+      console.warn(`⚠️ [API Sync] Database lỗi, fallback crawler: ${err.message}`);
+      const crawler = strategyManager.getCrawlerStrategy();
+      return await crawler.getSchedule(user, decryptedPassword, { semester, schoolYear });
+    }
+    throw err;
+  }
 };
 
 /**
@@ -109,7 +116,7 @@ router.get('/exams', authMiddleware, async (req, res) => {
 
 /**
  * @route   GET /api/grades
- * @desc    Lấy bảng điểm số từ cache PostgreSQL, hỗ trợ forceSync=true
+ * @desc    Lấy bảng điểm số, hỗ trợ khảo sát (môn chưa KS → ẩn điểm)
  * @access  Private (JWT)
  */
 router.get('/grades', authMiddleware, async (req, res) => {
@@ -118,11 +125,39 @@ router.get('/grades', authMiddleware, async (req, res) => {
     const schoolYear = req.query.schoolYear || '2025';
     const formattedSemester = `HocKy${semester}`;
     const formattedSchoolYear = `${schoolYear}-${parseInt(schoolYear) + 1}`;
+    const dataSource = process.env.DATA_SOURCE || 'database';
 
     if (req.query.forceSync === 'true') {
       await handleForceSync(req.user, req);
     }
 
+    // Nếu dùng database mode + có tuafStudentId → query trực tiếp với survey
+    if (dataSource === 'database' && req.user.tuafStudentId) {
+      try {
+        const namvietConnector = require('../services/namvietConnector');
+        const tuafQueries = require('../services/tuafQueries');
+        const pool = await namvietConnector.getPool();
+        
+        const result = await tuafQueries.getStudentGradesWithSurvey(
+          pool, req.user.tuafStudentId,
+          parseInt(semester), formattedSchoolYear
+        );
+
+        return res.json({
+          success: true,
+          data: result.grades,
+          surveyActive: result.surveyActive,
+          surveyInfo: result.surveyInfo,
+          surveyStats: result.stats,
+          lastSyncedAt: req.user.lastSyncedAt,
+          source: 'database'
+        });
+      } catch (dbErr) {
+        console.warn(`⚠️ [API /grades] Database lỗi, fallback cache: ${dbErr.message}`);
+      }
+    }
+
+    // Fallback: đọc từ PostgreSQL cache (không có survey filter)
     const grades = await Grade.findAll({
       where: {
         userId: req.user.id,
@@ -134,7 +169,10 @@ router.get('/grades', authMiddleware, async (req, res) => {
     res.json({
       success: true,
       data: grades,
-      lastSyncedAt: req.user.lastSyncedAt
+      surveyActive: false,
+      surveyStats: { total: grades.length, visible: grades.length, hidden: 0 },
+      lastSyncedAt: req.user.lastSyncedAt,
+      source: 'cache'
     });
   } catch (error) {
     console.error('❌ [API /grades] Lỗi:', error.message);
@@ -247,19 +285,55 @@ router.get('/finance/all', authMiddleware, async (req, res) => {
       order: [['schoolYear', 'ASC'], ['semester', 'ASC']]
     });
 
-    // Tính tổng qua toàn bộ kỳ
-    const totalPaid = finances.reduce((sum, f) => sum + (f.paidTuition || 0), 0);
-    const totalDebt = finances.reduce((sum, f) => sum + (f.debtTuition || 0), 0);
-    const totalTuition = finances.reduce((sum, f) => sum + (f.totalTuition || 0), 0);
+    // Chuẩn hóa tính toán công nợ và miễn giảm theo thực tế
+    const processedFinances = finances.map(f => {
+      const totalTuition = f.totalTuition || 0;
+      let mustPayTuition = f.mustPayTuition !== undefined && f.mustPayTuition !== null ? f.mustPayTuition : totalTuition;
+      let discountTuition = f.discountTuition || 0;
+      const paidTuition = f.paidTuition || 0;
+      const refundTuition = f.refundTuition || 0;
+      const debtTuition = f.debtTuition || 0;
+
+      // Xử lý sinh viên được miễn giảm 100% (Phải nộp = 0, Học phí gốc > 0)
+      if (discountTuition === 0 && mustPayTuition === 0 && totalTuition > 0) {
+        discountTuition = totalTuition;
+      } else if (!discountTuition && totalTuition > mustPayTuition) {
+        discountTuition = totalTuition - mustPayTuition;
+      }
+
+      const discountPercent = totalTuition > 0 ? Math.min(100, Math.round((discountTuition / totalTuition) * 100)) : 0;
+
+      return {
+        ...f.toJSON(),
+        totalTuition,
+        discountTuition,
+        discountPercent,
+        mustPayTuition,
+        paidTuition,
+        refundTuition,
+        debtTuition
+      };
+    });
+
+    // Tính tổng qua các kỳ đã ghi nhận
+    const totalTuition = processedFinances.reduce((sum, f) => sum + f.totalTuition, 0);
+    const totalDiscount = processedFinances.reduce((sum, f) => sum + f.discountTuition, 0);
+    const totalMustPay = processedFinances.reduce((sum, f) => sum + f.mustPayTuition, 0);
+    const totalPaid = processedFinances.reduce((sum, f) => sum + f.paidTuition, 0);
+    const totalRefund = processedFinances.reduce((sum, f) => sum + f.refundTuition, 0);
+    const totalDebt = processedFinances.reduce((sum, f) => sum + f.debtTuition, 0);
 
     res.json({
       success: true,
-      data: finances,
+      data: processedFinances,
       summary: {
         totalTuition,
+        totalDiscount,
+        totalMustPay,
         totalPaid,
+        totalRefund,
         totalDebt,
-        totalSemesters: finances.length
+        totalSemesters: processedFinances.length
       },
       lastSyncedAt: req.user.lastSyncedAt
     });
@@ -412,6 +486,62 @@ router.get('/curriculum', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('❌ [API /curriculum] Lỗi:', error.message);
     res.status(500).json({ success: false, message: 'Không thể tải chương trình đào tạo!', error: error.message });
+  }
+});
+
+/**
+ * @route   GET /api/diem-ren-luyen
+ * @desc    Lấy điểm rèn luyện kỳ hiện tại
+ * @access  Private (JWT)
+ */
+router.get('/diem-ren-luyen', authMiddleware, async (req, res) => {
+  try {
+    const semester = req.query.semester || '2';
+    const schoolYear = req.query.schoolYear || '2025';
+    const formattedSemester = `HocKy${semester}`;
+    const formattedSchoolYear = `${schoolYear}-${parseInt(schoolYear) + 1}`;
+
+    const DiemRenLuyen = require('../models/DiemRenLuyen');
+    const drl = await DiemRenLuyen.findOne({
+      where: {
+        userId: req.user.id,
+        semester: formattedSemester,
+        schoolYear: formattedSchoolYear
+      }
+    });
+
+    res.json({
+      success: true,
+      data: drl || { score: null, classification: '' },
+      lastSyncedAt: req.user.lastSyncedAt
+    });
+  } catch (error) {
+    console.error('❌ [API /diem-ren-luyen] Lỗi:', error.message);
+    res.status(500).json({ success: false, message: 'Không thể tải điểm rèn luyện!' });
+  }
+});
+
+/**
+ * @route   GET /api/diem-ren-luyen/all
+ * @desc    Lấy điểm rèn luyện tất cả kỳ
+ * @access  Private (JWT)
+ */
+router.get('/diem-ren-luyen/all', authMiddleware, async (req, res) => {
+  try {
+    const DiemRenLuyen = require('../models/DiemRenLuyen');
+    const drlList = await DiemRenLuyen.findAll({
+      where: { userId: req.user.id },
+      order: [['schoolYear', 'ASC'], ['semester', 'ASC']]
+    });
+
+    res.json({
+      success: true,
+      data: drlList,
+      lastSyncedAt: req.user.lastSyncedAt
+    });
+  } catch (error) {
+    console.error('❌ [API /diem-ren-luyen/all] Lỗi:', error.message);
+    res.status(500).json({ success: false, message: 'Không thể tải lịch sử điểm rèn luyện!' });
   }
 });
 

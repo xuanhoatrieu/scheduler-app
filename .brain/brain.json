@@ -3,8 +3,8 @@
     "name": "TUAF Scheduler",
     "description": "Hệ thống xem lịch học và lịch giảng dạy thông minh dành cho Sinh viên & Giảng viên trường Đại học Nông Lâm Thái Nguyên (TUAF). Hỗ trợ đăng nhập SSO, cào dữ liệu TKB/Điểm/Học phí/CTĐT tự động, và giao diện mobile Expo trực quan phân quyền theo vai trò.",
     "created_at": "2026-05-27T10:52:00Z",
-    "last_saved": "2026-05-28T16:30:00Z",
-    "save_count": 5
+    "last_saved": "2026-07-23T16:46:00Z",
+    "save_count": 6
   },
   "tech_stack": [
     "Node.js 20+",
@@ -22,6 +22,7 @@
     "react-native-safe-area-context",
     "expo-font",
     "@expo/vector-icons",
+    "eas-cli (Expo Application Services build)",
     "localtunnel (tunnel development)"
   ],
   "features": [
@@ -34,7 +35,8 @@
     "Express SECURE Rest API: Securing endpoints qua JWT Bearer authentication",
     "Expo Mobile Application: 8 màn hình đầy đủ (Login, Dashboard, Schedule, Exams, Grades, Finance, Notifications, Profile)",
     "Smart Expandable Schedule UI: Giao diện lịch học thông minh - co gọn giai đoạn đã kết thúc/chưa tới, mở rộng giai đoạn hiện tại",
-    "Push Notifications: Nhắc lịch học trước 30 phút và 15 phút",
+    "Tabbed Notifications & School News: Phân luồng 2 Tab (Lịch cá nhân & Thông báo từ Phòng Đào tạo qua tblNews) kèm Modal Reader xem nội dung bài viết",
+    "Comprehensive Tuition Finance: Hiển thị đầy đủ Mức học phí gốc, Miễn giảm 100%/Học bổng, Thực nộp, Hoàn trả khi nộp thừa, và phân loại Phiếu thu / Hoàn trả",
     "Auto-Start Script: start.sh tự động khởi chạy Backend + Localtunnel + đồng bộ URL + Expo tunnel",
     "Offline Caching: AsyncStorage lưu trữ offline cho session đăng nhập và dữ liệu",
     "Login UX: Tiền tố DTN tự động cho sinh viên, input lowercase cho giảng viên",
@@ -57,7 +59,10 @@
     "PA1 Curriculum: Cào CTĐT từ portal (5 URL paths) + fallback dùng bảng điểm. Segment Control tích hợp vào tab Điểm",
     "Thêm trường periodText vào Schedule model để lưu trữ tiết học cào được, phục vụ hiển thị giờ học chi tiết trên mobile",
     "Giải thuật Rowspan Parser: Nhận biết hàng 9 cột (đầy đủ) và hàng 8 cột (khuyết do rowspan) để phân tích Khung CTĐT chính xác",
-    "Tự động Force Sync ngầm khi người dùng xem học kỳ cũ mà database chưa có dữ liệu lịch học"
+    "Tự động Force Sync ngầm khi người dùng xem học kỳ cũ mà database chưa có dữ liệu lịch học",
+    "Phát triển Tab tin tức thông báo từ nhà trường bằng cách khai thác bảng tblNews (lọc SinhVien=1/GiaoVien=1 và Trang_thai=1)",
+    "Loại bỏ hoàn toàn logic ghi đè công nợ sai lệch trong API /finance/all để đảm bảo sinh viên miễn giảm 100% không bị coi là nợ học phí",
+    "Xây dựng tài liệu hướng dẫn build ứng dụng thử nghiệm (preview APK/IPA) và đóng gói phát hành CH Play (.aab) & App Store (.ipa) vào README.md"
   ],
   "infrastructure": {
     "data_source_mode": "dual_mode",

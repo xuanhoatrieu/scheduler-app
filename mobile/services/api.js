@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import axios from 'axios';
 
 // Địa chỉ máy chủ API production chính thức
@@ -8,22 +9,42 @@ const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000,
   headers: {
-    'Bypass-Tunnel-Reminder': 'true',
-    'bypass-tunnel-reminder': 'true',
     'User-Agent': 'TUAF-Schedule-App',
   },
 });
 
+// Biến lưu callback khi hết hạn phiên
+let sessionExpiredCallback = null;
+
+export const registerSessionExpiredCallback = (callback) => {
+  sessionExpiredCallback = callback;
+};
+
 // Inject Bearer Token vào mọi request
 api.interceptors.request.use(
   async (config) => {
-    const token = await AsyncStorage.getItem('jwt_token');
+    const token = await SecureStore.getItemAsync('jwt_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
   (error) => Promise.reject(error)
+);
+
+// Response Interceptor để tự động xử lý khi Token hết hạn (401 Unauthorized)
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response && error.response.status === 401) {
+      console.warn('⚠️ [API] Phiên đăng nhập hết hạn (401). Đang đăng xuất...');
+      await logout();
+      if (sessionExpiredCallback) {
+        sessionExpiredCallback();
+      }
+    }
+    return Promise.reject(error);
+  }
 );
 
 /**
@@ -34,8 +55,8 @@ export const login = async (username, password, role) => {
     const response = await api.post('/auth/login', { username, password, role });
     const { token, user } = response.data;
     
-    // Lưu Token và hồ sơ người dùng
-    await AsyncStorage.setItem('jwt_token', token);
+    // Lưu Token bảo mật và hồ sơ người dùng cục bộ
+    await SecureStore.setItemAsync('jwt_token', token);
     await AsyncStorage.setItem('user_profile', JSON.stringify(user));
     
     return { success: true, user };
@@ -166,6 +187,36 @@ export const getFinanceAll = async () => {
 };
 
 /**
+ * Lấy danh sách tin tức / thông báo chính thức từ Nhà trường
+ */
+export const getNews = async () => {
+  try {
+    const response = await api.get('/news');
+    const { data } = response.data;
+    await AsyncStorage.setItem('cached_school_news', JSON.stringify(data));
+    return { success: true, data, source: 'network' };
+  } catch (error) {
+    const cached = await AsyncStorage.getItem('cached_school_news');
+    if (cached) {
+      return { success: true, data: JSON.parse(cached), source: 'cache' };
+    }
+    return { success: false, message: 'Không thể tải tin tức nhà trường!' };
+  }
+};
+
+/**
+ * Lấy chi tiết 1 bài tin tức
+ */
+export const getNewsDetail = async (id) => {
+  try {
+    const response = await api.get(`/news/${id}`);
+    return { success: true, data: response.data.data };
+  } catch (error) {
+    return { success: false, message: 'Lỗi tải chi tiết bài viết!' };
+  }
+};
+
+/**
  * Kích hoạt đồng bộ lịch sử toàn bộ các kỳ (có thể mất 20-40 giây)
  */
 export const syncHistory = async () => {
@@ -217,18 +268,103 @@ export const getLecturerClasses = async () => {
 };
 
 /**
+ * Lanh tai khoan Inspector - lay danh sach lop hom nay
+ */
+export const getInspectorToday = async () => {
+  try {
+    const response = await api.get('/inspector/attendance/today');
+    return { success: true, data: response.data.data, date: response.data.date, dayOfWeek: response.data.dayOfWeek };
+  } catch (error) {
+    console.error('[API] getInspectorToday error:', error.response?.data || error.message);
+    return { success: false, message: error.response?.data?.message || 'Loi tai danh sach lop hom nay!' };
+  }
+};
+
+/**
+ * Ghi nhan diem danh (gio den/ve) cho mot lop
+ */
+export const submitAttendance = async (data) => {
+  try {
+    const response = await api.post('/inspector/attendance', data);
+    return { success: true, data: response.data.data, message: response.data.message };
+  } catch (error) {
+    console.error('[API] submitAttendance error:', error.response?.data || error.message);
+    return { success: false, message: error.response?.data?.message || 'Loi ghi nhan diem danh!' };
+  }
+};
+
+/**
+ * Lay bao cao diem danh theo khoang ngay
+ */
+export const getAttendanceReport = async (params) => {
+  try {
+    const queryString = new URLSearchParams(params).toString();
+    const response = await api.get(`/inspector/attendance/report?${queryString}`);
+    return { success: true, ...response.data };
+  } catch (error) {
+    return { success: false, message: error.response?.data?.message || 'Loi tai bao cao!' };
+  }
+};
+
+/**
+ * Lay tong quan diem danh hom nay (dashboard)
+ */
+export const getDashboardToday = async () => {
+  try {
+    const response = await api.get('/inspector/dashboard/today');
+    return { success: true, ...response.data };
+  } catch (error) {
+    return { success: false, message: error.response?.data?.message || 'Loi tai dashboard!' };
+  }
+};
+
+/**
+ * Lay bao cao chi tiet theo khoang thoi gian (tuần/tháng/kỳ)
+ */
+export const getDashboardReport = async (params) => {
+  try {
+    const queryString = new URLSearchParams(params).toString();
+    const response = await api.get(`/inspector/dashboard/report?${queryString}`);
+    return { success: true, ...response.data };
+  } catch (error) {
+    return { success: false, message: error.response?.data?.message || 'Loi tai bao cao!' };
+  }
+};
+
+/**
+ * Kiểm tra token JWT hiện tại với backend và đồng bộ lại thông tin user mới nhất
+ */
+export const checkCurrentUser = async () => {
+  try {
+    const response = await api.get('/auth/me');
+    const { user } = response.data;
+    await AsyncStorage.setItem('user_profile', JSON.stringify(user));
+    return { success: true, user };
+  } catch (error) {
+    console.error('❌ [API] checkCurrentUser error:', error.response?.data || error.message);
+    const isAuthError = error.response && error.response.status === 401;
+    return { 
+      success: false, 
+      isAuthError,
+      message: error.response?.data?.message || 'Phiên làm việc hết hạn!' 
+    };
+  }
+};
+
+/**
  * Đăng xuất, xóa toàn bộ bộ nhớ cache & tokens
  */
 export const logout = async () => {
-  await AsyncStorage.removeItem('jwt_token');
-  await AsyncStorage.removeItem('user_profile');
-  await AsyncStorage.removeItem('cached_schedule');
-  await AsyncStorage.removeItem('cached_exams');
-  await AsyncStorage.removeItem('cached_grades');
-  await AsyncStorage.removeItem('cached_finance');
-  await AsyncStorage.removeItem('cached_grades_all');
-  await AsyncStorage.removeItem('cached_finance_all');
-  await AsyncStorage.removeItem('cached_curriculum');
-  await AsyncStorage.removeItem('cached_lecturer_classes');
+  try {
+    await SecureStore.deleteItemAsync('jwt_token');
+  } catch (e) {
+    // Key may not exist — ignore
+  }
+  const keys = [
+    'user_profile', 'cached_schedule', 'cached_exams', 'cached_grades',
+    'cached_finance', 'cached_grades_all', 'cached_finance_all',
+    'cached_curriculum', 'cached_lecturer_classes', 'cached_inspector_today',
+  ];
+  await AsyncStorage.multiRemove(keys);
 };
 

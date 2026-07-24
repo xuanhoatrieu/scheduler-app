@@ -2,14 +2,30 @@
   "expo": {
     "name": "TUAF Schedule",
     "slug": "tuaf-schedule",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "assetBundlePatterns": [
       "**/*"
     ],
     "plugins": [
-      "expo-font"
-    ]
+      "expo-font",
+      "expo-secure-store"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "2e4b83e8-5b85-4bda-a1ea-8c991fa5b4b1"
+      }
+    },
+    "android": {
+      "package": "com.xuanhoatrieu.tuafschedule",
+      "versionCode": 2
+    },
+    "ios": {
+      "bundleIdentifier": "com.xuanhoatrieu.tuafschedule",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    }
   }
 }

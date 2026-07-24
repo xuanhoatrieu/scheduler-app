@@ -10,8 +10,8 @@ console.log('==================================================');
 console.log('🧪 RUNNING INTEGRATION TESTS FOR BACKEND APIs');
 console.log('==================================================');
 
-const testUsername = 'DTN245748004';
-const testPassword = 'DTN245748004';
+const testUsername = process.env.TEST_USERNAME || 'TEST_USER';
+const testPassword = process.env.TEST_PASSWORD || 'TEST_PASS';
 
 async function run() {
   let serverInstance;
@@ -43,6 +43,14 @@ async function run() {
     console.log(`      👤 Tên SV: ${user.fullName}`);
     console.log(`      🛡️ Token:  ${token.substring(0, 30)}...`);
 
+    // [Test 2.5] Lấy thông tin người dùng qua /api/auth/me
+    console.log('\n🔍 [Test 2.5] Lấy thông tin người dùng hiện tại qua /api/auth/me...');
+    const meRes = await axios.get(`${API_URL}/api/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    console.log('   ✅ Phản hồi /me thành công!');
+    console.log(`      👤 Xác thực /me - Tên SV: ${meRes.data.user.fullName}, MSSV: ${meRes.data.user.username}`);
+
     // 4. Test Lấy lịch học / api/schedule (Không dùng forceSync -> lấy trực tiếp từ Cache)
     console.log('\n🔍 [Test 3] Lấy Lịch học từ cache PostgreSQL qua /api/schedule...');
     const startTime = Date.now();
@@ -65,7 +73,7 @@ async function run() {
     console.log(`   ✅ Học phí nợ: ${financeRes.data.data.debtTuition}đ`);
 
     console.log('\n==================================================');
-    console.log('🎉 ALL API INTEGRATION TESTS PASSED SUCCESSFULY!');
+    console.log('🎉 ALL API INTEGRATION TESTS PASSED SUCCESSFULLY!');
     console.log('==================================================');
     process.exit(0);
   } catch (error) {

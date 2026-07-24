@@ -8,6 +8,11 @@ mobile/.expo/
 .env
 backend/.env
 
+# Sensitive documentation & test scripts with credentials
+api_data.md
+backend/test_explore_sqlserver.js
+backend/test_deep_explore.js
+
 # Build outputs
 dist/
 build/

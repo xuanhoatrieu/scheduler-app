@@ -45,6 +45,21 @@ const Grade = sequelize.define('Grade', {
     allowNull: true,
     defaultValue: null
   },
+  courseCode: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    defaultValue: ''
+  },
+  retakeCount: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    defaultValue: 1
+  },
+  examAttempt: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    defaultValue: 1
+  },
   semester: {
     type: DataTypes.STRING,
     allowNull: false

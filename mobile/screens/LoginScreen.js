@@ -1,8 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ActivityIndicator,
-  Animated,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -13,16 +12,36 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { login } from '../services/api';
 import { Colors } from '../theme/colors';
 
 export default function LoginScreen({ onLoginSuccess }) {
-  const [username, setUsername] = useState('DTN');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('student');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+
+  // Tự động tải tài khoản đã lưu từ trước (Remember Username)
+  useEffect(() => {
+    const loadSavedCredentials = async () => {
+      try {
+        const savedUsername = await AsyncStorage.getItem('saved_username');
+        const savedRole = await AsyncStorage.getItem('saved_role');
+        if (savedUsername) {
+          setUsername(savedUsername);
+        }
+        if (savedRole) {
+          setRole(savedRole);
+        }
+      } catch (error) {
+        console.error('Lỗi khi đọc tài khoản đã lưu:', error);
+      }
+    };
+    loadSavedCredentials();
+  }, []);
 
   const handleLogin = async () => {
     if (!username || !password) {
@@ -33,10 +52,19 @@ export default function LoginScreen({ onLoginSuccess }) {
     setLoading(true);
     setErrorMsg('');
 
-    const res = await login(username, password, role);
+    const trimmedUsername = username.trim();
+
+    const res = await login(trimmedUsername, password, role);
     setLoading(false);
 
     if (res.success) {
+      // Tự động lưu lại thông tin tài khoản đăng nhập thành công gần nhất
+      try {
+        await AsyncStorage.setItem('saved_username', trimmedUsername);
+        await AsyncStorage.setItem('saved_role', role);
+      } catch (err) {
+        console.error('Lỗi khi lưu tài khoản đăng nhập:', err);
+      }
       onLoginSuccess(res.user);
     } else {
       setErrorMsg(res.message);
@@ -69,9 +97,6 @@ export default function LoginScreen({ onLoginSuccess }) {
               style={[styles.roleTab, role === 'student' && styles.activeTab]}
               onPress={() => {
                 setRole('student');
-                if (username === '') {
-                  setUsername('DTN');
-                }
               }}
               activeOpacity={0.8}
             >
@@ -81,16 +106,13 @@ export default function LoginScreen({ onLoginSuccess }) {
                 color={role === 'student' ? Colors.textOnPrimary : Colors.textSecondary}
               />
               <Text style={[styles.roleTabText, role === 'student' && styles.activeTabText]}>
-                Sinh Viên
+                Sinh Vien
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.roleTab, role === 'lecturer' && styles.activeTab]}
               onPress={() => {
                 setRole('lecturer');
-                if (username === 'DTN') {
-                  setUsername('');
-                }
               }}
               activeOpacity={0.8}
             >
@@ -100,7 +122,23 @@ export default function LoginScreen({ onLoginSuccess }) {
                 color={role === 'lecturer' ? Colors.textOnPrimary : Colors.textSecondary}
               />
               <Text style={[styles.roleTabText, role === 'lecturer' && styles.activeTabText]}>
-                Giảng Viên
+                Giang Vien
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.roleTab, role === 'inspector' && styles.activeTab]}
+              onPress={() => {
+                setRole('inspector');
+              }}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name={role === 'inspector' ? 'clipboard' : 'clipboard-outline'}
+                size={16}
+                color={role === 'inspector' ? Colors.textOnPrimary : Colors.textSecondary}
+              />
+              <Text style={[styles.roleTabText, role === 'inspector' && styles.activeTabText]}>
+                Thanh Tra
               </Text>
             </TouchableOpacity>
           </View>
@@ -181,7 +219,7 @@ export default function LoginScreen({ onLoginSuccess }) {
           <View style={styles.securityNote}>
             <Ionicons name="shield-checkmark-outline" size={14} color={Colors.success} />
             <Text style={styles.securityText}>
-              Dữ liệu được mã hóa AES-256 đầu cuối & đồng bộ tự động hàng ngày
+              Dữ liệu được mã hóa khi truyền tải (HTTPS) & đồng bộ tự động hàng ngày
             </Text>
           </View>
         </View>

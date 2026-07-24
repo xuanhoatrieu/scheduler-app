@@ -2,8 +2,8 @@
 📋 HANDOVER DOCUMENT - TUAF SCHEDULE APP
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📍 Đang làm: Triển khai & Tối ưu hoá Production lên VPS
-🔢 Đến bước: Dự án đã hoàn thành toàn bộ các tính năng cốt lõi và kiểm thử thành công. Sẵn sàng cấu hình để triển khai lên VPS.
+📍 Đang làm: Chuẩn bị triển khai Production lên VPS (Hoàn thành bảo mật Login Mobile)
+🔢 Đến bước: Dự án đã hoàn thành toàn bộ tính năng cốt lõi, nâng cấp lưu phiên đăng nhập bảo mật và ghi nhớ tài khoản tự động. Sẵn sàng triển khai VPS.
 
 ✅ ĐÃ XONG:
    - **Phase 01: Setup & Upgrade** ✓ (Expo SDK 54, React 19.1, React Native 0.81)
@@ -16,6 +16,7 @@
    - **Phase 08: Lecturer Navigator & UI** ✓ (Phân quyền 2 role GV và SV, 4 tabs GV)
    - **Phase 09: Curriculum CTĐT (PA1)** ✓ (Màn hình CTĐT color-coded 4 trạng thái, Progress bar tín chỉ)
    - **Phase 10: Giờ học chi tiết & Sửa lỗi CTĐT đầy đủ** ✓ (Hiển thị giờ học/tiết học trực quan, sửa thuật toán rowspan cào thành công **74 môn học**, tự động Force Sync kỳ học cũ khi chuyển tab).
+   - **Phase 11: Lưu phiên đăng nhập bảo mật & Ghi nhớ tài khoản** ✓ (Tích hợp `expo-secure-store` mã hóa token phần cứng, Axios response interceptor 401 tự động logout, kiểm tra session bằng API `/auth/me` lúc mở app, tự động điền tài khoản cũ).
    - **Tài liệu hướng dẫn triển khai VPS**: Đã viết tài liệu hướng dẫn chi tiết từng bước: [deployment_guide.md](file:///home/trieuhoa/lichhoc-app/docs/deployment_guide.md).
 
 🔧 QUYẾT ĐỊNH QUAN TRỌNG:
@@ -32,7 +33,7 @@
    - [mobile/screens/ScheduleScreen.js](file:///home/trieuhoa/lichhoc-app/mobile/screens/ScheduleScreen.js) (Thời khóa biểu + quy đổi giờ)
    - [backend/services/parsers/curriculumParser.js](file:///home/trieuhoa/lichhoc-app/backend/services/parsers/curriculumParser.js) (Giải thuật rowspan)
    - [.brain/brain.json](file:///home/trieuhoa/lichhoc-app/.brain/brain.json) (Trạng thái bộ nhớ dự án)
-   - [deployment_guide.md](file:///home/trieuhoa/.gemini/antigravity-ide/brain/539b6822-f494-4e32-8df9-8d40d3ceab6e/deployment_guide.md) (Hướng dẫn triển khai VPS)
+   - [deployment_guide.md](file:///home/trieuhoa/lichhoc-app/docs/deployment_guide.md) (Hướng dẫn triển khai VPS)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📍 Đã lưu! Để tiếp tục ở session sau: Gõ /recap

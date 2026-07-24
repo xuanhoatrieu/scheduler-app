@@ -187,13 +187,13 @@ const syncStudentData = async (username, password, options = { semester: '2', sc
   // 3. Cào Kết Quả Học Tập (Bảng Điểm)
   console.log('⏳ Đang cào bảng điểm...');
   const gradePaths = [
-    `/TraCuuDiemSV/Index?HocKy=${options.semester}&NamHoc=${options.schoolYear}`,
-    '/TraCuuDiemSV/Index'
+    `/TraCuuDiemSV/ThongTinDiemSinhVien?HocKy=${options.semester}&NamHoc=${options.schoolYear}&ChuyenNganh=0`,
+    `/TraCuuDiemSV/Index?HocKy=${options.semester}&NamHoc=${options.schoolYear}`
   ];
   for (const path of gradePaths) {
     try {
       const res = await http.get(path);
-      if (res.status === 200 && res.data.length > 500) {
+      if (res.status === 200 && res.data.length > 300) {
         const parsedGrades = parseGrades(res.data);
         if (parsedGrades.length > 0) {
           parsedGrades.forEach(item => {
@@ -231,6 +231,8 @@ const syncStudentData = async (username, password, options = { semester: '2', sc
             totalTuition: currentSemFinance.totalTuition,
             paidTuition: currentSemFinance.paidTuition,
             debtTuition: currentSemFinance.debtTuition,
+            discountTuition: currentSemFinance.discountTuition || 0,
+            mustPayTuition: currentSemFinance.mustPayTuition || 0,
             invoiceDetails: []
           };
         } else if (parsedFinance.totalTuition > 0) {
@@ -238,6 +240,8 @@ const syncStudentData = async (username, password, options = { semester: '2', sc
             totalTuition: parsedFinance.totalTuition,
             paidTuition: parsedFinance.paidTuition,
             debtTuition: parsedFinance.debtTuition,
+            discountTuition: parsedFinance.discountTuition || 0,
+            mustPayTuition: parsedFinance.mustPayTuition || 0,
             invoiceDetails: []
           };
         }

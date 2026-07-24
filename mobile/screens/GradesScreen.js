@@ -21,6 +21,8 @@ export default function GradesScreen({ user }) {
   const [refreshing, setRefreshing] = useState(false);
   const [expandedSemesters, setExpandedSemesters] = useState({});
   const [activeTab, setActiveTab] = useState('grades'); // 'grades' | 'curriculum'
+  const [selectedYearFilter, setSelectedYearFilter] = useState('ALL');
+  const [selectedSemFilter, setSelectedSemFilter] = useState('ALL');
 
   const loadData = async () => {
     const res = await getGradesAll();
@@ -170,10 +172,68 @@ export default function GradesScreen({ user }) {
           totalSemesters={summary?.totalSemesters}
         />
 
+        {/* Filter Bar */}
+        {semesterGroups.length > 0 && (
+          <View style={styles.filterSection}>
+            {/* Year Filters */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
+              <Text style={styles.filterLabel}>Năm:</Text>
+              {['ALL', ...new Set(semesterGroups.map(g => g.schoolYear).filter(Boolean))].map((yr, yIdx) => (
+                <TouchableOpacity
+                  key={yIdx}
+                  style={[styles.filterChip, selectedYearFilter === yr && styles.filterChipActive]}
+                  onPress={() => setSelectedYearFilter(yr)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.filterChipText, selectedYearFilter === yr && styles.filterChipTextActive]}>
+                    {yr === 'ALL' ? 'Tất cả năm' : yr}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {/* Semester Filters */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.filterScroll, { marginTop: 6 }]}>
+              <Text style={styles.filterLabel}>Kỳ:</Text>
+              {[
+                { id: 'ALL', label: 'Tất cả HK' },
+                { id: 'HocKy1', label: 'Học kỳ 1' },
+                { id: 'HocKy2', label: 'Học kỳ 2' }
+              ].map((semItem, sIdx) => (
+                <TouchableOpacity
+                  key={sIdx}
+                  style={[styles.filterChip, selectedSemFilter === semItem.id && styles.filterChipActive]}
+                  onPress={() => setSelectedSemFilter(semItem.id)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.filterChipText, selectedSemFilter === semItem.id && styles.filterChipTextActive]}>
+                    {semItem.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
         {/* Semester Groups */}
-        {semesterGroups.length > 0 ? (
-          semesterGroups.map((group, idx) => {
-            const isExpanded = expandedSemesters[idx];
+        {(() => {
+          const filteredGroups = semesterGroups.filter(g => {
+            const matchYear = selectedYearFilter === 'ALL' || g.schoolYear === selectedYearFilter;
+            const matchSem = selectedSemFilter === 'ALL' || g.semester === selectedSemFilter;
+            return matchYear && matchSem;
+          });
+
+          if (filteredGroups.length === 0) {
+            return (
+              <View style={styles.emptyWrap}>
+                <Ionicons name="funnel-outline" size={48} color={Colors.textMuted} />
+                <Text style={styles.emptyText}>Không tìm thấy kết quả phù hợp với bộ lọc!</Text>
+              </View>
+            );
+          }
+
+          return filteredGroups.map((group, idx) => {
+            const isExpanded = expandedSemesters[idx] !== false;
             const semGpa = group.courses.filter(c => c.totalGrade4 != null);
             const semAvg = semGpa.length > 0
               ? (semGpa.reduce((s, c) => s + c.totalGrade4, 0) / semGpa.length).toFixed(2)
@@ -239,14 +299,8 @@ export default function GradesScreen({ user }) {
                 })}
               </View>
             );
-          })
-        ) : (
-          <View style={styles.emptyWrap}>
-            <Ionicons name="trophy-outline" size={64} color={Colors.borderLight} />
-            <Text style={styles.emptyText}>Chưa có dữ liệu điểm số!</Text>
-            <Text style={styles.emptySubText}>Hãy bấm đồng bộ lịch sử trong Hồ sơ</Text>
-          </View>
-        )}
+          });
+        })()}
       </ScrollView>
       )}
     </SafeAreaView>
@@ -343,8 +397,25 @@ const styles = StyleSheet.create({
   gradeColVal: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary },
   gradeColLbl: { fontSize: 10, color: Colors.textMuted, marginTop: 2 },
   gradeColDivider: { width: 1, height: 28, backgroundColor: Colors.borderLight },
+  // Filter Section
+  filterSection: {
+    marginHorizontal: 16, marginBottom: 12, padding: 10,
+    backgroundColor: Colors.surface, borderRadius: 14,
+    borderWidth: 1, borderColor: Colors.borderLight,
+  },
+  filterScroll: { alignItems: 'center', flexDirection: 'row', gap: 6 },
+  filterLabel: { fontSize: 12, fontWeight: '700', color: Colors.textSecondary, marginRight: 4 },
+  filterChip: {
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16,
+    backgroundColor: Colors.background, borderWidth: 1, borderColor: Colors.borderLight,
+  },
+  filterChipActive: {
+    backgroundColor: Colors.primary, borderColor: Colors.primary,
+  },
+  filterChipText: { fontSize: 11, fontWeight: '700', color: Colors.textSecondary },
+  filterChipTextActive: { color: Colors.textOnPrimary },
   // Empty
-  emptyWrap: { alignItems: 'center', paddingTop: 80 },
-  emptyText: { fontSize: 15, color: Colors.textMuted, marginTop: 16 },
+  emptyWrap: { alignItems: 'center', paddingTop: 60, paddingBottom: 40 },
+  emptyText: { fontSize: 14, color: Colors.textMuted, marginTop: 12 },
   emptySubText: { fontSize: 12, color: Colors.textMuted, marginTop: 4 },
 });

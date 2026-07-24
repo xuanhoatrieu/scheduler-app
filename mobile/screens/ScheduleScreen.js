@@ -226,33 +226,38 @@ export default function ScheduleScreen({ user }) {
       </View>
 
       {/* Semester Picker */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.semPickerWrap}
-      >
-        {semesters.map((sem, idx) => (
-          <TouchableOpacity
-            key={idx}
-            style={[
-              styles.semChip,
-              idx === selectedSemIdx && styles.semChipActive,
-            ]}
-            onPress={() => onSelectSemester(idx)}
-            activeOpacity={0.7}
-          >
-            {sem.current && (
-              <View style={[styles.semChipDot, idx === selectedSemIdx && styles.semChipDotActive]} />
-            )}
-            <Text style={[
-              styles.semChipText,
-              idx === selectedSemIdx && styles.semChipTextActive,
-            ]}>
-              {sem.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      <View style={styles.semPickerContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.semPickerWrap}
+        >
+          {semesters.map((sem, idx) => (
+            <TouchableOpacity
+              key={idx}
+              style={[
+                styles.semChip,
+                idx === selectedSemIdx && styles.semChipActive,
+              ]}
+              onPress={() => onSelectSemester(idx)}
+              activeOpacity={0.7}
+            >
+              {sem.current && (
+                <View style={[styles.semChipDot, idx === selectedSemIdx && styles.semChipDotActive]} />
+              )}
+              <Text 
+                numberOfLines={1}
+                style={[
+                  styles.semChipText,
+                  idx === selectedSemIdx && styles.semChipTextActive,
+                ]}
+              >
+                {sem.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
 
       {/* Stats Bar */}
       <View style={styles.statsBar}>
@@ -422,7 +427,7 @@ function CourseCard({ course, dayColor }) {
           } else {
             // === COLLAPSED: Thu nhỏ 1 dòng ===
             const statusIcon = isPast ? 'checkmark-circle-outline' : 'time-outline';
-            const statusColor = isPast ? Colors.textMuted : Colors.accentBlue;
+            const statusColor = isPast ? '#4B5563' : Colors.accentBlue;
             const statusLabel = isPast ? 'Giai đoạn này đã kết thúc' : 'Sắp tới';
             const rooms = [...new Set(period.items.map(i => i.room).filter(Boolean))].join(', ');
             const periodsText = [...new Set(period.items.map(i => i.periodText).filter(Boolean))].join(', ');
@@ -443,7 +448,7 @@ function CourseCard({ course, dayColor }) {
                   {periodsText ? <Text style={styles.collapsedRoom} numberOfLines={1}>• Tiết {periodsText}</Text> : null}
                   {rooms ? <Text style={styles.collapsedRoom} numberOfLines={1}>• {rooms}</Text> : null}
                 </View>
-                <Ionicons name="chevron-down" size={14} color={Colors.textMuted} />
+                <Ionicons name="chevron-down" size={14} color="#6B7280" />
               </TouchableOpacity>
             );
           }
@@ -452,7 +457,7 @@ function CourseCard({ course, dayColor }) {
         {/* Nếu tất cả đều past hoặc upcoming (không có active) → hiện info từ period đầu tiên */}
         {!hasActive && periods.length > 0 && (
           <View style={styles.noActiveBanner}>
-            <Ionicons name="information-circle-outline" size={14} color={Colors.textMuted} />
+            <Ionicons name="information-circle-outline" size={14} color="#475569" />
             <Text style={styles.noActiveText}>
               {periods[0].status === 'upcoming' ? 'Môn này chưa bắt đầu' : 'Môn này đã kết thúc'}
             </Text>
@@ -483,16 +488,19 @@ const styles = StyleSheet.create({
   },
 
   // Semester Picker
-  semPickerWrap: {
-    paddingHorizontal: 16, paddingVertical: 10, gap: 8,
+  semPickerContainer: {
     backgroundColor: Colors.surface,
-    borderBottomWidth: 1, borderBottomColor: Colors.borderLight,
+    borderBottomWidth: 1, borderBottomColor: Colors.border,
+    height: 52, justifyContent: 'center',
+  },
+  semPickerWrap: {
+    paddingHorizontal: 16, alignItems: 'center', flexDirection: 'row', gap: 8,
   },
   semChip: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
-    backgroundColor: Colors.background,
-    borderWidth: 1, borderColor: Colors.borderLight,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 14, height: 36, borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5, borderColor: '#D1D5DB',
   },
   semChipActive: {
     backgroundColor: Colors.primary,
@@ -500,7 +508,10 @@ const styles = StyleSheet.create({
     elevation: 2, shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4,
   },
-  semChipText: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary },
+  semChipText: { 
+    fontSize: 13, fontWeight: '700', color: '#374151',
+    includeFontPadding: false, textAlignVertical: 'center'
+  },
   semChipTextActive: { color: Colors.textOnPrimary },
   semChipDot: {
     width: 6, height: 6, borderRadius: 3,
@@ -569,21 +580,22 @@ const styles = StyleSheet.create({
   // Collapsed Period — 1 dòng nhỏ
   collapsedPeriod: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingVertical: 8, paddingHorizontal: 6,
-    borderTopWidth: 1, borderTopColor: Colors.borderLight,
-    marginTop: 4,
+    paddingVertical: 8, paddingHorizontal: 10,
+    backgroundColor: '#F8FAFC', borderRadius: 8,
+    borderWidth: 1, borderColor: '#E2E8F0',
+    marginTop: 6,
   },
-  collapsedPast: { opacity: 0.5 },
-  collapsedLabel: { fontSize: 11, fontWeight: '700', flexShrink: 0 },
-  collapsedDate: { fontSize: 11, color: Colors.textMuted, marginLeft: 4, flexShrink: 0 },
-  collapsedRoom: { fontSize: 11, color: Colors.textMuted, marginLeft: 4, flex: 1 },
+  collapsedPast: { backgroundColor: '#F1F5F9', borderColor: '#CBD5E1' },
+  collapsedLabel: { fontSize: 12, fontWeight: '700', flexShrink: 0 },
+  collapsedDate: { fontSize: 12, color: '#334155', fontWeight: '600', marginLeft: 2 },
+  collapsedRoom: { fontSize: 12, color: '#0F172A', fontWeight: '600', marginLeft: 2 },
 
   // No active banner
   noActiveBanner: {
-    flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4,
+    flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6,
     paddingHorizontal: 4,
   },
-  noActiveText: { fontSize: 11, color: Colors.textMuted, fontStyle: 'italic' },
+  noActiveText: { fontSize: 11.5, color: '#475569', fontWeight: '600' },
 
   emptyWrap: { alignItems: 'center', paddingTop: 80 },
   emptyText: { fontSize: 15, color: Colors.textMuted, marginTop: 16 },

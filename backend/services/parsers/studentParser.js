@@ -229,13 +229,16 @@ const parseFinance = (html) => {
       allFinances.push({
         semester: formattedSemester,
         schoolYear: formattedSchoolYear,
-        totalTuition: mustPayVal > 0 ? mustPayVal : tuitionVal,
+        totalTuition: tuitionVal > 0 ? tuitionVal : mustPayVal,
+        mustPayTuition: mustPayVal,
+        discountTuition: discountVal,
         paidTuition: paidVal,
+        refundTuition: 0,
         debtTuition: debtVal
       });
 
       // Cộng dồn vào các chỉ số hiện tại nếu là kỳ học đang hiển thị hoặc tất cả
-      totalTuition += mustPayVal > 0 ? mustPayVal : tuitionVal;
+      totalTuition += (tuitionVal > 0 ? tuitionVal : mustPayVal);
       paidTuition += paidVal;
     }
   });

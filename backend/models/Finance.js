@@ -34,6 +34,21 @@ const Finance = sequelize.define('Finance', {
     allowNull: false,
     defaultValue: 0
   },
+  discountTuition: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0
+  },
+  refundTuition: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0
+  },
+  mustPayTuition: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0
+  },
   invoiceDetails: {
     type: DataTypes.JSON,
     allowNull: true,
