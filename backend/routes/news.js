@@ -20,7 +20,8 @@ router.get('/', authenticateToken, async (req, res) => {
       const rawNews = await tuafQueries.getSchoolNews(pool, role);
       if (rawNews && rawNews.length > 0) {
         for (const item of rawNews) {
-          await News.upsert({
+          const existing = await News.findOne({ where: { newsId: item.newsId } });
+          const newsPayload = {
             newsId: item.newsId,
             title: item.title,
             summary: item.summary,
@@ -30,7 +31,12 @@ router.get('/', authenticateToken, async (req, res) => {
             targetStudent: item.targetStudent,
             targetLecturer: item.targetLecturer,
             category: item.category
-          });
+          };
+          if (existing) {
+            await existing.update(newsPayload);
+          } else {
+            await News.create(newsPayload);
+          }
         }
       }
     } catch (err) {

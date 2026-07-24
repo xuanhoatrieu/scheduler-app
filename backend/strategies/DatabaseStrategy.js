@@ -146,7 +146,8 @@ class DatabaseStrategy extends ScheduleStrategy {
     // Cache Tin Tức Thông Báo từ Nhà trường
     if (rawNews && rawNews.length > 0) {
       for (const item of rawNews) {
-        await News.upsert({
+        const existing = await News.findOne({ where: { newsId: item.newsId } });
+        const newsPayload = {
           newsId: item.newsId,
           title: item.title,
           summary: item.summary,
@@ -156,7 +157,12 @@ class DatabaseStrategy extends ScheduleStrategy {
           targetStudent: item.targetStudent,
           targetLecturer: item.targetLecturer,
           category: item.category
-        });
+        };
+        if (existing) {
+          await existing.update(newsPayload);
+        } else {
+          await News.create(newsPayload);
+        }
       }
     }
 
