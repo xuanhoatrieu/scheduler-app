@@ -32,13 +32,8 @@ const connectDB = async () => {
     await sequelize.authenticate();
     console.log('📡 PostgreSQL Connected successfully via Sequelize ORM!');
     
-    // Tự động đồng bộ cấu trúc các bảng (Sequelize Sync)
-    // Only use alter in development; use safe sync in production
-    if (isDev) {
-      await sequelize.sync({ alter: true });
-    } else {
-      await sequelize.sync();
-    }
+    // Tự động đồng bộ cấu trúc các bảng và thêm các cột mới còn thiếu (tuafStudentId, periodText, ...)
+    await sequelize.sync({ alter: true });
     console.log('✅ All database models synchronized successfully.');
   } catch (error) {
     console.error('❌ Database connection failed:', error.message);
