@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const News = require('../models/News');
-const authenticateToken = require('../middleware/authMiddleware');
+const authenticateToken = require('../middleware/auth');
 const namvietConnector = require('../services/namvietConnector');
 const tuafQueries = require('../services/tuafQueries');
 
