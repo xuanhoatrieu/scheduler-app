@@ -124,8 +124,14 @@ class DatabaseStrategy extends ScheduleStrategy {
 
     console.log(`📚 [Strategy: Database] Đồng bộ lịch sử cho ${user.username}...`);
     const pool = await namvietConnector.getPool();
-    const entityId = user.tuafStudentId;
-    if (!entityId) throw new Error('Chưa có tuafStudentId — cần login trước');
+    let entityId = user.tuafStudentId;
+    if (!entityId) {
+      const sv = await tuafQueries.findStudentId(pool, user.username);
+      if (!sv) throw new Error(`Không tìm thấy sinh viên "${user.username}" trong hệ thống TUAF`);
+      entityId = sv.ID_sv;
+      user.tuafStudentId = entityId;
+      await user.save();
+    }
 
     // READ tất cả điểm + học phí + CTĐT + Tin tức thông báo + Miễn giảm
     const [rawAllGrades, rawAllFinance, rawCurriculum, rawNews, rawExemptions, rawSummaryTerms] = await Promise.all([

@@ -354,7 +354,14 @@ router.post('/sync-history', authMiddleware, async (req, res) => {
     const decryptedPassword = decrypt(req.user.encryptedPassword);
     const strategy = strategyManager.getStrategy();
 
-    const result = await strategy.syncHistory(req.user, decryptedPassword);
+    let result;
+    try {
+      result = await strategy.syncHistory(req.user, decryptedPassword);
+    } catch (stratErr) {
+      console.warn('⚠️ [Strategy] Lỗi syncHistory, tự động fallback sang CrawlerStrategy:', stratErr.message);
+      const crawlerStrategy = strategyManager.getCrawlerStrategy();
+      result = await crawlerStrategy.syncHistory(req.user, decryptedPassword);
+    }
 
     res.json({
       success: true,
