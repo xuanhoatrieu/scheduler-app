@@ -14,7 +14,7 @@ services:
       DB_URI: ${DB_URI}
       JWT_SECRET: ${JWT_SECRET}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
-      DATA_SOURCE: crawler
+      DATA_SOURCE: ${DATA_SOURCE:-database}
     networks:
       - tuaf-ai-network
     healthcheck:

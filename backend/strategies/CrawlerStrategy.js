@@ -92,7 +92,7 @@ class CrawlerStrategy extends ScheduleStrategy {
       await Finance.create({
         userId: user.id,
         semester: formattedSemester,
-        schoolYear: schoolYear || '',
+        schoolYear: formattedSchoolYear,
         totalTuition: financeData.totalTuition || 0,
         mustPayTuition: financeData.mustPayTuition || 0,
         discountTuition: financeData.discountTuition || 0,
