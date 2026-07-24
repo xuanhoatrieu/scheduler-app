@@ -174,7 +174,7 @@ const runDatabaseBulkSync = async () => {
       // Cache finance
       if (userFinance.length > 0) {
         const totalPaid = userFinance.reduce((s, r) => s + (r.So_tien || 0), 0);
-        await Finance.destroy({ where: { userId: user.id, semester: formattedSemester } });
+        await Finance.destroy({ where: { userId: user.id, semester: formattedSemester, schoolYear: formattedSchoolYear } });
         await Finance.create({
           userId: user.id,
           semester: formattedSemester,

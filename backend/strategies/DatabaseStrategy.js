@@ -214,7 +214,7 @@ class DatabaseStrategy extends ScheduleStrategy {
     for (const [key, group] of Object.entries(financeByKey)) {
       const [semester, schoolYear] = key.split('|');
       const aggregated = this._aggregateFinanceGroup(group);
-      await Finance.destroy({ where: { userId: user.id, semester } });
+      await Finance.destroy({ where: { userId: user.id, semester, schoolYear } });
       await Finance.create({
         userId: user.id,
         semester,
@@ -426,7 +426,7 @@ class DatabaseStrategy extends ScheduleStrategy {
     // D. Học phí
     const financeData = this._aggregateFinance(financeRaw);
     if (financeRaw && financeRaw.length > 0) {
-      await Finance.destroy({ where: { userId: user.id, semester } });
+      await Finance.destroy({ where: { userId: user.id, semester, schoolYear } });
       await Finance.create({
         userId: user.id,
         semester,

@@ -88,7 +88,7 @@ class CrawlerStrategy extends ScheduleStrategy {
 
     // D. Cập nhật học phí công nợ tài chính
     if (financeData) {
-      await Finance.destroy({ where: { userId: user.id, semester: formattedSemester } });
+      await Finance.destroy({ where: { userId: user.id, semester: formattedSemester, schoolYear: formattedSchoolYear } });
       await Finance.create({
         userId: user.id,
         semester: formattedSemester,
@@ -185,7 +185,7 @@ class CrawlerStrategy extends ScheduleStrategy {
 
     // Lưu học phí lịch sử vào PostgreSQL (từng kỳ)
     for (const finance of allFinance) {
-      await Finance.destroy({ where: { userId: user.id, semester: finance.semester } });
+      await Finance.destroy({ where: { userId: user.id, semester: finance.semester, schoolYear: finance.schoolYear } });
       await Finance.create({
         userId: user.id,
         semester: finance.semester,
