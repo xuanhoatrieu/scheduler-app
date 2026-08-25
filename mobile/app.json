@@ -19,7 +19,7 @@
     },
     "android": {
       "package": "com.xuanhoatrieu.tuafschedule",
-      "versionCode": 2
+      "versionCode": 5
     },
     "ios": {
       "bundleIdentifier": "com.xuanhoatrieu.tuafschedule",

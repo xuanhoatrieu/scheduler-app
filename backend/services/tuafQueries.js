@@ -170,13 +170,17 @@ async function findKyDangKy(pool, hocKy, namHoc) {
  * Lấy tất cả Ky_dang_ky cho 1 kỳ (có thể nhiều đợt trong cùng 1 HK)
  */
 async function findAllKyDangKy(pool, hocKy, namHoc) {
+  const cleanNamHoc = String(namHoc || '').replace('_', '-');
+  const altNamHoc = cleanNamHoc.replace('-', '_');
+
   const result = await safeQuery(pool,
     `SELECT Ky_dang_ky FROM PLAN_HocKyDangKy_TC
-     WHERE Hoc_ky = @hocKy AND Nam_hoc = @namHoc
-     ORDER BY Ky_dang_ky`,
+     WHERE Hoc_ky = @hocKy AND (Nam_hoc = @namHoc OR Nam_hoc = @altNamHoc)
+     ORDER BY Ky_dang_ky DESC`,
     [
       { name: 'hocKy', type: sql.Int, value: hocKy },
-      { name: 'namHoc', type: sql.NVarChar(50), value: namHoc }
+      { name: 'namHoc', type: sql.NVarChar(50), value: cleanNamHoc },
+      { name: 'altNamHoc', type: sql.NVarChar(50), value: altNamHoc }
     ],
     { username: 'system' }
   );
@@ -185,9 +189,9 @@ async function findAllKyDangKy(pool, hocKy, namHoc) {
 
 /**
  * Lấy TKB của 1 SV trong 1 kỳ
- * Bảng: PLAN_SukiensTinChi_TC (thay cho PLAN_BoTri)
- * Phòng: PLAN_PhongHoc.So_phong
- * Filter: qua Ky_dang_ky (từ PLAN_MonTinChi_TC)
+ * Bảng đăng ký: STU_DanhSachLopTinChi
+ * Bảng sự kiện: PLAN_SukiensTinChi_TC
+ * Bảng phòng: PLAN_PhongHoc
  */
 async function getStudentSchedule(pool, idSv, hocKy, namHoc) {
   // Lấy tất cả Ky_dang_ky cho kỳ này
@@ -201,25 +205,25 @@ async function getStudentSchedule(pool, idSv, hocKy, namHoc) {
     `SELECT
       sk.Thu, sk.Tiet, sk.So_tiet, sk.Tu_ngay, sk.Den_ngay,
       mh.Ky_hieu AS courseCode, mh.Ten_mon AS courseName,
-      ll.Ho_ten AS teacherName,
+      COALESCE(ll.Ho_ten, '') AS teacherName,
       mtc.So_tin_chi AS credits,
       ph.So_phong AS Phong,
-      mtc.Ky_dang_ky
-    FROM PLAN_SukiensTinChi_TC sk
-    JOIN PLAN_LopTinChi_TC ltc ON sk.ID_lop_tc = ltc.ID_lop_tc
+      mtc.Ky_dang_ky,
+      ltc.ID_lop_tc, ltc.Ten_lop_hp
+    FROM STU_DanhSachLopTinChi ds
+    JOIN PLAN_LopTinChi_TC ltc ON ds.ID_lop_tc = ltc.ID_lop_tc
     JOIN PLAN_MonTinChi_TC mtc ON ltc.ID_mon_tc = mtc.ID_mon_tc
     JOIN dmMonHoc mh ON mtc.ID_mon = mh.ID_mon
+    LEFT JOIN PLAN_SukiensTinChi_TC sk ON sk.ID_lop_tc = ltc.ID_lop_tc
     LEFT JOIN PLAN_PhongHoc ph ON sk.ID_phong = ph.ID_phong
     LEFT JOIN HR_LyLich ll ON COALESCE(sk.ID_cb, ltc.ID_cb) = ll.ID_cb
-    WHERE sk.ID_lop_tc IN (
-      SELECT ds.ID_lop_tc FROM STU_DanhSachLopTinChi_CHOT ds
-      WHERE ds.ID_sv = @idSv AND ISNULL(ds.Huy_dang_ky, 0) = 0
-    )
-    AND ISNULL(ltc.Huy_lop, 0) = 0
-    AND mtc.Ky_dang_ky IN (${kyList})
+    WHERE ds.ID_sv = @idSv
+      AND ISNULL(ds.Huy_dang_ky, 0) = 0
+      AND ISNULL(ltc.Huy_lop, 0) = 0
+      AND mtc.Ky_dang_ky IN (${kyList})
     ORDER BY sk.Thu, sk.Tiet`,
     [
-      { name: 'idSv', type: sql.UniqueIdentifier, value: idSv }
+      { name: 'idSv', type: sql.NVarChar(50), value: String(idSv) }
     ],
     { username: 'student-schedule' }
   );

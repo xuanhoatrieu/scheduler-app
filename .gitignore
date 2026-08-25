@@ -29,3 +29,10 @@ build/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Rig Harness SQLite DB
+harness.db
+harness.db-wal
+harness.db-shm
+harness.db-journal
+

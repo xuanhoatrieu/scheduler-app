@@ -12,8 +12,8 @@ const strategyManager = require('../strategies/StrategyManager');
  * Hàm trợ giúp để kích hoạt ép buộc đồng bộ (Force Sync) dữ liệu thời gian thực
  */
 const handleForceSync = async (user, req) => {
-  const semester = req.query.semester || '2';
-  const schoolYear = req.query.schoolYear || '2025';
+  const semester = req.query.semester || '1';
+  const schoolYear = req.query.schoolYear || '2026';
   const dataSource = process.env.DATA_SOURCE || 'database';
   
   console.log(`🔄 [API Sync] Đang kích hoạt ép buộc đồng bộ cho ${user.username} (mode: ${dataSource})...`);
@@ -39,8 +39,8 @@ const handleForceSync = async (user, req) => {
  */
 router.get('/schedule', authMiddleware, async (req, res) => {
   try {
-    const semester = req.query.semester || '2';
-    const schoolYear = req.query.schoolYear || '2025';
+    const semester = req.query.semester || '1';
+    const schoolYear = req.query.schoolYear || '2026';
     const formattedSemester = `HocKy${semester}`;
     const formattedSchoolYear = `${schoolYear}-${parseInt(schoolYear) + 1}`;
 
@@ -81,8 +81,8 @@ router.get('/schedule', authMiddleware, async (req, res) => {
  */
 router.get('/exams', authMiddleware, async (req, res) => {
   try {
-    const semester = req.query.semester || '2';
-    const schoolYear = req.query.schoolYear || '2025';
+    const semester = req.query.semester || '1';
+    const schoolYear = req.query.schoolYear || '2026';
     const formattedSemester = `HocKy${semester}`;
     const formattedSchoolYear = `${schoolYear}-${parseInt(schoolYear) + 1}`;
 
@@ -121,8 +121,8 @@ router.get('/exams', authMiddleware, async (req, res) => {
  */
 router.get('/grades', authMiddleware, async (req, res) => {
   try {
-    const semester = req.query.semester || '2';
-    const schoolYear = req.query.schoolYear || '2025';
+    const semester = req.query.semester || '1';
+    const schoolYear = req.query.schoolYear || '2026';
     const formattedSemester = `HocKy${semester}`;
     const formattedSchoolYear = `${schoolYear}-${parseInt(schoolYear) + 1}`;
     const dataSource = process.env.DATA_SOURCE || 'database';
@@ -191,7 +191,7 @@ router.get('/grades', authMiddleware, async (req, res) => {
  */
 router.get('/finance', authMiddleware, async (req, res) => {
   try {
-    const semester = req.query.semester || '2';
+    const semester = req.query.semester || '1';
     const formattedSemester = `HocKy${semester}`;
 
     if (req.query.forceSync === 'true') {
@@ -503,8 +503,8 @@ router.get('/curriculum', authMiddleware, async (req, res) => {
  */
 router.get('/diem-ren-luyen', authMiddleware, async (req, res) => {
   try {
-    const semester = req.query.semester || '2';
-    const schoolYear = req.query.schoolYear || '2025';
+    const semester = req.query.semester || '1';
+    const schoolYear = req.query.schoolYear || '2026';
     const formattedSemester = `HocKy${semester}`;
     const formattedSchoolYear = `${schoolYear}-${parseInt(schoolYear) + 1}`;
 

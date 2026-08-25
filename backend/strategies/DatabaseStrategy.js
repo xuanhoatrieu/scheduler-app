@@ -20,7 +20,7 @@ class DatabaseStrategy extends ScheduleStrategy {
    * Lấy dữ liệu kỳ hiện tại từ SQL Server → cache PG
    * Dùng khi: login, forceSync
    */
-  async getSchedule(user, decryptedPassword, options = { semester: '2', schoolYear: '2025' }) {
+  async getSchedule(user, decryptedPassword, options = { semester: '1', schoolYear: '2026' }) {
     console.log(`🔌 [Strategy: Database] Đang đọc dữ liệu cho ${user.username} (Role: ${user.role})...`);
 
     const pool = await namvietConnector.getPool();
@@ -50,10 +50,17 @@ class DatabaseStrategy extends ScheduleStrategy {
       }
     }
 
-    // 2. Xác định kỳ học
-    const hocKy = parseInt(options.semester);
-    const namHoc = `${options.schoolYear}-${parseInt(options.schoolYear) + 1}`;
-    const formattedSemester = `HocKy${options.semester}`;
+    // 2. Xác định kỳ học (chuẩn hóa 2026-2027, 2026_2027, 2026)
+    const hocKy = parseInt(options.semester || '1') || 1;
+    let namHoc;
+    const sy = String(options.schoolYear || '2026').replace('_', '-');
+    if (sy.includes('-')) {
+      namHoc = sy;
+    } else {
+      const startYr = parseInt(sy) || 2026;
+      namHoc = `${startYr}-${startYr + 1}`;
+    }
+    const formattedSemester = `HocKy${hocKy}`;
     const formattedSchoolYear = namHoc;
 
     // 3. READ từ SQL Server (parallel cho tốc độ)
@@ -110,6 +117,9 @@ class DatabaseStrategy extends ScheduleStrategy {
       scheduleList,
       examList,
       gradeList,
+      schedules: scheduleList,
+      exams: examList,
+      grades: gradeList,
       financeData: this._aggregateFinance(financeRaw)
     };
   }
@@ -263,19 +273,30 @@ class DatabaseStrategy extends ScheduleStrategy {
   // ═══════════════════════════════════════
 
   _transformSchedules(rawRows, semester, schoolYear) {
-    return rawRows.map(r => ({
-      courseName: r.courseName || '',
-      credits: r.credits || 0,
-      classCode: r.courseCode || '',
-      studyTime: this._formatDateRange(r.Tu_ngay, r.Den_ngay),
-      dayOfWeek: r.Thu,
-      room: r.Phong || '',
-      teacherName: r.teacherName || '',
-      periodText: r.Tiet && r.So_tiet ? `${r.Tiet}-${r.Tiet + r.So_tiet - 1}` : '',
-      semester,
-      schoolYear,
-      batch: 'Dothoc1'
-    }));
+    return rawRows.map(r => {
+      let periodText = '';
+      if (r.Tiet != null && r.Tiet >= 0 && r.So_tiet > 0) {
+        periodText = `${r.Tiet + 1}-${r.Tiet + r.So_tiet}`;
+      } else if (r.So_tiet > 0) {
+        periodText = `${r.So_tiet} tiết`;
+      }
+
+      const dayOfWeek = r.Thu != null && r.Thu >= 0 ? (r.Thu === 0 ? 8 : r.Thu + 1) : 0;
+
+      return {
+        courseName: r.courseName || '',
+        credits: r.credits || 0,
+        classCode: r.courseCode || '',
+        studyTime: this._formatDateRange(r.Tu_ngay, r.Den_ngay),
+        dayOfWeek,
+        room: r.Phong || '',
+        teacherName: r.teacherName || '',
+        periodText,
+        semester,
+        schoolYear,
+        batch: 'Dothoc1'
+      };
+    });
   }
 
   _transformExams(rawRows) {

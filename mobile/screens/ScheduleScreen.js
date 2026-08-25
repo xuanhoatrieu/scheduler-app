@@ -99,9 +99,9 @@ export default function ScheduleScreen({ user }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Semester picker
   const semesters = [
-    { label: 'HK2 2025-2026', semester: '2', schoolYear: '2025', current: true },
+    { label: 'HK1 2026-2027', semester: '1', schoolYear: '2026', current: true },
+    { label: 'HK2 2025-2026', semester: '2', schoolYear: '2025' },
     { label: 'HK1 2025-2026', semester: '1', schoolYear: '2025' },
     { label: 'HK2 2024-2025', semester: '2', schoolYear: '2024' },
     { label: 'HK1 2024-2025', semester: '1', schoolYear: '2024' },

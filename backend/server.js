@@ -4,13 +4,18 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config({ path: __dirname + '/.env' });
 
+const path = require('path');
 const { connectDB } = require('./config/db');
 const { initCronJob } = require('./jobs/syncScheduler');
+const configService = require('./services/configService');
 
 const authRoutes = require('./routes/auth');
 const scheduleRoutes = require('./routes/schedule');
 const lecturerRoutes = require('./routes/lecturer');
 const inspectorRoutes = require('./routes/inspector');
+const newsRoutes = require('./routes/news');
+const adminRoutes = require('./routes/adminRoutes');
+const { adminLocalGuard } = require('./middleware/adminAuth');
 
 const app = express();
 
@@ -20,8 +25,25 @@ app.set('trust proxy', 1);
 const PORT = process.env.PORT || 5000;
 const isDev = process.env.NODE_ENV !== 'production';
 
-// Security & Middleware
-app.use(helmet());
+// Security & Middleware with custom CSP for Admin UI & Fonts
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+        fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+        imgSrc: ["'self'", 'data:', 'https:'],
+        connectSrc: ["'self'", 'http:', 'https:'],
+        upgradeInsecureRequests: null
+      }
+    },
+    hsts: false,
+    crossOriginOpenerPolicy: false,
+    originAgentCluster: false
+  })
+);
 
 // CORS: restrict to known origins in production
 const corsOptions = isDev
@@ -70,7 +92,16 @@ if (isDev) {
   });
 }
 
-const newsRoutes = require('./routes/news');
+// Static Public Assets (Web Admin UI & Icons)
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Admin Portal Web UI (Protected with Local Guard)
+app.get('/admin', adminLocalGuard, (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin', 'index.html'));
+});
+
+// Admin API Routes (Protected with Local Guard)
+app.use('/api/admin', adminRoutes);
 
 // Routes Registration with rate limiting
 app.use('/api/auth/login', loginLimiter);
@@ -95,7 +126,8 @@ app.get('/', (req, res) => {
     message: 'Welcome to TUAF Scheduler Backend API Services',
     status: 'Running',
     version: '1.0.0',
-    timestamp: new Date()
+    timestamp: new Date(),
+    adminPanel: 'http://localhost:' + PORT + '/admin'
   });
 });
 
@@ -122,12 +154,18 @@ const startServices = async () => {
     // 1. Kết nối và đồng bộ PostgreSQL
     await connectDB();
     
-    // 2. Khởi chạy lịch chạy ngầm Cron Job
+    // 2. Khởi tạo và nạp cấu hình hệ thống từ DB
+    await configService.init();
+    
+    // 3. Khởi chạy lịch chạy ngầm Cron Job
     initCronJob();
     
-    // 3. Khởi động Web API Server
-    app.listen(PORT, () => {
+    // 4. Khởi động Web API Server lắng nghe trên 0.0.0.0 (tất cả card mạng LAN & Local)
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Server is running on port ${PORT}`);
+      console.log(`🎛️  Admin Web Dashboard:`);
+      console.log(`   - Localhost: http://localhost:${PORT}/admin`);
+      console.log(`   - Mạng LAN:  http://10.64.220.241:${PORT}/admin`);
     });
   } catch (error) {
     console.error('❌ Failed to start Backend services:', error.message);
@@ -136,3 +174,4 @@ const startServices = async () => {
 };
 
 startServices();
+

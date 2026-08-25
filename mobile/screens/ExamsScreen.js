@@ -70,7 +70,7 @@ export default function ExamsScreen({ user }) {
       <View style={styles.header}>
         <View>
           <Text style={styles.headerTitle}>Lịch Thi</Text>
-          <Text style={styles.headerSubtitle}>Học kỳ 2 • 2025-2026</Text>
+          <Text style={styles.headerSubtitle}>Học kỳ 1 • 2026-2027</Text>
         </View>
         <TouchableOpacity style={styles.syncBtn} onPress={onRefresh} disabled={refreshing}>
           {refreshing ? (

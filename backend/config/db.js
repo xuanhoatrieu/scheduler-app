@@ -28,6 +28,7 @@ const connectDB = async () => {
     require('../models/DiemRenLuyen');
     require('../models/Curriculum');
     require('../models/News');
+    require('../models/SystemConfig');
 
     await sequelize.authenticate();
     console.log('📡 PostgreSQL Connected successfully via Sequelize ORM!');
