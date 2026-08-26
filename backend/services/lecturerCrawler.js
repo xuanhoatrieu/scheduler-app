@@ -151,7 +151,7 @@ const loginLecturer = async (username, password) => {
 /**
  * Đồng bộ toàn bộ dữ liệu giảng dạy của Giảng viên
  */
-const syncLecturerData = async (username, password, options = { semester: '2', schoolYear: '2025' }) => {
+const syncLecturerData = async (username, password, options = { semester: '1', schoolYear: '2026' }) => {
   const loginResult = await loginLecturer(username, password);
 
   if (!loginResult.success) {

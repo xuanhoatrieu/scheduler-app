@@ -220,8 +220,8 @@ const runCrawlerSync = async () => {
       console.log(`⏰ [Cron Crawler] Đang đồng bộ ${user.username}...`);
       const decryptedPassword = decrypt(user.encryptedPassword);
       await crawlerStrategy.getSchedule(user, decryptedPassword, {
-        semester: '2',
-        schoolYear: '2025'
+        semester: '1',
+        schoolYear: '2026'
       });
       console.log(`⏰ [Cron Crawler] Thành công cho ${user.username}!`);
       

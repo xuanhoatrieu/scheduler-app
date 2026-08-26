@@ -4,7 +4,13 @@
     "slug": "tuaf-schedule",
     "version": "1.0.1",
     "orientation": "portrait",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -19,13 +25,20 @@
     },
     "android": {
       "package": "com.xuanhoatrieu.tuafschedule",
-      "versionCode": 5
+      "versionCode": 5,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      }
     },
     "ios": {
       "bundleIdentifier": "com.xuanhoatrieu.tuafschedule",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
     }
   }
 }

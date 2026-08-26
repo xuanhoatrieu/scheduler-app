@@ -11,7 +11,7 @@ const Curriculum = require('../models/Curriculum');
  * Chiến lược cào dữ liệu trực tiếp từ cổng trường và tự động lưu đệm (Cache) vào PostgreSQL
  */
 class CrawlerStrategy extends ScheduleStrategy {
-  async getSchedule(user, decryptedPassword, options = { semester: '2', schoolYear: '2025' }) {
+  async getSchedule(user, decryptedPassword, options = { semester: '1', schoolYear: '2026' }) {
     console.log(`🔌 [Strategy: Crawler] Đang cào dữ liệu cho tài khoản ${user.username} (Role: ${user.role})...`);
     
     let crawledData;

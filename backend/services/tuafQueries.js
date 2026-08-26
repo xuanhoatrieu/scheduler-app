@@ -523,7 +523,7 @@ async function bulkSchedules(pool, hocKy, namHoc) {
     JOIN dmMonHoc mh ON mtc.ID_mon = mh.ID_mon
     LEFT JOIN PLAN_PhongHoc ph ON sk.ID_phong = ph.ID_phong
     LEFT JOIN HR_LyLich ll ON COALESCE(sk.ID_cb, ltc.ID_cb) = ll.ID_cb
-    JOIN STU_DanhSachLopTinChi_CHOT ds ON ds.ID_lop_tc = ltc.ID_lop_tc
+    JOIN STU_DanhSachLopTinChi ds ON ds.ID_lop_tc = ltc.ID_lop_tc
     JOIN STU_HoSoSinhVien sv ON ds.ID_sv = sv.ID_sv
     WHERE ISNULL(ds.Huy_dang_ky, 0) = 0
       AND ISNULL(ltc.Huy_lop, 0) = 0

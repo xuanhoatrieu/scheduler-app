@@ -150,8 +150,8 @@ router.post('/login', async (req, res) => {
 
     try {
       result = await strategy.getSchedule(user, password, {
-        semester: '2',
-        schoolYear: '2025'
+        semester: '1',
+        schoolYear: '2026'
       });
     } catch (primaryErr) {
       // Nếu strategy chính là database và lỗi → fallback sang crawler
@@ -159,8 +159,8 @@ router.post('/login', async (req, res) => {
         console.warn(`⚠️ [Auth] DatabaseStrategy lỗi: ${primaryErr.message}. Fallback sang Crawler...`);
         const crawlerStrategy = strategyManager.getCrawlerStrategy();
         result = await crawlerStrategy.getSchedule(user, password, {
-          semester: '2',
-          schoolYear: '2025'
+          semester: '1',
+          schoolYear: '2026'
         });
       } else {
         throw primaryErr;

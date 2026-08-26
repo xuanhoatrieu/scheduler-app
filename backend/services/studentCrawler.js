@@ -121,7 +121,7 @@ const loginStudent = async (username, password) => {
  * @param {Object} options - { semester: string, schoolYear: string }
  * @returns {Object} Đối tượng dữ liệu cào sạch sẽ
  */
-const syncStudentData = async (username, password, options = { semester: '2', schoolYear: '2025' }) => {
+const syncStudentData = async (username, password, options = { semester: '1', schoolYear: '2026' }) => {
   const loginResult = await loginStudent(username, password);
   
   if (!loginResult.success) {
