@@ -82,6 +82,7 @@ export const getGradeColor = (letterGrade) => {
  */
 export const getDayColor = (dayOfWeek) => {
   const map = {
+    0: Colors.accentPurple,
     2: Colors.dayMon,
     3: Colors.dayTue,
     4: Colors.dayWed,

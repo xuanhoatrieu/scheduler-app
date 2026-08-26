@@ -65,12 +65,22 @@ export default function ExamsScreen({ user }) {
     );
   }
 
+  const getSemesterSubtitle = () => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+    const isSem1 = currentMonth >= 8;
+    const startYear = isSem1 ? currentYear : currentYear - 1;
+    const semNum = isSem1 ? 1 : 2;
+    return `Học kỳ ${semNum} • ${startYear}-${startYear + 1}`;
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View>
           <Text style={styles.headerTitle}>Lịch Thi</Text>
-          <Text style={styles.headerSubtitle}>Học kỳ 1 • 2026-2027</Text>
+          <Text style={styles.headerSubtitle}>{getSemesterSubtitle()}</Text>
         </View>
         <TouchableOpacity style={styles.syncBtn} onPress={onRefresh} disabled={refreshing}>
           {refreshing ? (

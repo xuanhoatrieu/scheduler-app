@@ -2,7 +2,7 @@
   "expo": {
     "name": "TUAF Schedule",
     "slug": "tuaf-schedule",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -25,7 +25,7 @@
     },
     "android": {
       "package": "com.xuanhoatrieu.tuafschedule",
-      "versionCode": 5,
+      "versionCode": 6,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"

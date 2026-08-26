@@ -9,11 +9,22 @@ const { decrypt } = require('../utils/security');
 const strategyManager = require('../strategies/StrategyManager');
 
 /**
+ * Chuẩn hóa tham số học kỳ và năm học từ request query
+ */
+const normalizeTerm = (semQuery, yearQuery) => {
+  const semester = String(semQuery || '1').replace('HocKy', '');
+  const rawYear = String(yearQuery || '2026').replace('_', '-');
+  const startYear = parseInt(rawYear.split('-')[0]) || 2026;
+  const formattedSemester = `HocKy${semester}`;
+  const formattedSchoolYear = `${startYear}-${startYear + 1}`;
+  return { semester, startYear, formattedSemester, formattedSchoolYear };
+};
+
+/**
  * Hàm trợ giúp để kích hoạt ép buộc đồng bộ (Force Sync) dữ liệu thời gian thực
  */
 const handleForceSync = async (user, req) => {
-  const semester = req.query.semester || '1';
-  const schoolYear = req.query.schoolYear || '2026';
+  const { semester, startYear } = normalizeTerm(req.query.semester, req.query.schoolYear);
   const dataSource = process.env.DATA_SOURCE || 'database';
   
   console.log(`🔄 [API Sync] Đang kích hoạt ép buộc đồng bộ cho ${user.username} (mode: ${dataSource})...`);
@@ -21,16 +32,129 @@ const handleForceSync = async (user, req) => {
   const strategy = strategyManager.getStrategy();
   
   try {
-    return await strategy.getSchedule(user, decryptedPassword, { semester, schoolYear });
+    return await strategy.getSchedule(user, decryptedPassword, { semester, schoolYear: String(startYear) });
   } catch (err) {
     if (dataSource === 'database') {
       console.warn(`⚠️ [API Sync] Database lỗi, fallback crawler: ${err.message}`);
       const crawler = strategyManager.getCrawlerStrategy();
-      return await crawler.getSchedule(user, decryptedPassword, { semester, schoolYear });
+      return await crawler.getSchedule(user, decryptedPassword, { semester, schoolYear: String(startYear) });
     }
     throw err;
   }
 };
+
+/**
+ * @route   GET /api/schedule/semesters
+ * @desc    Lấy danh sách các học kỳ có dữ liệu hoặc đang hoạt động (cho Semester Picker)
+ * @access  Private (JWT)
+ */
+router.get('/schedule/semesters', authMiddleware, async (req, res) => {
+  try {
+    const dataSource = process.env.DATA_SOURCE || 'database';
+    const semestersSet = new Map();
+
+    const addEntry = (semRaw, syRaw, isCurrent = false) => {
+      if (!semRaw || !syRaw) return;
+      const semNum = String(semRaw).replace('HocKy', '');
+      const rawY = String(syRaw).replace('_', '-');
+      const startYear = parseInt(rawY.split('-')[0]) || 2026;
+      const fullSchoolYear = `${startYear}-${startYear + 1}`;
+      const key = `${semNum}|${startYear}`;
+      if (!semestersSet.has(key)) {
+        semestersSet.set(key, {
+          label: `HK${semNum} ${fullSchoolYear}`,
+          semester: semNum,
+          schoolYear: String(startYear),
+          fullSchoolYear,
+          current: isCurrent
+        });
+      } else if (isCurrent) {
+        semestersSet.get(key).current = true;
+      }
+    };
+
+    // 1. Lấy tất cả các kỳ đã có dữ liệu trong PostgreSQL cache
+    const [userSchedules, userGrades, userFinances] = await Promise.all([
+      Schedule.findAll({
+        attributes: ['semester', 'schoolYear'],
+        where: { userId: req.user.id },
+        group: ['semester', 'schoolYear']
+      }),
+      Grade.findAll({
+        attributes: ['semester', 'schoolYear'],
+        where: { userId: req.user.id },
+        group: ['semester', 'schoolYear']
+      }),
+      Finance.findAll({
+        attributes: ['semester', 'schoolYear'],
+        where: { userId: req.user.id },
+        group: ['semester', 'schoolYear']
+      })
+    ]);
+
+    userSchedules.forEach(s => addEntry(s.semester, s.schoolYear));
+    userGrades.forEach(g => addEntry(g.semester, g.schoolYear));
+    userFinances.forEach(f => addEntry(f.semester, f.schoolYear));
+
+    // 2. Nếu ở mode database, lấy thêm kỳ active từ SQL Server TUAF
+    if (dataSource === 'database') {
+      try {
+        const namvietConnector = require('../services/namvietConnector');
+        const tuafQueries = require('../services/tuafQueries');
+        const pool = await namvietConnector.getPool();
+        const currentTerm = await tuafQueries.getCurrentTerm(pool);
+        if (currentTerm) {
+          addEntry(currentTerm.Hoc_ky, currentTerm.Nam_hoc, true);
+        }
+      } catch (dbErr) {
+        console.warn('⚠️ [API /schedule/semesters] Lỗi lấy currentTerm từ SQL Server:', dbErr.message);
+      }
+    }
+
+    // 3. Đảm bảo các kỳ hiện tại và kỳ kế tiếp luôn có mặt trong danh sách
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+    const isSem1 = currentMonth >= 8;
+    const baseYear = isSem1 ? currentYear : currentYear - 1;
+    const activeSem = isSem1 ? '1' : '2';
+
+    if (isSem1) {
+      addEntry('2', String(baseYear), false); // Kỳ 2 sắp tới
+    } else {
+      addEntry('1', String(baseYear + 1), false); // Kỳ 1 năm sau sắp tới
+    }
+    addEntry(activeSem, String(baseYear), true);
+
+    for (let y = baseYear; y >= baseYear - 4; y--) {
+      addEntry('2', String(y));
+      addEntry('1', String(y));
+    }
+
+    // 4. Sắp xếp giảm dần theo năm học, sau đó theo học kỳ
+    const sortedList = Array.from(semestersSet.values()).sort((a, b) => {
+      const yearDiff = parseInt(b.schoolYear) - parseInt(a.schoolYear);
+      if (yearDiff !== 0) return yearDiff;
+      return parseInt(b.semester) - parseInt(a.semester);
+    });
+
+    if (!sortedList.some(s => s.current) && sortedList.length > 0) {
+      sortedList[0].current = true;
+    }
+
+    res.json({
+      success: true,
+      data: sortedList
+    });
+  } catch (error) {
+    console.error('❌ [API /schedule/semesters] Lỗi:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Không thể tải danh sách học kỳ!',
+      error: error.message
+    });
+  }
+});
 
 /**
  * @route   GET /api/schedule
@@ -39,10 +163,7 @@ const handleForceSync = async (user, req) => {
  */
 router.get('/schedule', authMiddleware, async (req, res) => {
   try {
-    const semester = req.query.semester || '1';
-    const schoolYear = req.query.schoolYear || '2026';
-    const formattedSemester = `HocKy${semester}`;
-    const formattedSchoolYear = `${schoolYear}-${parseInt(schoolYear) + 1}`;
+    const { formattedSemester, formattedSchoolYear } = normalizeTerm(req.query.semester, req.query.schoolYear);
 
     // 1. Kích hoạt đồng bộ realtime nếu forceSync = true
     if (req.query.forceSync === 'true') {
@@ -81,10 +202,7 @@ router.get('/schedule', authMiddleware, async (req, res) => {
  */
 router.get('/exams', authMiddleware, async (req, res) => {
   try {
-    const semester = req.query.semester || '1';
-    const schoolYear = req.query.schoolYear || '2026';
-    const formattedSemester = `HocKy${semester}`;
-    const formattedSchoolYear = `${schoolYear}-${parseInt(schoolYear) + 1}`;
+    const { formattedSemester, formattedSchoolYear } = normalizeTerm(req.query.semester, req.query.schoolYear);
 
     if (req.query.forceSync === 'true') {
       await handleForceSync(req.user, req);
@@ -121,10 +239,7 @@ router.get('/exams', authMiddleware, async (req, res) => {
  */
 router.get('/grades', authMiddleware, async (req, res) => {
   try {
-    const semester = req.query.semester || '1';
-    const schoolYear = req.query.schoolYear || '2026';
-    const formattedSemester = `HocKy${semester}`;
-    const formattedSchoolYear = `${schoolYear}-${parseInt(schoolYear) + 1}`;
+    const { semester, formattedSemester, formattedSchoolYear } = normalizeTerm(req.query.semester, req.query.schoolYear);
     const dataSource = process.env.DATA_SOURCE || 'database';
 
     if (req.query.forceSync === 'true') {
@@ -503,10 +618,7 @@ router.get('/curriculum', authMiddleware, async (req, res) => {
  */
 router.get('/diem-ren-luyen', authMiddleware, async (req, res) => {
   try {
-    const semester = req.query.semester || '1';
-    const schoolYear = req.query.schoolYear || '2026';
-    const formattedSemester = `HocKy${semester}`;
-    const formattedSchoolYear = `${schoolYear}-${parseInt(schoolYear) + 1}`;
+    const { formattedSemester, formattedSchoolYear } = normalizeTerm(req.query.semester, req.query.schoolYear);
 
     const DiemRenLuyen = require('../models/DiemRenLuyen');
     const drl = await DiemRenLuyen.findOne({

@@ -68,6 +68,27 @@ export const login = async (username, password, role) => {
 };
 
 /**
+ * Lấy danh sách các học kỳ có dữ liệu hoặc đang hoạt động
+ */
+export const getScheduleSemesters = async () => {
+  try {
+    const response = await api.get('/schedule/semesters');
+    const data = response.data.data;
+    if (response.data.success && data && data.length > 0) {
+      await AsyncStorage.setItem('cached_schedule_semesters', JSON.stringify(data));
+      return { success: true, data, source: 'network' };
+    }
+  } catch (error) {
+    console.warn('Network error fetching schedule semesters, loading offline cache...');
+  }
+  const cached = await AsyncStorage.getItem('cached_schedule_semesters');
+  if (cached) {
+    return { success: true, data: JSON.parse(cached), source: 'cache' };
+  }
+  return { success: false, data: [] };
+};
+
+/**
  * Lấy thời khóa biểu học tập, tự động fallback đọc offline cache nếu có lỗi
  */
 export const getSchedule = async (forceSync = false, semester = null, schoolYear = null) => {

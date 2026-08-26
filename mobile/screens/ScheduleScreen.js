@@ -11,14 +11,16 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { getSchedule } from '../services/api';
+import { getSchedule, getScheduleSemesters } from '../services/api';
 import { Colors, getDayColor } from '../theme/colors';
 
 const DAY_FULL = {
+  0: 'Lịch Thực Tập / Chưa Xếp Thứ',
   2: 'Thứ Hai', 3: 'Thứ Ba', 4: 'Thứ Tư', 5: 'Thứ Năm',
   6: 'Thứ Sáu', 7: 'Thứ Bảy', 8: 'Chủ Nhật',
 };
 const DAY_SHORT = {
+  0: 'Khác',
   2: 'T2', 3: 'T3', 4: 'T4', 5: 'T5', 6: 'T6', 7: 'T7', 8: 'CN',
 };
 
@@ -94,28 +96,79 @@ const getPeriodTimeStr = (periodText) => {
   return `${startStr} - ${endStr} (Tiết ${periodText})`;
 };
 
+/**
+ * Tự động sinh danh sách học kỳ động theo thời gian thực (fallback offline)
+ */
+const getDynamicSemesters = () => {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+  
+  const isSem1 = currentMonth >= 8;
+  const activeStartYear = isSem1 ? currentYear : currentYear - 1;
+  const activeSem = isSem1 ? '1' : '2';
+
+  const list = [];
+
+  // 1. Luôn bao gồm kỳ sắp tới (tương lai)
+  if (isSem1) {
+    list.push({
+      label: `HK2 ${activeStartYear}-${activeStartYear + 1}`,
+      semester: '2',
+      schoolYear: String(activeStartYear),
+      current: false,
+    });
+  } else {
+    list.push({
+      label: `HK1 ${activeStartYear + 1}-${activeStartYear + 2}`,
+      semester: '1',
+      schoolYear: String(activeStartYear + 1),
+      current: false,
+    });
+  }
+
+  // 2. Kỳ hiện tại
+  list.push({
+    label: `HK${activeSem} ${activeStartYear}-${activeStartYear + 1}`,
+    semester: activeSem,
+    schoolYear: String(activeStartYear),
+    current: true,
+  });
+
+  // 3. Các kỳ trước đó
+  if (isSem1) {
+    list.push({ label: `HK2 ${activeStartYear - 1}-${activeStartYear}`, semester: '2', schoolYear: String(activeStartYear - 1) });
+    list.push({ label: `HK1 ${activeStartYear - 1}-${activeStartYear}`, semester: '1', schoolYear: String(activeStartYear - 1) });
+  } else {
+    list.push({ label: `HK1 ${activeStartYear}-${activeStartYear + 1}`, semester: '1', schoolYear: String(activeStartYear) });
+  }
+
+  const prevBase = isSem1 ? activeStartYear - 2 : activeStartYear - 1;
+  for (let y = prevBase; y >= activeStartYear - 4; y--) {
+    list.push({ label: `HK2 ${y}-${y + 1}`, semester: '2', schoolYear: String(y) });
+    list.push({ label: `HK1 ${y}-${y + 1}`, semester: '1', schoolYear: String(y) });
+  }
+
+  return list;
+};
+
 export default function ScheduleScreen({ user }) {
   const [scheduleData, setScheduleData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const semesters = [
-    { label: 'HK1 2026-2027', semester: '1', schoolYear: '2026', current: true },
-    { label: 'HK2 2025-2026', semester: '2', schoolYear: '2025' },
-    { label: 'HK1 2025-2026', semester: '1', schoolYear: '2025' },
-    { label: 'HK2 2024-2025', semester: '2', schoolYear: '2024' },
-    { label: 'HK1 2024-2025', semester: '1', schoolYear: '2024' },
-    { label: 'HK2 2023-2024', semester: '2', schoolYear: '2023' },
-    { label: 'HK1 2023-2024', semester: '1', schoolYear: '2023' },
-  ];
+  const [semesters, setSemesters] = useState(getDynamicSemesters());
   const [selectedSemIdx, setSelectedSemIdx] = useState(0);
-  const currentSem = semesters[selectedSemIdx];
+  const currentSem = semesters[selectedSemIdx] || semesters[0] || { label: 'Học kỳ' };
 
-  const loadData = async (forceSync = false, semIdx = null) => {
-    const sem = semesters[semIdx ?? selectedSemIdx];
+  const loadData = async (forceSync = false, semIdx = null, customSemesters = null) => {
+    const list = customSemesters || semesters;
+    const sem = list[semIdx ?? selectedSemIdx] || list[0];
+    if (!sem) return;
+
     let res = await getSchedule(forceSync, sem.semester, sem.schoolYear);
     
-    // Nếu không Force Sync nhưng DB trống trơn (res.data rỗng) -> tự động kích hoạt Force Sync để cào dữ liệu từ portal trường
+    // Nếu không Force Sync nhưng DB trống trơn -> tự động kích hoạt Force Sync
     if (res.success && (!res.data || res.data.length === 0) && !forceSync) {
       console.log(`[Schedule] DB trống cho kỳ ${sem.label} -> Tự động kích hoạt Force Sync...`);
       res = await getSchedule(true, sem.semester, sem.schoolYear);
@@ -126,14 +179,43 @@ export default function ScheduleScreen({ user }) {
   };
 
   useEffect(() => {
-    loadData().finally(() => setLoading(false));
+    let isMounted = true;
+    const init = async () => {
+      try {
+        const semRes = await getScheduleSemesters();
+        let semList = getDynamicSemesters();
+        if (semRes.success && semRes.data && semRes.data.length > 0) {
+          semList = semRes.data;
+          if (isMounted) setSemesters(semList);
+        }
+        
+        const currentIdx = semList.findIndex(s => s.current);
+        const targetIdx = currentIdx >= 0 ? currentIdx : 0;
+        if (isMounted) setSelectedSemIdx(targetIdx);
+        
+        await loadData(false, targetIdx, semList);
+      } catch (err) {
+        console.warn('Error loading schedule semesters:', err);
+        await loadData(false, 0);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+    init();
+    return () => { isMounted = false; };
   }, []);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadData(true);
+    const semRes = await getScheduleSemesters();
+    let currentList = semesters;
+    if (semRes.success && semRes.data && semRes.data.length > 0) {
+      currentList = semRes.data;
+      setSemesters(currentList);
+    }
+    await loadData(true, selectedSemIdx, currentList);
     setRefreshing(false);
-  }, [selectedSemIdx]);
+  }, [selectedSemIdx, semesters]);
 
   const onSelectSemester = async (idx) => {
     if (idx === selectedSemIdx) return;
