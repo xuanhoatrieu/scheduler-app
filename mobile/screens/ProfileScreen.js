@@ -65,28 +65,42 @@ export default function ProfileScreen({ user, onLogout }) {
           <View style={styles.avatarWrap}>
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>
-                {(user.fullName || user.username || '?').charAt(0).toUpperCase()}
+                {((user?.fullName || user?.username || '?')).charAt(0).toUpperCase()}
               </Text>
             </View>
-            <View style={[styles.roleBadge, { backgroundColor: user.role === 'student' ? Colors.primaryBg : Colors.accentBlue + '15' }]}>
-              <Text style={[styles.roleText, { color: user.role === 'student' ? Colors.primary : Colors.accentBlue }]}>
-                {user.role === 'student' ? '🎓 Sinh viên' : '👨‍🏫 Giảng viên'}
+            <View style={[styles.roleBadge, { 
+              backgroundColor: user?.role === 'student' 
+                ? Colors.primaryBg 
+                : user?.role === 'inspector' 
+                  ? '#ede7f6' 
+                  : Colors.accentBlue + '15' 
+            }]}>
+              <Text style={[styles.roleText, { 
+                color: user?.role === 'student' 
+                  ? Colors.primary 
+                  : user?.role === 'inspector' 
+                    ? '#5c6bc0' 
+                    : Colors.accentBlue 
+              }]}>
+                {user?.role === 'student' ? '🎓 Sinh viên' : user?.role === 'inspector' ? '📋 Thanh tra' : '👨‍🏫 Giảng viên'}
               </Text>
             </View>
           </View>
 
-          <Text style={styles.fullName}>{user.fullName || 'Sinh viên TUAF'}</Text>
+          <Text style={styles.fullName}>
+            {user?.fullName || (user?.role === 'inspector' ? 'Thanh tra đào tạo' : user?.role === 'lecturer' ? 'Giảng viên TUAF' : 'Sinh viên TUAF')}
+          </Text>
 
           <View style={styles.infoGrid}>
             <View style={styles.infoItem}>
               <Ionicons name="id-card-outline" size={18} color={Colors.primary} />
               <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>{user.role === 'student' ? 'MSSV' : 'Tài khoản'}</Text>
-                <Text style={styles.infoValue}>{user.username}</Text>
+                <Text style={styles.infoLabel}>{user?.role === 'student' ? 'MSSV' : 'Tài khoản'}</Text>
+                <Text style={styles.infoValue}>{user?.username || ''}</Text>
               </View>
             </View>
 
-            {user.className ? (
+            {user?.className ? (
               <View style={styles.infoItem}>
                 <Ionicons name="people-outline" size={18} color={Colors.accentPurple} />
                 <View style={styles.infoContent}>
@@ -96,11 +110,11 @@ export default function ProfileScreen({ user, onLogout }) {
               </View>
             ) : null}
 
-            {user.department ? (
+            {user?.department ? (
               <View style={styles.infoItem}>
                 <Ionicons name="business-outline" size={18} color={Colors.accentOrange} />
                 <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>Khoa</Text>
+                  <Text style={styles.infoLabel}>Khoa / Đơn vị</Text>
                   <Text style={styles.infoValue}>{user.department}</Text>
                 </View>
               </View>
@@ -110,13 +124,14 @@ export default function ProfileScreen({ user, onLogout }) {
               <Ionicons name="time-outline" size={18} color={Colors.info} />
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>Đồng bộ lần cuối</Text>
-                <Text style={styles.infoValue}>{formatDateTime(user.lastSyncedAt)}</Text>
+                <Text style={styles.infoValue}>{formatDateTime(user?.lastSyncedAt)}</Text>
               </View>
             </View>
           </View>
         </View>
 
-        {/* Sync History Button */}
+        {/* Sync History Button - Chỉ hiển thị cho Sinh viên */}
+        {user?.role === 'student' && (
         <View style={styles.actionSection}>
           <Text style={styles.sectionTitle}>DỮ LIỆU LỊCH SỬ</Text>
 
@@ -171,6 +186,7 @@ export default function ProfileScreen({ user, onLogout }) {
             </View>
           )}
         </View>
+        )}
 
         {/* App Info */}
         <View style={styles.actionSection}>

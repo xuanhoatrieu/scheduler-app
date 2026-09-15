@@ -166,8 +166,53 @@ const syncLecturerData = async (username, password, options = { semester: '1', s
     throw new Error(loginResult.error);
   }
 
-  const { cookieString, fullName, browser, page } = loginResult;
+  const { cookieString, fullName, browser, page, lecturerId } = loginResult;
   let scheduleList = [];
+
+  // Khi chạy trong môi trường không có Chrome (Docker Alpine, production), fallback lấy lịch dạy từ SQL Server
+  if (!page) {
+    console.log(`ℹ️ [Lecturer] Không có headless browser, lấy lịch dạy từ SQL Server cho GV ${fullName || username}...`);
+    let gvId = lecturerId;
+    try {
+      const namvietConnector = require('./namvietConnector');
+      const tuafQueries = require('./tuafQueries');
+      const pool = await namvietConnector.getPool();
+      if (!gvId) {
+        const gv = await tuafQueries.findLecturerId(pool, username);
+        if (gv) gvId = gv.ID_cb;
+      }
+      if (gvId) {
+        const hocKy = parseInt(options.semester || '1') || 1;
+        const sy = String(options.schoolYear || '2026').replace('_', '-');
+        const startYr = parseInt(sy.split('-')[0]) || 2026;
+        const namHoc = `${startYr}-${startYr + 1}`;
+        const rawSchedules = await tuafQueries.getLecturerSchedule(pool, gvId, hocKy, namHoc);
+        scheduleList = rawSchedules.map(row => ({
+          courseName: row.tenMon || row.Ten_mon || row.tenHocPhan || '',
+          credits: parseInt(row.soTinChi || row.So_tin_chi) || 0,
+          classCode: row.maLop || row.Ma_lop || row.lopHocPhan || '',
+          studyTime: row.thoiGian || row.Thoi_gian || '',
+          dayOfWeek: parseInt(row.thu || row.Thu) || 2,
+          periodText: row.tietHoc || row.Tiet_hoc || '',
+          room: row.phongHoc || row.Phong_hoc || '',
+          teacherName: fullName || username,
+          semester: `HocKy${hocKy}`,
+          schoolYear: namHoc,
+          batch: 'Dothoc1'
+        }));
+        console.log(`  ✅ Đã lấy ${scheduleList.length} lịch dạy từ SQL Server cho ${fullName}!`);
+      }
+    } catch (dbErr) {
+      console.warn(`  ⚠️ Lấy lịch dạy từ SQL Server thất bại: ${dbErr.message}`);
+    }
+    return {
+      fullName: fullName || username,
+      className: 'Giảng viên TUAF',
+      department: 'TUAF',
+      scheduleList,
+      lecturerId: gvId
+    };
+  }
 
   try {
     // Dùng Puppeteer page đã login để navigate đến trang lịch dạy

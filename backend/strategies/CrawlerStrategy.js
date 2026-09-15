@@ -122,6 +122,9 @@ class CrawlerStrategy extends ScheduleStrategy {
     user.fullName = fullName;
     user.className = className;
     user.department = department;
+    if (crawledData.lecturerId) {
+      user.tuafStudentId = crawledData.lecturerId;
+    }
     user.lastSyncedAt = new Date();
     await user.save();
 

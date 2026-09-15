@@ -27,10 +27,16 @@ const handleForceSync = async (user, req) => {
   const { semester, startYear } = normalizeTerm(req.query.semester, req.query.schoolYear);
   const dataSource = process.env.DATA_SOURCE || 'database';
   
-  console.log(`🔄 [API Sync] Đang kích hoạt ép buộc đồng bộ cho ${user.username} (mode: ${dataSource})...`);
+  console.log(`🔄 [API Sync] Đang kích hoạt ép buộc đồng bộ cho ${user.username} (role: ${user.role}, mode: ${dataSource})...`);
   const decryptedPassword = decrypt(user.encryptedPassword);
+
+  // Giảng viên LUÔN đồng bộ trực tiếp từ SQL Server Database, không crawl web
+  if (user.role === 'lecturer') {
+    const databaseStrategy = strategyManager.getDatabaseStrategy();
+    return await databaseStrategy.getSchedule(user, decryptedPassword, { semester, schoolYear: String(startYear) });
+  }
+
   const strategy = strategyManager.getStrategy();
-  
   try {
     return await strategy.getSchedule(user, decryptedPassword, { semester, schoolYear: String(startYear) });
   } catch (err) {

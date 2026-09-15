@@ -41,11 +41,12 @@ const formatTime = (dateStr) => {
 };
 
 export default function AttendanceScreen({ user }) {
-  const VN_TZ = 'Asia/Ho_Chi_Minh';
   const getTodayStr = () => {
     const now = new Date();
-    const today = new Date(now.toLocaleString('en-US', { timeZone: VN_TZ }));
-    return today.toISOString().split('T')[0];
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   const [currentDate, setCurrentDate] = useState(getTodayStr());
@@ -71,19 +72,25 @@ export default function AttendanceScreen({ user }) {
   const [submitError, setSubmitError] = useState('');
 
   const loadData = async (dateStr = currentDate) => {
+    setLoading(true);
     try {
       const res = await getInspectorClassesByDate(dateStr);
       if (res.success) {
         setClasses(res.data || []);
-        setDayOfWeek(res.dayOfWeek);
+        setDayOfWeek(res.dayOfWeek || 0);
+      } else {
+        setClasses([]);
       }
     } catch (e) {
       console.error(e);
+      setClasses([]);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadData(currentDate).finally(() => setLoading(false));
+    loadData(currentDate);
   }, [currentDate]);
 
   const onRefresh = useCallback(async () => {
@@ -93,9 +100,13 @@ export default function AttendanceScreen({ user }) {
   }, [currentDate]);
 
   const changeDate = (days) => {
-    const d = new Date(currentDate + 'T00:00:00');
+    const parts = (currentDate || getTodayStr()).split('-');
+    const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
     d.setDate(d.getDate() + days);
-    setCurrentDate(d.toISOString().split('T')[0]);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    setCurrentDate(`${year}-${month}-${day}`);
   };
 
   const goToToday = () => {

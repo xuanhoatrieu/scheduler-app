@@ -139,55 +139,79 @@ router.post('/login', async (req, res) => {
       await user.save();
     }
 
-    // ─── Bước 1: XÁC THỰC qua portal crawler / SQL Server ───
-    // (chỉ khi DATA_SOURCE=database, vì CrawlerStrategy tự auth bên trong)
+    // ─── Bước 1: XÁC THỰC qua SQL Server / Portal ───
     const dataSource = process.env.DATA_SOURCE || 'database';
     let portalAuth = null;
 
-    if (dataSource === 'database') {
-      if (role === 'student') {
-        const { loginStudent } = require('../services/studentCrawler');
-        portalAuth = await loginStudent(username, password);
-      } else if (role === 'lecturer') {
-        const { authenticateLecturer } = require('../services/lecturerAuth');
-        portalAuth = await authenticateLecturer(username, password);
-        if (portalAuth && portalAuth.success && portalAuth.lecturerId) {
-          user.tuafStudentId = portalAuth.lecturerId;
-        }
+    if (role === 'lecturer') {
+      // Giảng viên LUÔN xác thực trực tiếp qua SQL Server TUAF, không crawl web
+      const { authenticateLecturer } = require('../services/lecturerAuth');
+      portalAuth = await authenticateLecturer(username, password);
+
+      if (!portalAuth || !portalAuth.success) {
+        return res.status(401).json({
+          success: false,
+          message: portalAuth?.error || 'Tài khoản hoặc mật khẩu không chính xác. Vui lòng kiểm tra lại!'
+        });
       }
+
+      // Cập nhật thông tin giảng viên từ SQL Server
+      user.fullName = portalAuth.fullName || user.fullName;
+      user.className = portalAuth.className || 'Giảng viên';
+      user.department = portalAuth.department || 'TUAF';
+      if (portalAuth.lecturerId) {
+        user.tuafStudentId = portalAuth.lecturerId;
+      }
+      await user.save();
+    } else if (dataSource === 'database') {
+      // Sinh viên ở chế độ database
+      const { loginStudent } = require('../services/studentCrawler');
+      portalAuth = await loginStudent(username, password);
 
       if (portalAuth && !portalAuth.success) {
-        throw new Error(portalAuth.error || 'Xac thuc portal that bai');
+        return res.status(401).json({
+          success: false,
+          message: portalAuth.error || 'Xác thực cổng trường thất bại. Vui lòng kiểm tra lại tài khoản, mật khẩu!'
+        });
       }
 
-      // Cập nhật thông tin từ portal auth
       if (portalAuth && portalAuth.fullName) {
         user.fullName = portalAuth.fullName;
         user.className = portalAuth.className || user.className;
         user.department = portalAuth.department || 'TUAF';
+        await user.save();
       }
     }
 
-    // ─── Bước 2: LẤY DATA — ưu tiên strategy chính, fallback crawler ───
-    const strategy = strategyManager.getStrategy();
+    // ─── Bước 2: LẤY DATA — Giảng viên LUÔN dùng DatabaseStrategy (SQL Server) ───
     let result;
 
-    try {
-      result = await strategy.getSchedule(user, password, {
+    if (role === 'lecturer') {
+      console.log(`📡 [Auth] Lấy dữ liệu giảng dạy trực tiếp từ Database Server cho GV ${user.username}...`);
+      const databaseStrategy = strategyManager.getDatabaseStrategy();
+      result = await databaseStrategy.getSchedule(user, password, {
         semester: '1',
         schoolYear: '2026'
       });
-    } catch (primaryErr) {
-      // Nếu strategy chính là database và lỗi → fallback sang crawler
-      if (dataSource === 'database') {
-        console.warn(`⚠️ [Auth] DatabaseStrategy lỗi: ${primaryErr.message}. Fallback sang Crawler...`);
-        const crawlerStrategy = strategyManager.getCrawlerStrategy();
-        result = await crawlerStrategy.getSchedule(user, password, {
+    } else {
+      const strategy = strategyManager.getStrategy();
+      try {
+        result = await strategy.getSchedule(user, password, {
           semester: '1',
           schoolYear: '2026'
         });
-      } else {
-        throw primaryErr;
+      } catch (primaryErr) {
+        // Nếu strategy chính là database và lỗi → fallback sang crawler cho sinh viên
+        if (dataSource === 'database') {
+          console.warn(`⚠️ [Auth] DatabaseStrategy lỗi: ${primaryErr.message}. Fallback sang Crawler...`);
+          const crawlerStrategy = strategyManager.getCrawlerStrategy();
+          result = await crawlerStrategy.getSchedule(user, password, {
+            semester: '1',
+            schoolYear: '2026'
+          });
+        } else {
+          throw primaryErr;
+        }
       }
     }
 

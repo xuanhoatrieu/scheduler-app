@@ -17,16 +17,21 @@ const { sendInspectorReportEmail } = require('../services/emailReportService');
  */
 const getClassesHandler = async (req, res) => {
   try {
-    const VN_TZ = 'Asia/Ho_Chi_Minh';
-    let targetDate;
+    let dateStr;
+    let dayOfWeek;
     if (req.query.date && /^\d{4}-\d{2}-\d{2}$/.test(req.query.date)) {
-      targetDate = new Date(req.query.date + 'T00:00:00+07:00');
+      dateStr = req.query.date;
+      const [y, m, d] = dateStr.split('-').map(Number);
+      const dt = new Date(y, m - 1, d);
+      dayOfWeek = dt.getDay() + 1;
     } else {
-      const now = new Date();
-      targetDate = new Date(now.toLocaleString('en-US', { timeZone: VN_TZ }));
+      const vnTime = new Date(Date.now() + 7 * 3600 * 1000);
+      const year = vnTime.getUTCFullYear();
+      const month = String(vnTime.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(vnTime.getUTCDate()).padStart(2, '0');
+      dateStr = `${year}-${month}-${day}`;
+      dayOfWeek = vnTime.getUTCDay() + 1;
     }
-    const dayOfWeek = targetDate.getDay() + 1; // JS: 0=Sun -> 1-based
-    const dateStr = targetDate.toISOString().split('T')[0];
 
     const schedules = await Schedule.findAll({
       where: {
@@ -293,11 +298,12 @@ router.get('/attendance/report', authMiddleware, requireRole('inspector', 'admin
  */
 router.get('/dashboard/today', authMiddleware, requireRole('inspector', 'admin'), async (req, res) => {
   try {
-    const VN_TZ = 'Asia/Ho_Chi_Minh';
-    const now = new Date();
-    const today = new Date(now.toLocaleString('en-US', { timeZone: VN_TZ }));
-    const dayOfWeek = today.getDay() + 1;
-    const dateStr = today.toISOString().split('T')[0];
+    const vnTime = new Date(Date.now() + 7 * 3600 * 1000);
+    const year = vnTime.getUTCFullYear();
+    const month = String(vnTime.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(vnTime.getUTCDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+    const dayOfWeek = vnTime.getUTCDay() + 1;
 
     const schedules = await Schedule.findAll({
       where: {
@@ -384,9 +390,11 @@ router.get('/dashboard/report', authMiddleware, requireRole('inspector', 'admin'
   try {
     const { from, to, groupBy, period } = req.query;
 
-    let startDate, endDate;
-    const VN_TZ = 'Asia/Ho_Chi_Minh';
-    const today = new Date(new Date().toLocaleString('en-US', { timeZone: VN_TZ }));
+    const vnTime = new Date(Date.now() + 7 * 3600 * 1000);
+    const year = vnTime.getUTCFullYear();
+    const month = vnTime.getUTCMonth();
+    const day = vnTime.getUTCDate();
+    const today = new Date(year, month, day);
 
     if (period === 'week') {
       const startOfWeek = new Date(today);
