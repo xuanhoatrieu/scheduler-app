@@ -10,6 +10,7 @@ const parseCurriculum = (html) => {
   const $ = cheerio.load(html);
   const curriculumList = [];
   let currentKnowledgeBlock = 'Chung';
+  let currentSemester = 0;
 
   // Thử tìm bảng chứa CTĐT — thường có cột "Tên học phần", "Số tín chỉ", "Mã học phần"
   $('table').each((tableIdx, table) => {
@@ -30,7 +31,6 @@ const parseCurriculum = (html) => {
       // Phát hiện dòng tiêu đề nhóm (khối kiến thức) — thường là dòng có colspan hoặc chỉ 1-2 cell
       if (cells.length <= 2) {
         const headerText = $(cells[0]).text().trim();
-        // Kiểm tra xem có phải là tiêu đề nhóm không (VD: "Khối kiến thức đại cương", "Kiến thức cơ sở ngành")
         if (headerText && headerText.length > 5 && !/^\d+$/.test(headerText)) {
           currentKnowledgeBlock = headerText.replace(/\s+/g, ' ');
         }
@@ -49,8 +49,6 @@ const parseCurriculum = (html) => {
       }
 
       // Parse dòng dữ liệu môn học
-      // Cấu trúc phổ biến: STT (0) | Mã HP (1) | Tên HP (2) | Số TC (3) | Loại (4)
-      // Hoặc: STT (0) | Tên HP (1) | Số TC (2)
       let kyThuText = '';
       let courseCode = '';
       let courseName = '';
@@ -60,16 +58,17 @@ const parseCurriculum = (html) => {
       if (cells.length === 9) {
         // Hàng đầy đủ cột (9 cột, bao gồm Kỳ thứ ở cột 0)
         kyThuText = $(cells[0]).text().trim();
+        const parsedKy = parseInt(kyThuText);
+        if (!isNaN(parsedKy)) {
+          currentSemester = parsedKy;
+        }
+
         courseCode = $(cells[1]).text().trim();
         courseName = $(cells[2]).text().trim();
         tuChonText = $(cells[4]).text().trim();
         credits = parseInt($(cells[5]).text().trim()) || 0;
-
-        if (kyThuText !== '') {
-          currentKnowledgeBlock = kyThuText === '0' ? 'Khối kiến thức chung / bổ trợ' : `Học kỳ ${kyThuText}`;
-        }
       } else if (cells.length === 8) {
-        // Hàng bị khuyết cột Kỳ thứ do rowspan (8 cột)
+        // Hàng bị khuyết cột Kỳ thứ do rowspan (8 cột) — thừa hưởng currentSemester
         courseCode = $(cells[0]).text().trim();
         courseName = $(cells[1]).text().trim();
         tuChonText = $(cells[3]).text().trim();
@@ -89,6 +88,9 @@ const parseCurriculum = (html) => {
         }
       }
 
+      // Chỉ lấy các môn được phân từ Kỳ 1 đến Kỳ 8 (bỏ qua Kỳ 0 là các môn không học / dự phòng)
+      if (currentSemester < 1 || currentSemester > 8) return;
+
       // Bỏ qua nếu tên môn quá ngắn hoặc trống
       if (!courseName || courseName.length < 3) return;
       
@@ -101,7 +103,8 @@ const parseCurriculum = (html) => {
         courseCode: courseCode.replace(/\s+/g, ' ') || '',
         credits,
         courseType: tuChonText ? 'Tự chọn' : 'Bắt buộc',
-        knowledgeBlock: currentKnowledgeBlock
+        semester: currentSemester,
+        knowledgeBlock: `Học kỳ ${currentSemester}`
       });
     });
   });

@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Modal,
   RefreshControl,
   SafeAreaView,
   ScrollView,
@@ -10,7 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { getLecturerClasses } from '../../services/api';
+import { getClassStudents, getLecturerClasses } from '../../services/api';
 import { Colors } from '../../theme/colors';
 
 export default function ClassListScreen({ user }) {
@@ -18,6 +19,26 @@ export default function ClassListScreen({ user }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [expandedIdx, setExpandedIdx] = useState({});
+  const [studentModalClass, setStudentModalClass] = useState(null);
+  const [modalStudents, setModalStudents] = useState([]);
+  const [modalLoading, setModalLoading] = useState(false);
+
+  const openStudentList = async (cls) => {
+    setStudentModalClass(cls);
+    setModalLoading(true);
+    const targetIdLopTc = cls.idLopTc || cls.schedules?.find(s => s.idLopTc)?.idLopTc;
+    if (targetIdLopTc) {
+      const res = await getClassStudents(targetIdLopTc);
+      if (res.success && res.data) {
+        setModalStudents(res.data);
+      } else {
+        setModalStudents([]);
+      }
+    } else {
+      setModalStudents([]);
+    }
+    setModalLoading(false);
+  };
 
   const loadData = async () => {
     const res = await getLecturerClasses();
@@ -112,9 +133,18 @@ export default function ClassListScreen({ user }) {
                   </View>
                 )}
 
-                <View style={styles.semesterRow}>
-                  <Ionicons name="bookmark-outline" size={12} color={Colors.textMuted} />
-                  <Text style={styles.semesterText}>{cls.semester} — {cls.schoolYear}</Text>
+                <View style={styles.cardActions}>
+                  <TouchableOpacity
+                    style={styles.viewStudentsBtn}
+                    onPress={() => openStudentList(cls)}
+                  >
+                    <Ionicons name="people-outline" size={14} color={Colors.primary} />
+                    <Text style={styles.viewStudentsBtnText}>Danh sách sinh viên</Text>
+                  </TouchableOpacity>
+                  <View style={styles.semesterRow}>
+                    <Ionicons name="bookmark-outline" size={12} color={Colors.textMuted} />
+                    <Text style={styles.semesterText}>{cls.semester} — {cls.schoolYear}</Text>
+                  </View>
                 </View>
               </TouchableOpacity>
             );
@@ -127,6 +157,63 @@ export default function ClassListScreen({ user }) {
           </View>
         )}
       </ScrollView>
+
+      {/* MODAL DANH SÁCH SINH VIÊN */}
+      <Modal
+        visible={Boolean(studentModalClass)}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setStudentModalClass(null)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle} numberOfLines={1}>
+                  {studentModalClass?.courseName}
+                </Text>
+                <Text style={styles.modalSub}>
+                  {studentModalClass?.classCode} • {modalStudents.length} sinh viên đăng ký
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setStudentModalClass(null)}
+                style={styles.modalCloseBtn}
+              >
+                <Ionicons name="close" size={20} color="#555" />
+              </TouchableOpacity>
+            </View>
+
+            {modalLoading ? (
+              <View style={styles.modalLoading}>
+                <ActivityIndicator size="large" color={Colors.primary} />
+                <Text style={styles.modalLoadingText}>Đang tải danh sách sinh viên...</Text>
+              </View>
+            ) : modalStudents.length === 0 ? (
+              <View style={styles.modalEmpty}>
+                <Ionicons name="people-outline" size={48} color={Colors.borderLight} />
+                <Text style={styles.modalEmptyText}>Chưa có thông tin danh sách sinh viên lớp này</Text>
+              </View>
+            ) : (
+              <ScrollView style={{ maxHeight: 420 }}>
+                {modalStudents.map((stu, sIdx) => (
+                  <View key={stu.studentCode || sIdx} style={styles.studentItem}>
+                    <View style={styles.sttBadge}>
+                      <Text style={styles.sttBadgeText}>{sIdx + 1}</Text>
+                    </View>
+                    <View style={{ flex: 1, marginLeft: 10 }}>
+                      <Text style={styles.stuNameText}>{stu.studentName}</Text>
+                      <Text style={styles.stuSubText}>
+                        {stu.studentCode} {stu.studentClass ? `• ${stu.studentClass}` : ''}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -172,9 +259,40 @@ const styles = StyleSheet.create({
   detailTitle: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary, marginBottom: 6 },
   detailRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 3 },
   detailText: { fontSize: 12, color: Colors.textPrimary },
-  semesterRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 10 },
+  semesterRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   semesterText: { fontSize: 11, color: Colors.textMuted },
+  cardActions: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: Colors.borderLight,
+  },
+  viewStudentsBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: Colors.primary + '12', paddingHorizontal: 10, paddingVertical: 6,
+    borderRadius: 8,
+  },
+  viewStudentsBtnText: { fontSize: 12, fontWeight: '700', color: Colors.primary },
   emptyWrap: { alignItems: 'center', paddingTop: 80 },
   emptyText: { fontSize: 15, color: Colors.textMuted, marginTop: 16 },
   emptySubText: { fontSize: 12, color: Colors.textMuted, marginTop: 4 },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalSheet: {
+    backgroundColor: Colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    padding: 20, paddingBottom: 40,
+  },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 },
+  modalTitle: { fontSize: 16, fontWeight: '800', color: Colors.textPrimary },
+  modalSub: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
+  modalCloseBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#f0f0f0', alignItems: 'center', justifyContent: 'center' },
+  modalLoading: { alignItems: 'center', paddingVertical: 40 },
+  modalLoadingText: { marginTop: 10, color: Colors.textSecondary, fontSize: 13 },
+  modalEmpty: { alignItems: 'center', paddingVertical: 40 },
+  modalEmptyText: { marginTop: 10, color: Colors.textMuted, fontSize: 13 },
+  studentItem: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f0f0f0',
+  },
+  sttBadge: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#e8f5e9', alignItems: 'center', justifyContent: 'center' },
+  sttBadgeText: { fontSize: 11, fontWeight: '700', color: Colors.primary },
+  stuNameText: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
+  stuSubText: { fontSize: 11, color: Colors.textMuted, marginTop: 1 },
 });

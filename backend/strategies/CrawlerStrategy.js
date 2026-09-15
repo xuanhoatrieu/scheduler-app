@@ -111,7 +111,8 @@ class CrawlerStrategy extends ScheduleStrategy {
         courseCode: item.courseCode || '',
         credits: item.credits || 0,
         courseType: item.courseType || 'Bắt buộc',
-        knowledgeBlock: item.knowledgeBlock || 'Chung',
+        semester: item.semester || 1,
+        knowledgeBlock: item.knowledgeBlock || `Học kỳ ${item.semester || 1}`,
         userId: user.id
       }));
       await Curriculum.bulkCreate(curriculumToInsert);

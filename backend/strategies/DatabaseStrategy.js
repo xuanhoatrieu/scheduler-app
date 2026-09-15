@@ -245,15 +245,16 @@ class DatabaseStrategy extends ScheduleStrategy {
       });
     }
 
-    // Cache CTĐT
+    // Cache CTĐT (Chỉ lấy các môn phân từ Kỳ 1 đến Kỳ 8)
     if (rawCurriculum.length > 0) {
       await Curriculum.destroy({ where: { userId: user.id } });
       await Curriculum.bulkCreate(rawCurriculum.map(r => ({
         courseName: r.courseName,
         courseCode: r.courseCode || '',
         credits: r.credits || 0,
-        courseType: r.Bat_buoc ? 'Bắt buộc' : 'Tự chọn',
-        knowledgeBlock: r.Ma_nhom_mon_hoc || `HK${r.Hoc_ky_du_kien || ''}`,
+        courseType: r.isElective ? 'Tự chọn' : 'Bắt buộc',
+        semester: r.semester || 1,
+        knowledgeBlock: `Học kỳ ${r.semester || 1}`,
         userId: user.id
       })));
     }
@@ -287,7 +288,8 @@ class DatabaseStrategy extends ScheduleStrategy {
       return {
         courseName: r.courseName || '',
         credits: r.credits || 0,
-        classCode: r.courseCode || '',
+        classCode: r.Ten_lop_hp || r.courseCode || '',
+        idLopTc: r.ID_lop_tc || null,
         studyTime: this._formatDateRange(r.Tu_ngay, r.Den_ngay),
         dayOfWeek,
         room: r.Phong || '',

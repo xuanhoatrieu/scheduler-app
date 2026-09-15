@@ -27,6 +27,9 @@ const connectDB = async () => {
     require('../models/Attendance');
     require('../models/DiemRenLuyen');
     require('../models/Curriculum');
+    require('../models/MasterCurriculum');
+    require('../models/StudentAttendance');
+    require('../models/HomeroomNotification');
     require('../models/News');
     require('../models/SystemConfig');
 

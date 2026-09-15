@@ -915,9 +915,241 @@ label {
 .modal-close { background: transparent; border: none; font-size: 22px; color: var(--text-muted); cursor: pointer; }
 .modal-close:hover { color: #fff; }
 
-.modal-body { padding: 24px; font-size: 14px; }
-.modal-footer { padding: 14px 24px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; }
+/* ── Curriculum Diff & Comparison ── */
+.diff-row-matched { background: rgba(34, 197, 94, 0.04); }
+.diff-row-mismatch { background: rgba(245, 158, 11, 0.09); border-left: 3px solid #f59e0b; }
+.diff-row-missing { background: rgba(239, 68, 68, 0.09); border-left: 3px solid #ef4444; }
+.badge-matched { background: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); }
+.badge-mismatch { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
+.badge-missing { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+.badge-condition { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+.diff-tag { display: inline-block; font-size: 11px; padding: 2px 6px; border-radius: 4px; margin-right: 4px; margin-bottom: 2px; }
+.stat-box { background: rgba(0,0,0,0.25); padding: 12px 14px; border-radius: var(--radius-md); border: 1px solid var(--border-color); text-align: center; }
+.stat-box .stat-num { font-size: 22px; font-weight: 800; font-family: var(--font-mono); }
+.stat-box .stat-lbl { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
 
+/* Alert Banner & Semester Grid */
+.alert-banner {
+  padding: 16px 20px;
+  border-radius: var(--radius-md);
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-width: 1px;
+  border-style: solid;
+}
+.alert-banner.warning {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.35);
+  color: #fef08a;
+}
+.alert-banner.success {
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(34, 197, 94, 0.35);
+  color: #bbf7d0;
+}
+.alert-banner-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 14px;
+}
+.block-header-row {
+  background: rgba(255, 255, 255, 0.07) !important;
+  font-weight: 700;
+}
+.block-header-row td {
+  padding: 10px 14px !important;
+  color: #4ade80 !important;
+  font-size: 13px !important;
+  letter-spacing: 0.3px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+.badge-reserve {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+.semester-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+.semester-chip {
+  background: rgba(0, 0, 0, 0.35);
+  padding: 8px 10px;
+  border-radius: 6px;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.semester-chip .sem-name { font-size: 11px; color: var(--text-muted); }
+.semester-chip .sem-tc { font-size: 14px; font-weight: 800; color: #fff; font-family: var(--font-mono); margin-top: 2px; }
+
+/* ── Curriculum Hierarchy & Semester Views (Excel Layout) ── */
+.section-jump-nav {
+  display: flex;
+  gap: 10px;
+  margin: 18px 0 12px;
+  position: sticky;
+  top: 10px;
+  z-index: 100;
+  background: rgba(15, 23, 42, 0.9);
+  backdrop-filter: blur(10px);
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.jump-nav-btn {
+  padding: 8px 16px;
+  font-size: 12.5px;
+  font-weight: 700;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+.jump-nav-btn:hover {
+  background: rgba(59, 130, 246, 0.25);
+  border-color: #3b82f6;
+  color: #fff;
+}
+.section-divider-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-left: 5px solid #38bdf8;
+  border-radius: var(--radius-md);
+  margin: 22px 0 14px;
+}
+.section-divider-title.semester-part {
+  border-left-color: #a855f7;
+}
+.section-divider-title h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 0.3px;
+}
+.section-divider-title p {
+  margin: 3px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.major-block-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  margin-bottom: 22px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+.major-block-header {
+  background: linear-gradient(90deg, rgba(30, 41, 59, 0.98), rgba(15, 23, 42, 0.98));
+  padding: 12px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.major-block-header .block-title {
+  font-size: 14.5px;
+  font-weight: 800;
+  color: #38bdf8;
+  letter-spacing: 0.2px;
+}
+.major-block-header .block-stat {
+  font-size: 12px;
+  font-weight: 600;
+  color: #94a3b8;
+  font-family: var(--font-mono);
+}
+.sub-block-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+  margin: 14px 16px;
+  overflow: hidden;
+}
+.sub-block-header {
+  background: rgba(255, 255, 255, 0.04);
+  padding: 10px 14px;
+  font-weight: 700;
+  font-size: 13px;
+  color: #f1f5f9;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.sub-block-header .sub-badge {
+  font-size: 11.5px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(56, 189, 248, 0.12);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+.subtotal-row td {
+  background: rgba(255, 255, 255, 0.035) !important;
+  font-weight: 700;
+  font-size: 11.5px;
+  color: #cbd5e1;
+  border-top: 1px dashed rgba(255, 255, 255, 0.15);
+  padding: 8px 12px !important;
+}
+.semester-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  margin-bottom: 18px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+.semester-card.reserve {
+  border-color: rgba(59, 130, 246, 0.45);
+  background: rgba(15, 23, 42, 0.85);
+}
+.semester-card-header {
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.semester-card-header .sem-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.semester-card-header .sem-badge {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 6px;
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  font-family: var(--font-mono);
+}
 </style>
 </head>
 <body>
@@ -948,6 +1180,11 @@ label {
         <button class="nav-item" data-tab="tab-users">
           <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
           <span>Tra cứu & Force Sync</span>
+        </button>
+
+        <button class="nav-item" data-tab="tab-curriculum">
+          <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+          <span>Khung CTĐT & Đối soát</span>
         </button>
 
         <button class="nav-item" data-tab="tab-cron">
@@ -1419,6 +1656,185 @@ label {
         </div>
       </section>
 
+      <!-- TAB 6: KHUNG CTĐT & ĐỐI SOÁT -->
+      <section id="tab-curriculum" class="tab-pane">
+        <!-- Control Card: Chọn Khóa & Ngành -->
+        <div class="card glass-card">
+          <div class="card-header">
+            <div class="card-title">
+              <span class="icon">📚</span>
+              <div>
+                <h3 style="margin: 0; font-size: 16px;">Quản Lý Khung CTĐT & Đối Soát (Theo Khóa & Ngành)</h3>
+                <p style="margin: 2px 0 0; font-size: 12px; color: var(--text-muted);">
+                  Quản lý khung chuẩn theo Khối kiến thức như file Excel, đối soát 5 thông số và kiểm tra phân kỳ từ Kỳ 1 đến Kỳ 8.
+                </p>
+              </div>
+            </div>
+            <div class="card-actions" style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button type="button" id="btn-load-sample-curriculum" class="btn btn-sm btn-secondary">
+                ⚡ Nạp file cndmstk56.xlsx có sẵn
+              </button>
+              <button type="button" id="btn-view-current-master" class="btn btn-sm btn-secondary">
+                📖 Xem Khung Chuẩn Hiện Tại
+              </button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="curriculum-cohort">1. Chọn Khóa sinh viên</label>
+                <select id="curriculum-cohort" class="form-control">
+                  <option value="56" selected>Khóa 56 (K56)</option>
+                </select>
+              </div>
+              <div class="form-group" style="grid-column: span 2;">
+                <label for="curriculum-major">2. Chọn Ngành đào tạo (trong Khóa đã chọn)</label>
+                <select id="curriculum-major" class="form-control">
+                  <option value="7480201" selected>Đang tải danh sách ngành...</option>
+                </select>
+              </div>
+              <div class="form-group" style="grid-column: span 3;">
+                <label for="curriculum-file">3. Tải lên file Excel Khung CTĐT mới (Tùy chọn, định dạng .xlsx)</label>
+                <input type="file" id="curriculum-file" class="form-control" accept=".xlsx, .xls">
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 12px; margin-top: 14px; align-items: center; flex-wrap: wrap;">
+              <button type="button" id="btn-compare-curriculum" class="btn btn-primary">
+                🔍 Đối Soát Với Phần Mềm Đào Tạo Của Trường
+              </button>
+              <button type="button" id="btn-save-master-curriculum" class="btn btn-success" style="display: none;">
+                💾 Lưu & Kích Hoạt Khung Chuẩn Vào CSDL
+              </button>
+              <span id="curriculum-status-text" style="font-size: 13px; color: var(--text-secondary); margin-left: 8px;"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Summary Stats Card (hidden initially) -->
+        <div id="curriculum-summary-card" class="card glass-card" style="display: none; margin-top: 16px;">
+          <div class="card-body">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 14px;">
+              <div class="stat-box">
+                <div class="stat-num" id="stat-total-courses">0</div>
+                <div class="stat-lbl">Tổng môn Excel</div>
+              </div>
+              <div class="stat-box" style="border-left: 3px solid #22c55e;">
+                <div class="stat-num" id="stat-matched-courses" style="color: #22c55e;">0</div>
+                <div class="stat-lbl">🟢 Khớp thông số</div>
+              </div>
+              <div class="stat-box" style="border-left: 3px solid #f59e0b;">
+                <div class="stat-num" id="stat-mismatch-courses" style="color: #f59e0b;">0</div>
+                <div class="stat-lbl">🟡 Lệch TC / LT / TH</div>
+              </div>
+              <div class="stat-box" style="border-left: 3px solid #3b82f6;">
+                <div class="stat-num" id="stat-reserve-courses" style="color: #60a5fa;">0</div>
+                <div class="stat-lbl">📦 Tự chọn dự phòng (Kỳ 0)</div>
+              </div>
+              <div class="stat-box" style="border-left: 3px solid #ef4444;">
+                <div class="stat-num" id="stat-missing-courses" style="color: #ef4444;">0</div>
+                <div class="stat-lbl">🔴 Chưa có trên trường</div>
+              </div>
+              <div class="stat-box" style="border-left: 3px solid #a855f7;">
+                <div class="stat-num" id="stat-total-credits" style="color: #c084fc;">153 TC</div>
+                <div class="stat-lbl">TC Tích lũy chuẩn</div>
+              </div>
+            </div>
+
+            <!-- Công thức tính tín chỉ tốt nghiệp từ Cột B (Kỳ) của file Excel -->
+            <div id="curriculum-col-b-formula" style="margin-top: 14px; padding: 12px 16px; background: rgba(56, 189, 248, 0.07); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 6px; font-size: 13px; line-height: 1.6;">
+              <div style="font-weight: 700; color: #38bdf8; display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                <span>📊</span>
+                <span>CƠ CHẾ XÁC ĐỊNH TỔNG TÍN CHỈ TÍCH LŨY TỪ CỘT B (KỲ) CỦA FILE EXCEL:</span>
+              </div>
+              <div style="color: #cbd5e1;">
+                • Các môn học được đánh số phân kỳ ở <strong>Cột B</strong> trong Khung CTĐT là lộ trình môn học chuẩn mà sinh viên phải tích lũy.<br>
+                • Tổng số tín chỉ các môn ở Cột B: <strong style="color: #fff;" id="stat-col-b-total">156 TC</strong>.<br>
+                • Khối ngành kỹ sư: Trừ <strong>3 TC Giáo dục thể chất</strong> (môn điều kiện bắt buộc, không tính tích lũy tốt nghiệp).<br>
+                • <strong style="color: #4ade80;">👉 Tổng số tín chỉ chuẩn tích lũy tốt nghiệp của CTĐT: 156 - 3 = <span id="stat-formula-grad-credits">153 TC</span></strong>
+                <span style="font-size: 11.5px; color: var(--text-muted); margin-left: 6px;">*(Khối cử nhân: trừ 3 TC GDTC và khối rèn nghề)*</span>
+              </div>
+            </div>
+
+            <!-- Filter Controls & Search -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border-color); flex-wrap: wrap; gap: 10px;">
+              <div style="display: flex; gap: 8px; flex-wrap: wrap;" id="curriculum-filter-group">
+                <button type="button" class="btn btn-sm btn-secondary filter-curriculum-btn active" data-filter="all">Tất cả (<span id="count-filter-all">0</span>)</button>
+                <button type="button" class="btn btn-sm btn-secondary filter-curriculum-btn" data-filter="matched" style="color: #22c55e;">🟢 Khớp thông số (<span id="count-filter-matched">0</span>)</button>
+                <button type="button" class="btn btn-sm btn-secondary filter-curriculum-btn" data-filter="mismatch" style="color: #f59e0b;">🟡 Lệch TC/LT/TH (<span id="count-filter-mismatch">0</span>)</button>
+                <button type="button" class="btn btn-sm btn-secondary filter-curriculum-btn" data-filter="reserve" style="color: #60a5fa;">📦 Tự chọn dự phòng Kỳ 0 (<span id="count-filter-reserve">0</span>)</button>
+                <button type="button" class="btn btn-sm btn-secondary filter-curriculum-btn" data-filter="missing" style="color: #ef4444;">🔴 Chưa có trên trường (<span id="count-filter-missing">0</span>)</button>
+                <button type="button" class="btn btn-sm btn-secondary filter-curriculum-btn" data-filter="condition" style="color: #a855f7;">🎖️ Môn điều kiện (<span id="count-filter-condition">0</span>)</button>
+              </div>
+              <input type="text" id="curriculum-search" class="form-control" style="max-width: 250px; font-size: 12px;" placeholder="Tìm theo mã hoặc tên môn...">
+            </div>
+          </div>
+        </div>
+
+        <!-- Sticky Jump Navigation between Part I and Part II -->
+        <div id="curriculum-jump-nav" class="section-jump-nav" style="display: none;">
+          <a href="#section-part1-blocks" class="jump-nav-btn">
+            <span>📚</span>
+            <span>PHẦN I: Khung CTĐT Theo Khối Kiến Thức</span>
+          </a>
+          <a href="#section-part2-semesters" class="jump-nav-btn">
+            <span>📅</span>
+            <span>PHẦN II: Phân Kỳ Đào Tạo (Kỳ 1 - 8 & Kỳ 0)</span>
+          </a>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- PHẦN I (Ở TRÊN): KHUNG CTĐT THEO KHỐI KIẾN THỨC (CHUẨN EXCEL)    -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <div id="section-part1-blocks" class="curriculum-part-section" style="display: none;">
+          <div class="section-divider-title">
+            <div>
+              <h3>📚 PHẦN I: KHUNG CHƯƠNG TRÌNH ĐÀO TẠO THEO KHỐI KIẾN THỨC</h3>
+              <p>Phân cấp Khối lớn (Khối I, Khối II) và các Khối con theo file Excel chuẩn. Đối soát 5 thông số với CSDL trường.</p>
+            </div>
+            <div>
+              <span class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); font-weight: 600;">Chuẩn Quyết Định Excel</span>
+            </div>
+          </div>
+
+          <!-- Major Blocks & Sub-blocks Container -->
+          <div id="curriculum-blocks-container">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- PHẦN II (Ở DƯỚI): PHÂN KỲ ĐÀO TẠO THEO HỌC KỲ (DỮ LIỆU TRƯỜNG)   -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <div id="section-part2-semesters" class="curriculum-part-section" style="display: none;">
+          <div class="section-divider-title semester-part">
+            <div>
+              <h3>📅 PHẦN II: PHÂN KỲ ĐÀO TẠO THEO HỌC KỲ</h3>
+              <p>Phân kỳ chính thức từ Kỳ 1 đến Kỳ 8 trên phần mềm đào tạo. Kỳ 0 là Kho chứa các môn tự chọn dự phòng.</p>
+            </div>
+            <div>
+              <span class="badge" style="background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); font-weight: 600;">Phần Mềm Quản Lý Đào Tạo</span>
+            </div>
+          </div>
+
+          <!-- Deficit Alert Banner (CHỈ HIỂN THỊ KHI THIẾU TÍN CHỈ < 153 TC) -->
+          <div id="curriculum-deficit-banner" class="alert-banner warning" style="display: none; margin-bottom: 16px;">
+            <div class="alert-banner-header">
+              <span style="font-size: 18px;">⚠️</span>
+              <span id="curriculum-deficit-title">CẢNH BÁO: TỔNG TÍN CHỈ PHÂN KỲ TRÊN PHẦN MỀM ĐÀO TẠO CHƯA ĐỦ</span>
+            </div>
+            <div id="curriculum-deficit-desc" style="font-size: 13px; line-height: 1.5; margin-top: 6px;">
+              <!-- Injected dynamically -->
+            </div>
+          </div>
+
+          <!-- Semesters Container (Kỳ 1 -> Kỳ 8 và Kỳ 0) -->
+          <div id="curriculum-semesters-container">
+            <!-- Each semester card with specific courses injected dynamically -->
+          </div>
+        </div>
+      </section>
+
       <!-- TAB 5: LIVE LOGS -->
       <section id="tab-logs" class="tab-pane">
         <div class="card glass-card">
@@ -1472,6 +1888,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initUserInspector();
   initCronJob();
   initModalAndToasts();
+  initCurriculumTab();
 
   // Tải dữ liệu và kiểm tra trạng thái tất cả các node ngay khi mở trang
   loadConfigs();
@@ -1510,6 +1927,10 @@ function initTabs() {
     'tab-cron': {
       title: '⏱️ Lịch Trình Quét Đồng Bộ (Cron Job)',
       desc: 'Quản lý tác vụ ngầm quét dữ liệu định kỳ lúc 3:00 sáng hàng ngày.'
+    },
+    'tab-curriculum': {
+      title: '📚 Khung CTĐT & Đối Soát Dữ Liệu',
+      desc: 'Import khung chuẩn từ Excel (153 TC), so sánh đối soát với phần mềm trường và đánh dấu sai lệch.'
     },
     'tab-logs': {
       title: '📜 Nhật Ký Hoạt Động Thời Gian Thực',
@@ -2112,6 +2533,706 @@ function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
+/* ── 6. Quản Lý Khung CTĐT & Đối Soát Dữ Liệu ── */
+let currentComparisonData = null;
+
+function initCurriculumTab() {
+  const cohortSelect = document.getElementById('curriculum-cohort');
+  const majorSelect = document.getElementById('curriculum-major');
+  const btnLoadSample = document.getElementById('btn-load-sample-curriculum');
+  const btnViewMaster = document.getElementById('btn-view-current-master');
+  const btnCompare = document.getElementById('btn-compare-curriculum');
+  const btnSave = document.getElementById('btn-save-master-curriculum');
+  const fileInput = document.getElementById('curriculum-file');
+  const searchInput = document.getElementById('curriculum-search');
+  const filterGroup = document.getElementById('curriculum-filter-group');
+  const statusText = document.getElementById('curriculum-status-text');
+
+  // 1. Tải danh sách Khóa học
+  async function loadCohorts() {
+    try {
+      const res = await fetch('/api/admin/curriculum/cohorts');
+      const json = await res.json();
+      if (json.success && json.data && json.data.length > 0) {
+        cohortSelect.innerHTML = json.data.map(c => 
+          `<option value="${c.cohortNum}" ${c.cohortNum === 56 ? 'selected' : ''}>${escapeHtml(c.label)}</option>`
+        ).join('');
+        // Nạp danh sách ngành của khóa mặc định
+        await loadMajors(cohortSelect.value);
+      }
+    } catch (err) {
+      console.warn('⚠️ Lỗi tải danh sách khóa:', err);
+    }
+  }
+
+  // 2. Tải danh sách Ngành theo Khóa
+  async function loadMajors(cohort) {
+    if (!majorSelect) return;
+    majorSelect.innerHTML = '<option value="">⏳ Đang tải danh sách ngành...</option>';
+    try {
+      const res = await fetch(`/api/admin/curriculum/majors?cohort=${cohort}`);
+      const json = await res.json();
+      if (json.success && json.data && json.data.length > 0) {
+        majorSelect.innerHTML = json.data.map(m => {
+          const isDefault = m.majorCode === '7480201' || m.majorCode.includes('7480201');
+          const savedBadge = m.hasMasterCurriculum ? ' ★ (Đã có khung chuẩn)' : '';
+          return `<option value="${escapeHtml(m.majorCode)}" data-iddt="${m.idDt || ''}" data-name="${escapeHtml(m.majorName)}" ${isDefault ? 'selected' : ''}>
+            ${escapeHtml(m.majorCode)} — ${escapeHtml(m.majorName)} (${m.totalCredits || 0} TC)${savedBadge}
+          </option>`;
+        }).join('');
+      } else {
+        majorSelect.innerHTML = '<option value="7480201">7480201 - Công nghệ và đổi mới sáng tạo</option>';
+      }
+    } catch (err) {
+      majorSelect.innerHTML = '<option value="7480201">7480201 - Công nghệ và đổi mới sáng tạo</option>';
+    }
+  }
+
+  // Khi thay đổi Khóa học -> nạp lại danh sách ngành
+  if (cohortSelect) {
+    cohortSelect.addEventListener('change', () => {
+      loadMajors(cohortSelect.value);
+    });
+  }
+
+  // 3. Nạp file mẫu cndmstk56.xlsx có sẵn
+  if (btnLoadSample) {
+    btnLoadSample.addEventListener('click', async () => {
+      btnLoadSample.disabled = true;
+      btnLoadSample.textContent = '⏳ Đang nạp...';
+      if (statusText) statusText.textContent = 'Đang nạp file cndmstk56.xlsx và đối soát thông số với CSDL trường...';
+
+      try {
+        const cohort = cohortSelect?.value || '56';
+        const majorCode = majorSelect?.value || '7480201';
+        const selectedOpt = majorSelect?.options[majorSelect.selectedIndex];
+        const idDt = selectedOpt ? selectedOpt.getAttribute('data-iddt') : null;
+
+        const res = await fetch('/api/admin/curriculum/compare', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ useSample: true, majorCode, cohort, idDt })
+        });
+        const data = await res.json();
+        if (data.success) {
+          currentComparisonData = data.data;
+          renderCurriculumComparison(data.data);
+          showToast('success', 'Đã nạp và đối soát thành công file cndmstk56.xlsx!');
+          if (statusText) statusText.textContent = `Đối soát xong: ${data.data.summary.matchedCount} môn khớp thông số, ${data.data.summary.mismatchCount} môn lệch thông số.`;
+        } else {
+          showToast('error', data.message || 'Không thể đối soát');
+          if (statusText) statusText.textContent = 'Lỗi: ' + data.message;
+        }
+      } catch (err) {
+        showToast('error', 'Lỗi kết nối: ' + err.message);
+      } finally {
+        btnLoadSample.disabled = false;
+        btnLoadSample.textContent = '⚡ Nạp file cndmstk56.xlsx có sẵn';
+      }
+    });
+  }
+
+  // 4. Xem Khung chuẩn hiện tại trong CSDL
+  if (btnViewMaster) {
+    btnViewMaster.addEventListener('click', async () => {
+      btnViewMaster.disabled = true;
+      btnViewMaster.textContent = '⏳ Đang tải...';
+      const cohort = cohortSelect?.value || '56';
+      const majorCode = majorSelect?.value || '7480201';
+
+      try {
+        const res = await fetch(`/api/admin/curriculum/master?cohort=K${cohort}&majorCode=${majorCode}`);
+        const data = await res.json();
+        if (data.success && data.data && data.data.length > 0) {
+          // Tiến hành đối soát ngay khung này với trường
+          const compRes = await fetch('/api/admin/curriculum/compare', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ courses: data.data, majorCode, cohort })
+          });
+          const compData = await compRes.json();
+          if (compData.success) {
+            currentComparisonData = compData.data;
+            renderCurriculumComparison(compData.data);
+            showToast('info', `Đang xem Khung chuẩn của ngành ${majorCode} (K${cohort})`);
+          }
+        } else {
+          showToast('warning', `Ngành ${majorCode} (K${cohort}) chưa có Khung chuẩn trong CSDL! Vui lòng nạp file Excel.`);
+        }
+      } catch (err) {
+        showToast('error', err.message);
+      } finally {
+        btnViewMaster.disabled = false;
+        btnViewMaster.textContent = '📖 Xem Khung Chuẩn Hiện Tại';
+      }
+    });
+  }
+
+  // 5. Tiến hành đối soát (với file upload hoặc mẫu)
+  if (btnCompare) {
+    btnCompare.addEventListener('click', async () => {
+      btnCompare.disabled = true;
+      btnCompare.textContent = '⏳ Đang đối soát...';
+
+      const cohort = cohortSelect?.value || '56';
+      const majorCode = majorSelect?.value || '7480201';
+      const selectedOpt = majorSelect?.options[majorSelect.selectedIndex];
+      const idDt = selectedOpt ? selectedOpt.getAttribute('data-iddt') : null;
+
+      try {
+        const file = fileInput && fileInput.files && fileInput.files[0];
+        let reqPayload = { majorCode, cohort, idDt };
+
+        if (file) {
+          if (statusText) statusText.textContent = `Đang tải file "${file.name}" và đối soát với CSDL trường...`;
+          const base64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              const res = reader.result;
+              const commaIdx = res.indexOf(',');
+              resolve(commaIdx >= 0 ? res.substring(commaIdx + 1) : res);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+          reqPayload.fileBase64 = base64;
+          reqPayload.fileName = file.name;
+        } else {
+          if (statusText) statusText.textContent = 'Đang đọc dữ liệu và đối soát 5 thông số với SQL Server trường...';
+          reqPayload.useSample = true; // Dùng file mẫu có sẵn nếu chưa chọn file
+        }
+
+        const res = await fetch('/api/admin/curriculum/compare', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(reqPayload)
+        });
+        const data = await res.json();
+        if (data.success) {
+          currentComparisonData = data.data;
+          renderCurriculumComparison(data.data);
+          showToast('success', 'Đối soát hoàn tất!');
+          if (statusText) statusText.textContent = `Đối soát xong: ${data.data.summary.matchedCount} môn khớp, ${data.data.summary.mismatchCount} môn lệch thông số.`;
+        } else {
+          showToast('error', data.message || 'Lỗi đối soát');
+          if (statusText) statusText.textContent = 'Lỗi: ' + data.message;
+        }
+      } catch (err) {
+        showToast('error', err.message);
+      } finally {
+        btnCompare.disabled = false;
+        btnCompare.textContent = '🔍 Đối Soát Với Phần Mềm Đào Tạo Của Trường';
+      }
+    });
+  }
+
+  // 6. Nút Lưu & Kích hoạt Khung chuẩn
+  if (btnSave) {
+    btnSave.addEventListener('click', async () => {
+      if (!currentComparisonData || !currentComparisonData.comparison) return;
+
+      const cohort = cohortSelect?.value || '56';
+      const majorCode = majorSelect?.value || '7480201';
+      const selectedOpt = majorSelect?.options[majorSelect.selectedIndex];
+      const majorName = selectedOpt ? selectedOpt.getAttribute('data-name') : 'Công nghệ và đổi mới sáng tạo';
+
+      if (!confirm(`Bạn có chắc chắn muốn lưu và kích hoạt ${currentComparisonData.comparison.length} môn vào Khung chương trình chuẩn (153 TC) của ngành ${majorCode} (K${cohort})?`)) {
+        return;
+      }
+
+      btnSave.disabled = true;
+      btnSave.textContent = '⏳ Đang lưu vào CSDL...';
+
+      try {
+        const res = await fetch('/api/admin/curriculum/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            majorCode,
+            cohort: `K${cohort}`,
+            majorName,
+            courses: currentComparisonData.comparison
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast('success', `Đã lưu vĩnh viễn ${data.data.count} môn của ngành ${majorCode} (K${cohort}) vào CSDL!`);
+          addLog('success', `[Curriculum] Đã kích hoạt Khung chuẩn 153 TC cho ngành ${majorCode} K${cohort} (${data.data.count} môn)`);
+          if (statusText) statusText.textContent = `✅ Đã lưu thành công Khung chuẩn của ngành ${majorCode} (K${cohort}) vào CSDL PostgreSQL.`;
+          // Nạp lại danh sách ngành để hiển thị biểu tượng ★ (Đã có khung chuẩn)
+          await loadMajors(cohort);
+        } else {
+          showToast('error', data.message);
+        }
+      } catch (err) {
+        showToast('error', err.message);
+      } finally {
+        btnSave.disabled = false;
+        btnSave.textContent = '💾 Lưu & Kích Hoạt Khung Chuẩn Vào CSDL';
+      }
+    });
+  }
+
+  // Filter buttons
+  if (filterGroup) {
+    filterGroup.querySelectorAll('.filter-curriculum-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        filterGroup.querySelectorAll('.filter-curriculum-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        applyCurriculumFilter();
+      });
+    });
+  }
+
+  // Search input
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      applyCurriculumFilter();
+    });
+  }
+
+  // Khởi động nạp danh sách Khóa
+  loadCohorts();
+}
+
+function renderCurriculumComparison(data) {
+  const summaryCard = document.getElementById('curriculum-summary-card');
+  const jumpNav = document.getElementById('curriculum-jump-nav');
+  const part1 = document.getElementById('section-part1-blocks');
+  const part2 = document.getElementById('section-part2-semesters');
+  const btnSave = document.getElementById('btn-save-master-curriculum');
+  const deficitBanner = document.getElementById('curriculum-deficit-banner');
+
+  if (summaryCard) summaryCard.style.display = 'block';
+  if (jumpNav) jumpNav.style.display = 'flex';
+  if (part1) part1.style.display = 'block';
+  if (part2) part2.style.display = 'block';
+  if (btnSave) btnSave.style.display = 'inline-block';
+
+  // 1. Render Deficit Warning Banner (CHỈ HIỂN THỊ KHI THIẾU TÍN CHỈ < 153 TC)
+  if (deficitBanner && data.semesterSummary) {
+    const semSum = data.semesterSummary;
+    const titleEl = document.getElementById('curriculum-deficit-title');
+    const descEl = document.getElementById('curriculum-deficit-desc');
+
+    if (semSum.isDeficient) {
+      deficitBanner.className = 'alert-banner warning';
+      if (titleEl) titleEl.textContent = `CẢNH BÁO: TỔNG TÍN CHỈ PHÂN KỲ TRÊN PHẦN MỀM ĐÀO TẠO CHƯA ĐỦ (${semSum.totalScheduledCredits}/${semSum.totalGraduationCredits} TC)`;
+      if (descEl) {
+        descEl.innerHTML = `
+          Tổng số tín chỉ đã được phân kỳ (từ Kỳ 1 đến Kỳ 8) trên phần mềm quản lý đào tạo hiện là <strong>${semSum.totalScheduledCredits} / ${semSum.totalGraduationCredits} TC</strong> (còn thiếu <strong>${semSum.deficitCredits} TC</strong> so với chuẩn tích lũy tốt nghiệp).<br>
+          📦 Kho Kỳ 0 trên phần mềm trường đang chứa <strong>${semSum.reserveCount} môn tự chọn dự phòng (${semSum.reserveCredits} TC)</strong>.<br>
+          👉 <em>Vui lòng kiểm tra trên phần mềm quản lý đào tạo để xếp kỳ bổ sung cho các môn học phù hợp.</em>
+        `;
+      }
+      deficitBanner.style.display = 'block';
+    } else {
+      // Khi đã đủ tín chỉ -> Ẩn hoàn toàn banner cảnh báo
+      deficitBanner.style.display = 'none';
+    }
+  }
+
+  // 2. Cập nhật các ô số liệu thống kê & Công thức Cột B của Excel
+  setText('stat-total-courses', data.summary.totalExcelCourses);
+  setText('stat-matched-courses', data.summary.matchedCount);
+  setText('stat-mismatch-courses', data.summary.mismatchCount);
+  setText('stat-missing-courses', data.summary.missingCount);
+  setText('stat-reserve-courses', `${data.semesterSummary?.reserveCount || 0} môn`);
+  setText('stat-total-credits', `${data.summary.totalGraduationCredits || 153} TC`);
+
+  // Tính tổng tín chỉ theo Cột B của Excel
+  const coursesWithColB = (data.comparison || []).filter(c => c.excelSemester !== null && c.excelSemester !== undefined && c.excelSemester > 0);
+  const totalColBCredits = coursesWithColB.reduce((s, c) => s + (c.credits || 0), 0);
+  const gdtcCredits = coursesWithColB.filter(c => (c.courseName || '').toLowerCase().includes('thể chất') || (c.courseCode || '').includes('CB701')).reduce((s, c) => s + (c.credits || 0), 0) || 3;
+  const targetGradCredits = totalColBCredits > 0 ? (totalColBCredits - gdtcCredits) : (data.summary.totalGraduationCredits || 153);
+
+  setText('stat-col-b-total', `${totalColBCredits || 156} TC`);
+  setText('stat-formula-grad-credits', `${targetGradCredits || 153} TC`);
+
+  // 3. Số lượng nút lọc
+  const reserveCount = data.comparison.filter(c => c.isElectiveReserve || c.semester === 0).length;
+  setText('count-filter-all', data.comparison.length);
+  setText('count-filter-matched', data.summary.matchedCount);
+  setText('count-filter-mismatch', data.summary.mismatchCount);
+  setText('count-filter-reserve', reserveCount);
+  setText('count-filter-missing', data.summary.missingCount);
+  setText('count-filter-condition', data.comparison.filter(c => c.isCondition).length);
+
+  applyCurriculumFilter();
+}
+
+function applyCurriculumFilter() {
+  if (!currentComparisonData || !currentComparisonData.comparison) return;
+
+  const activeBtn = document.querySelector('.filter-curriculum-btn.active');
+  const filter = activeBtn ? activeBtn.getAttribute('data-filter') : 'all';
+  const query = (document.getElementById('curriculum-search')?.value || '').toLowerCase().trim();
+
+  let filtered = currentComparisonData.comparison.filter(c => {
+    if (filter === 'matched' && c.status !== 'matched') return false;
+    if (filter === 'mismatch' && c.status !== 'mismatch') return false;
+    if (filter === 'reserve' && !c.isElectiveReserve && c.semester !== 0) return false;
+    if (filter === 'missing' && c.status !== 'missing') return false;
+    if (filter === 'condition' && !c.isCondition) return false;
+    if (query) {
+      const matchCode = (c.courseCode || '').toLowerCase().includes(query);
+      const matchName = (c.courseName || '').toLowerCase().includes(query);
+      if (!matchCode && !matchName) return false;
+    }
+    return true;
+  });
+
+  // Render Phần I: Khung CTĐT theo Khối kiến thức
+  renderBlocksSection(filtered);
+
+  // Render Phần II: Phân kỳ đào tạo theo Học kỳ
+  renderSemestersSection(filtered);
+}
+
+/**
+ * Render PHẦN I: Khung CTĐT phân cấp theo Khối lớn & Khối con (Chuẩn các cột y như Excel)
+ * Cột: TT | Kỳ (Cột B Excel) | Mã HP | Tên học phần | Tên tiếng Anh | Số TC | Lý thuyết | Thực hành | Check thông số (Excel vs Trường)
+ */
+function renderBlocksSection(filteredCourses) {
+  const container = document.getElementById('curriculum-blocks-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  if (filteredCourses.length === 0) {
+    container.innerHTML = '<div style="padding: 24px; text-align: center; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius-md); border: 1px dashed var(--border-color);">Không tìm thấy môn học nào phù hợp với bộ lọc hiện tại.</div>';
+    return;
+  }
+
+  // Gom nhóm: majorBlockName -> subBlockName -> courses
+  const majorGroups = {};
+  filteredCourses.forEach(c => {
+    const majorName = c.majorBlockName || c.blockName || 'Khối kiến thức chung';
+    if (!majorGroups[majorName]) majorGroups[majorName] = {};
+
+    const subName = c.subBlockName || 'Các học phần chung';
+    if (!majorGroups[majorName][subName]) majorGroups[majorName][subName] = [];
+    majorGroups[majorName][subName].push(c);
+  });
+
+  let globalIndex = 1;
+
+  for (const [majorName, subGroups] of Object.entries(majorGroups)) {
+    let majorCount = 0;
+    let majorCredits = 0;
+    Object.values(subGroups).forEach(list => {
+      majorCount += list.length;
+      majorCredits += list.reduce((s, c) => s + (c.credits || 0), 0);
+    });
+
+    const majorCard = document.createElement('div');
+    majorCard.className = 'major-block-card';
+
+    // Header Khối lớn cấp 1
+    const majorHeader = document.createElement('div');
+    majorHeader.className = 'major-block-header';
+    majorHeader.innerHTML = `
+      <div class="block-title">📚 ${escapeHtml(majorName)}</div>
+      <div class="block-stat">${majorCount} môn • ${majorCredits} tín chỉ</div>
+    `;
+    majorCard.appendChild(majorHeader);
+
+    // Render từng Khối con cấp 2
+    for (const [subName, subCourses] of Object.entries(subGroups)) {
+      const subCredits = subCourses.reduce((s, c) => s + (c.credits || 0), 0);
+      const subLt = subCourses.reduce((s, c) => s + (c.theoryHours || 0), 0);
+      const subTh = subCourses.reduce((s, c) => s + (c.practiceHours || 0), 0);
+
+      const subCard = document.createElement('div');
+      subCard.className = 'sub-block-card';
+
+      // Header Khối con
+      const subHeader = document.createElement('div');
+      subHeader.className = 'sub-block-header';
+      subHeader.innerHTML = `
+        <div>
+          <span style="color: #38bdf8; margin-right: 6px;">📌</span>
+          <span>${escapeHtml(subName)}</span>
+        </div>
+        <div class="sub-badge">${subCourses.length} môn • ${subCredits} TC</div>
+      `;
+      subCard.appendChild(subHeader);
+
+      // Bảng môn học của Khối con (Đúng các cột như Excel)
+      const tableWrapper = document.createElement('div');
+      tableWrapper.style.overflowX = 'auto';
+
+      let rowsHtml = '';
+      subCourses.forEach(c => {
+        // Cột B trong Excel: Kỳ học phân kỳ
+        let colBCell = '';
+        if (c.excelSemester !== null && c.excelSemester !== undefined && c.excelSemester > 0) {
+          colBCell = `<strong style="color: #60a5fa; font-size: 13px;">${c.excelSemester}</strong>`;
+        } else {
+          colBCell = `<span style="color: var(--text-muted);">-</span>`;
+        }
+
+        // Ô số tín chỉ (highlight nếu lệch trên trường)
+        let creditsCell = `${c.credits}`;
+        if (c.schoolCredits !== undefined && c.schoolCredits !== null && c.schoolCredits !== c.credits) {
+          creditsCell = `<strong style="color: #f59e0b;">${c.credits}</strong> <div style="font-size: 10px; color: #f59e0b;">(Trường: ${c.schoolCredits})</div>`;
+        }
+
+        // Ô Lý thuyết (highlight nếu lệch)
+        let ltCell = `${c.theoryHours || 0}`;
+        const isLtDiff = c.schoolTheory !== undefined && c.schoolTheory !== null && c.schoolTheory !== c.theoryHours && (c.theoryHours > 0 || c.schoolTheory > 0);
+        if (isLtDiff) {
+          ltCell = `<span style="color: #f59e0b; font-weight: 700;">${c.theoryHours || 0}</span> <div style="font-size: 10px; color: #f59e0b;">(${c.schoolTheory || 0})</div>`;
+        }
+
+        // Ô Thực hành (highlight nếu lệch)
+        let thCell = `${c.practiceHours || 0}`;
+        const isThDiff = c.schoolPractice !== undefined && c.schoolPractice !== null && c.schoolPractice !== c.practiceHours && (c.practiceHours > 0 || c.schoolPractice > 0);
+        if (isThDiff) {
+          thCell = `<span style="color: #f59e0b; font-weight: 700;">${c.practiceHours || 0}</span> <div style="font-size: 10px; color: #f59e0b;">(${c.schoolPractice || 0})</div>`;
+        }
+
+        // Cột Check thông số (Excel vs Nhà trường)
+        let compCell = '';
+        if (c.status === 'matched') {
+          compCell = '<span class="diff-tag badge-matched">🟢 Khớp hoàn toàn</span>';
+        } else if (c.status === 'mismatch') {
+          let diffDetails = '';
+          if (c.diffs && c.diffs.length > 0) {
+            diffDetails = `<div style="margin-top: 3px; font-size: 11px; color: #f59e0b; line-height: 1.4;">${c.diffs.map(d => `• ${escapeHtml(d)}`).join('<br>')}</div>`;
+          }
+          compCell = `<div><span class="diff-tag badge-mismatch">🟡 Lệch thông số</span>${diffDetails}</div>`;
+        } else {
+          compCell = `<div><span class="diff-tag badge-missing">🔴 Chưa có trên trường</span><div style="margin-top: 2px; font-size: 11px; color: #ef4444;">${c.diffs && c.diffs[0] ? escapeHtml(c.diffs[0]) : 'Chưa được gán vào CTĐT'}</div></div>`;
+        }
+
+        const rowCls = c.status === 'matched' ? 'diff-row-matched' : (c.status === 'mismatch' ? 'diff-row-mismatch' : 'diff-row-missing');
+
+        rowsHtml += `
+          <tr class="${rowCls}">
+            <td style="padding: 8px 10px; text-align: center; color: var(--text-muted); font-family: var(--font-mono); width: 45px;">${globalIndex++}</td>
+            <td style="padding: 8px 10px; text-align: center; width: 65px;">${colBCell}</td>
+            <td style="padding: 8px 10px; font-family: var(--font-mono); font-weight: 700; color: #e2e8f0; width: 105px;">${escapeHtml(c.courseCode)}</td>
+            <td style="padding: 8px 10px;">
+              <strong style="color: #fff;">${escapeHtml(c.courseName)}</strong>
+            </td>
+            <td style="padding: 8px 10px; color: #94a3b8; font-style: italic; font-size: 11.5px;">
+              ${escapeHtml(c.courseNameEn || '')}
+            </td>
+            <td style="padding: 8px 10px; text-align: center; font-weight: 700; width: 65px;">${creditsCell}</td>
+            <td style="padding: 8px 10px; text-align: center; width: 75px; font-size: 11.5px;">${ltCell}</td>
+            <td style="padding: 8px 10px; text-align: center; width: 75px; font-size: 11.5px;">${thCell}</td>
+            <td style="padding: 8px 10px; width: 190px;">${compCell}</td>
+          </tr>
+        `;
+      });
+
+      tableWrapper.innerHTML = `
+        <table class="table" style="width: 100%; border-collapse: collapse; font-size: 12px;">
+          <thead>
+            <tr style="background: rgba(255,255,255,0.03); text-align: left;">
+              <th style="padding: 8px 10px; width: 45px; text-align: center;">TT</th>
+              <th style="padding: 8px 10px; width: 65px; text-align: center;">Kỳ</th>
+              <th style="padding: 8px 10px; width: 105px;">Mã học phần</th>
+              <th style="padding: 8px 10px;">Tên học phần</th>
+              <th style="padding: 8px 10px;">Tên học phần (tiếng Anh)</th>
+              <th style="padding: 8px 10px; width: 65px; text-align: center;">Số TC</th>
+              <th style="padding: 8px 10px; width: 75px; text-align: center;">Lý thuyết</th>
+              <th style="padding: 8px 10px; width: 75px; text-align: center;">Thực hành</th>
+              <th style="padding: 8px 10px; width: 190px;">Check thông số (Excel vs Trường)</th>
+            </tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+          <tfoot>
+            <tr class="subtotal-row">
+              <td colspan="5"><strong>Cộng nhóm: ${escapeHtml(subName)}</strong></td>
+              <td style="text-align: center;"><strong>${subCredits}</strong></td>
+              <td style="text-align: center;">${subLt}</td>
+              <td style="text-align: center;">${subTh}</td>
+              <td><span style="color: var(--text-muted); font-size: 11px;">(${subCourses.length} học phần)</span></td>
+            </tr>
+          </tfoot>
+        </table>
+      `;
+
+      subCard.appendChild(tableWrapper);
+      majorCard.appendChild(subCard);
+    }
+
+    container.appendChild(majorCard);
+  }
+}
+
+/**
+ * Render PHẦN II: Phân kỳ đào tạo theo danh sách môn của Trường (Thể hiện các cột y như Excel)
+ * Cột: TT | Mã HP | Tên học phần | Tên tiếng Anh | Số TC | Lý thuyết | Thực hành | Check thông số (Trường vs Excel)
+ */
+function renderSemestersSection(filteredCourses) {
+  const container = document.getElementById('curriculum-semesters-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  if (filteredCourses.length === 0) {
+    container.innerHTML = '<div style="padding: 24px; text-align: center; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius-md); border: 1px dashed var(--border-color);">Không tìm thấy môn học nào phù hợp với bộ lọc hiện tại.</div>';
+    return;
+  }
+
+  // Gom nhóm theo Học kỳ
+  const semGroups = {};
+  filteredCourses.forEach(c => {
+    let sKey = c.semester;
+    if (sKey === null || sKey === undefined) sKey = 'unassigned';
+    if (!semGroups[sKey]) semGroups[sKey] = [];
+    semGroups[sKey].push(c);
+  });
+
+  // Sắp xếp: Kỳ 1 -> Kỳ 8 -> Kỳ 0 (Kho tự chọn dự phòng) -> Chưa phân kỳ
+  const sortedKeys = Object.keys(semGroups).sort((a, b) => {
+    if (a === 'unassigned') return 1;
+    if (b === 'unassigned') return -1;
+    const numA = Number(a);
+    const numB = Number(b);
+    if (numA === 0) return 1;
+    if (numB === 0) return -1;
+    return numA - numB;
+  });
+
+  let globalIndex = 1;
+
+  sortedKeys.forEach(sKey => {
+    const list = semGroups[sKey];
+    const semCredits = list.reduce((s, c) => s + (c.credits || 0), 0);
+    const semLt = list.reduce((s, c) => s + (c.theoryHours || 0), 0);
+    const semTh = list.reduce((s, c) => s + (c.practiceHours || 0), 0);
+
+    const isReserve = sKey === '0' || Number(sKey) === 0;
+    const isUnassigned = sKey === 'unassigned';
+
+    const semCard = document.createElement('div');
+    semCard.className = `semester-card ${isReserve ? 'reserve' : ''}`;
+
+    // Header của học kỳ
+    const semHeader = document.createElement('div');
+    semHeader.className = 'semester-card-header';
+
+    let headerTitle = '';
+    let headerBadge = '';
+    let headerLabel = `học kỳ ${sKey}`;
+
+    if (isReserve) {
+      headerLabel = 'kho tự chọn dự phòng';
+      headerTitle = `
+        <div>
+          <div class="sem-title" style="color: #60a5fa;">📦 KỲ 0: KHO MÔN TỰ CHỌN DỰ PHÒNG</div>
+          <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 2px;">
+            Kho chứa các môn tự chọn dự phòng của CTĐT trên phần mềm đào tạo trường (dành cho SV đăng ký tự chọn theo định mức tích lũy).
+          </div>
+        </div>
+      `;
+      headerBadge = `<div class="sem-badge" style="background: rgba(59,130,246,0.2); color: #93c5fd; border-color: rgba(59,130,246,0.4);">${semCredits} Tín chỉ • ${list.length} môn dự phòng</div>`;
+    } else if (isUnassigned) {
+      headerLabel = 'các môn chưa phân kỳ';
+      headerTitle = `<div class="sem-title" style="color: #f59e0b;">⏳ CHƯA PHÂN KỲ TRÊN HỆ THỐNG TRƯỜNG</div>`;
+      headerBadge = `<div class="sem-badge" style="background: rgba(245,158,11,0.15); color: #f59e0b; border-color: rgba(245,158,11,0.3);">${semCredits} Tín chỉ • ${list.length} môn</div>`;
+    } else {
+      headerLabel = `học kỳ ${sKey}`;
+      headerTitle = `<div class="sem-title">📅 HỌC KỲ ${sKey}</div>`;
+      headerBadge = `<div class="sem-badge">${semCredits} Tín chỉ • ${list.length} môn học</div>`;
+    }
+
+    semHeader.innerHTML = `${headerTitle}${headerBadge}`;
+    semCard.appendChild(semHeader);
+
+    // Bảng môn học của học kỳ (Đúng các cột như Excel Part 2)
+    const tableWrapper = document.createElement('div');
+    tableWrapper.style.overflowX = 'auto';
+
+    let rowsHtml = '';
+    list.forEach(c => {
+      // Ô số tín chỉ (highlight nếu lệch giữa trường và Excel)
+      let creditsCell = `${c.schoolCredits !== undefined && c.schoolCredits !== null ? c.schoolCredits : c.credits}`;
+      if (c.schoolCredits !== undefined && c.schoolCredits !== null && c.schoolCredits !== c.credits) {
+        creditsCell = `<strong style="color: #f59e0b;">${c.schoolCredits}</strong> <div style="font-size: 10px; color: #f59e0b;">(Excel: ${c.credits})</div>`;
+      }
+
+      // Ô Lý thuyết
+      let ltCell = `${c.schoolTheory !== undefined && c.schoolTheory !== null ? c.schoolTheory : c.theoryHours || 0}`;
+      const isLtDiff = c.schoolTheory !== undefined && c.schoolTheory !== null && c.schoolTheory !== c.theoryHours && (c.theoryHours > 0 || c.schoolTheory > 0);
+      if (isLtDiff) {
+        ltCell = `<span style="color: #f59e0b; font-weight: 700;">${c.schoolTheory || 0}</span> <div style="font-size: 10px; color: #f59e0b;">(Excel: ${c.theoryHours || 0})</div>`;
+      }
+
+      // Ô Thực hành
+      let thCell = `${c.schoolPractice !== undefined && c.schoolPractice !== null ? c.schoolPractice : c.practiceHours || 0}`;
+      const isThDiff = c.schoolPractice !== undefined && c.schoolPractice !== null && c.schoolPractice !== c.practiceHours && (c.practiceHours > 0 || c.schoolPractice > 0);
+      if (isThDiff) {
+        thCell = `<span style="color: #f59e0b; font-weight: 700;">${c.schoolPractice || 0}</span> <div style="font-size: 10px; color: #f59e0b;">(Excel: ${c.practiceHours || 0})</div>`;
+      }
+
+      // Check thông số (Trường vs Excel)
+      let compCell = '';
+      if (c.status === 'matched') {
+        compCell = '<span class="diff-tag badge-matched">🟢 Khớp hoàn toàn</span>';
+      } else if (c.status === 'mismatch') {
+        let diffDetails = '';
+        if (c.diffs && c.diffs.length > 0) {
+          diffDetails = `<div style="margin-top: 3px; font-size: 11px; color: #f59e0b; line-height: 1.4;">${c.diffs.map(d => `• ${escapeHtml(d)}`).join('<br>')}</div>`;
+        }
+        compCell = `<div><span class="diff-tag badge-mismatch">🟡 Lệch thông số</span>${diffDetails}</div>`;
+      } else {
+        compCell = `<div><span class="diff-tag badge-missing">🔴 Chưa có trên trường</span><div style="margin-top: 2px; font-size: 11px; color: #ef4444;">${c.diffs && c.diffs[0] ? escapeHtml(c.diffs[0]) : 'Chưa được gán vào CTĐT'}</div></div>`;
+      }
+
+      const rowCls = c.status === 'matched' ? 'diff-row-matched' : (c.status === 'mismatch' ? 'diff-row-mismatch' : 'diff-row-missing');
+
+      rowsHtml += `
+        <tr class="${rowCls}">
+          <td style="padding: 8px 10px; text-align: center; color: var(--text-muted); font-family: var(--font-mono); width: 45px;">${globalIndex++}</td>
+          <td style="padding: 8px 10px; font-family: var(--font-mono); font-weight: 700; color: #e2e8f0; width: 105px;">${escapeHtml(c.schoolCourseCode || c.courseCode)}</td>
+          <td style="padding: 8px 10px;">
+            <strong style="color: #fff;">${escapeHtml(c.schoolCourseName || c.courseName)}</strong>
+          </td>
+          <td style="padding: 8px 10px; color: #94a3b8; font-style: italic; font-size: 11.5px;">
+            ${escapeHtml(c.courseNameEn || '')}
+          </td>
+          <td style="padding: 8px 10px; text-align: center; font-weight: 700; width: 65px;">${creditsCell}</td>
+          <td style="padding: 8px 10px; text-align: center; width: 75px; font-size: 11.5px;">${ltCell}</td>
+          <td style="padding: 8px 10px; text-align: center; width: 75px; font-size: 11.5px;">${thCell}</td>
+          <td style="padding: 8px 10px; width: 190px;">${compCell}</td>
+        </tr>
+      `;
+    });
+
+    tableWrapper.innerHTML = `
+      <table class="table" style="width: 100%; border-collapse: collapse; font-size: 12px;">
+        <thead>
+          <tr style="background: rgba(255,255,255,0.03); text-align: left;">
+            <th style="padding: 8px 10px; width: 45px; text-align: center;">TT</th>
+            <th style="padding: 8px 10px; width: 105px;">Mã học phần</th>
+            <th style="padding: 8px 10px;">Tên học phần</th>
+            <th style="padding: 8px 10px;">Tên học phần (tiếng Anh)</th>
+            <th style="padding: 8px 10px; width: 65px; text-align: center;">Số TC</th>
+            <th style="padding: 8px 10px; width: 75px; text-align: center;">Lý thuyết</th>
+            <th style="padding: 8px 10px; width: 75px; text-align: center;">Thực hành</th>
+            <th style="padding: 8px 10px; width: 190px;">Check thông số (Trường vs Excel)</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+        <tfoot>
+          <tr class="subtotal-row">
+            <td colspan="4"><strong>Tổng ${headerLabel}:</strong></td>
+            <td style="text-align: center;"><strong>${semCredits}</strong></td>
+            <td style="text-align: center;">${semLt}</td>
+            <td style="text-align: center;">${semTh}</td>
+            <td><span style="color: var(--text-muted); font-size: 11px;">(${list.length} học phần)</span></td>
+          </tr>
+        </tfoot>
+      </table>
+    `;
+
+    semCard.appendChild(tableWrapper);
+    container.appendChild(semCard);
+  });
+}
 </script>
 </body>
 </html>

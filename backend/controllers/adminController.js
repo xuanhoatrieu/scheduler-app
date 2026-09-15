@@ -1,9 +1,11 @@
+const path = require('path');
 const os = require('os');
 const axios = require('axios');
 const sql = require('mssql');
 const { sequelize } = require('../config/db');
 const configService = require('../services/configService');
 const namvietConnector = require('../services/namvietConnector');
+const ExcelCurriculumService = require('../services/excelCurriculumService');
 const strategyManager = require('../strategies/StrategyManager');
 const { decrypt } = require('../utils/security');
 
@@ -16,6 +18,8 @@ const Curriculum = require('../models/Curriculum');
 const DiemRenLuyen = require('../models/DiemRenLuyen');
 const Attendance = require('../models/Attendance');
 const News = require('../models/News');
+const MasterCurriculum = require('../models/MasterCurriculum');
+const tuafQueries = require('../services/tuafQueries');
 
 /**
  * Admin Controller — Quản lý cấu hình, kiểm thử kết nối, giám sát sức khỏe hệ thống
@@ -412,6 +416,222 @@ class AdminController {
     } catch (err) {
       console.error('❌ [AdminController] forceSyncUser error:', err);
       return res.status(500).json({ success: false, message: `Đồng bộ thất bại: ${err.message}` });
+    }
+  }
+
+  /**
+   * [POST] /api/admin/curriculum/parse-sample — Parse file cndmstk56.xlsx có sẵn trên server
+   */
+  async parseSampleCurriculum(req, res) {
+    try {
+      const filePath = path.join(__dirname, '../../cndmstk56.xlsx');
+      const data = await ExcelCurriculumService.parseExcel(filePath);
+      return res.json({ success: true, data });
+    } catch (err) {
+      return res.status(500).json({ success: false, message: err.message });
+    }
+  }
+
+  /**
+   * [GET] /api/admin/curriculum/cohorts — Lấy danh sách các khóa học
+   */
+  async getCohorts(req, res) {
+    try {
+      let schoolCohorts = [];
+      try {
+        const pool = await namvietConnector.getPool();
+        schoolCohorts = await tuafQueries.getCohorts(pool);
+      } catch (e) {
+        console.warn('⚠️ [AdminController] Lỗi kết nối SQL Server lấy cohorts:', e.message);
+      }
+
+      const dbCohorts = await MasterCurriculum.findAll({
+        attributes: [[sequelize.fn('DISTINCT', sequelize.col('cohort')), 'cohort']],
+        raw: true
+      });
+      const dbCohortList = dbCohorts.map(r => String(r.cohort || '').replace(/^[kK]/, '')).filter(Boolean);
+
+      const allCohortsSet = new Set([...schoolCohorts.map(String), ...dbCohortList]);
+      if (allCohortsSet.size === 0) {
+        ['58', '57', '56', '55', '54', '53', '52', '51', '50'].forEach(c => allCohortsSet.add(c));
+      }
+
+      const sortedCohorts = Array.from(allCohortsSet)
+        .map(Number)
+        .filter(n => !isNaN(n) && n > 0)
+        .sort((a, b) => b - a)
+        .map(c => ({
+          cohortNum: c,
+          cohortCode: `K${c}`,
+          label: `Khóa ${c} (K${c})`
+        }));
+
+      return res.json({
+        success: true,
+        data: sortedCohorts
+      });
+    } catch (err) {
+      console.error('❌ [AdminController] getCohorts error:', err);
+      return res.status(500).json({ success: false, message: err.message });
+    }
+  }
+
+  /**
+   * [GET] /api/admin/curriculum/majors — Lấy danh sách ngành của 1 khóa học
+   */
+  async getMajorsByCohort(req, res) {
+    try {
+      const cohortRaw = req.query.cohort || '56';
+      const cohortNum = parseInt(String(cohortRaw).replace(/^[kK]/, '')) || 56;
+
+      let schoolMajors = [];
+      try {
+        const pool = await namvietConnector.getPool();
+        schoolMajors = await tuafQueries.getMajorsByCohort(pool, cohortNum);
+      } catch (e) {
+        console.warn('⚠️ [AdminController] Lỗi kết nối SQL Server lấy majors:', e.message);
+      }
+
+      // Lấy thêm các ngành đã lưu trong MasterCurriculum
+      const savedMajors = await MasterCurriculum.findAll({
+        where: {
+          cohort: [`K${cohortNum}`, String(cohortNum)]
+        },
+        attributes: ['majorCode', 'majorName'],
+        group: ['majorCode', 'majorName'],
+        raw: true
+      });
+
+      const savedCodeSet = new Set(savedMajors.map(m => m.majorCode));
+
+      const majorList = schoolMajors.map(m => ({
+        idDt: m.idDt,
+        cohort: m.cohort,
+        majorCode: m.majorCode,
+        majorName: m.majorName,
+        specializationName: m.specializationName,
+        baseMajorName: m.baseMajorName,
+        totalCredits: m.totalCredits,
+        totalSemesters: m.totalSemesters,
+        hasMasterCurriculum: savedCodeSet.has(m.majorCode)
+      }));
+
+      // Bổ sung ngành đã có trong MasterCurriculum nếu chưa có trong schoolMajors
+      for (const sm of savedMajors) {
+        if (!majorList.some(m => m.majorCode === sm.majorCode)) {
+          majorList.push({
+            idDt: null,
+            cohort: cohortNum,
+            majorCode: sm.majorCode,
+            majorName: sm.majorName,
+            specializationName: sm.majorName,
+            baseMajorName: sm.majorName,
+            totalCredits: 153,
+            totalSemesters: 8,
+            hasMasterCurriculum: true
+          });
+        }
+      }
+
+      return res.json({
+        success: true,
+        cohort: `K${cohortNum}`,
+        data: majorList
+      });
+    } catch (err) {
+      console.error('❌ [AdminController] getMajorsByCohort error:', err);
+      return res.status(500).json({ success: false, message: err.message });
+    }
+  }
+
+  /**
+   * [POST] /api/admin/curriculum/compare — So sánh danh sách môn với CSDL trường
+   */
+  async compareCurriculum(req, res) {
+    try {
+      const { courses, majorCode, cohort, idDt, useSample, filePath: customFilePath } = req.body;
+      let courseList = courses;
+
+      if (req.body.fileBase64) {
+        const fs = require('fs');
+        const uploadDir = path.join(__dirname, '../uploads/curriculum');
+        if (!fs.existsSync(uploadDir)) {
+          fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        const cleanName = (req.body.fileName || 'curriculum.xlsx').replace(/[^a-zA-Z0-9._-]/g, '_');
+        const savedFilePath = path.join(uploadDir, `${Date.now()}_${cleanName}`);
+        const buffer = Buffer.from(req.body.fileBase64, 'base64');
+        fs.writeFileSync(savedFilePath, buffer);
+
+        const parsed = await ExcelCurriculumService.parseExcel(savedFilePath);
+        courseList = parsed.courses;
+      } else if (useSample || (!courses && !req.file)) {
+        const filePath = customFilePath || path.join(__dirname, '../../cndmstk56.xlsx');
+        const parsed = await ExcelCurriculumService.parseExcel(filePath);
+        courseList = parsed.courses;
+      }
+
+      if (!courseList || !Array.isArray(courseList) || courseList.length === 0) {
+        return res.status(400).json({ success: false, message: 'Danh sách môn học trống' });
+      }
+
+      const cleanCohort = String(cohort || '56').replace(/^[kK]/, '');
+      const result = await ExcelCurriculumService.compareWithSchoolDb(courseList, majorCode || '7480201', cleanCohort, idDt);
+      return res.json({
+        success: true,
+        data: result
+      });
+    } catch (err) {
+      console.error('❌ [AdminController] compareCurriculum error:', err);
+      return res.status(500).json({ success: false, message: err.message });
+    }
+  }
+
+  /**
+   * [POST] /api/admin/curriculum/save — Lưu danh sách môn vào MasterCurriculum
+   */
+  async saveMasterCurriculum(req, res) {
+    try {
+      const { courses, majorCode, cohort, majorName } = req.body;
+      if (!courses || !Array.isArray(courses) || courses.length === 0) {
+        return res.status(400).json({ success: false, message: 'Danh sách môn học trống' });
+      }
+
+      const cleanCohort = String(cohort || 'K56').startsWith('K') ? String(cohort) : `K${cohort}`;
+      const result = await ExcelCurriculumService.saveMasterCurriculum(
+        courses,
+        majorCode || '7480201',
+        cleanCohort,
+        majorName || 'Công nghệ và đổi mới sáng tạo'
+      );
+
+      return res.json({
+        success: true,
+        message: `✅ Đã lưu và kích hoạt ${result.count} môn vào Khung chương trình chuẩn (${result.majorCode} - ${result.cohort})!`,
+        data: result
+      });
+    } catch (err) {
+      console.error('❌ [AdminController] saveMasterCurriculum error:', err);
+      return res.status(500).json({ success: false, message: err.message });
+    }
+  }
+
+  /**
+   * [GET] /api/admin/curriculum/master — Lấy khung chuẩn đã lưu
+   */
+  async getMasterCurriculum(req, res) {
+    try {
+      const majorCode = req.query.majorCode || '7480201';
+      const rawCohort = req.query.cohort || 'K56';
+      const cleanCohort = rawCohort.startsWith('K') ? rawCohort : `K${rawCohort}`;
+      const list = await ExcelCurriculumService.getMasterCurriculum(majorCode, cleanCohort);
+      return res.json({
+        success: true,
+        data: list
+      });
+    } catch (err) {
+      console.error('❌ [AdminController] getMasterCurriculum error:', err);
+      return res.status(500).json({ success: false, message: err.message });
     }
   }
 }

@@ -44,7 +44,7 @@ const Attendance = sequelize.define('Attendance', {
     comment: 'Gio quy dinh ket thuc (VD: 10:45)'
   },
   status: {
-    type: DataTypes.ENUM('pending', 'on_time', 'late', 'early_leave', 'absent', 'exempt'),
+    type: DataTypes.ENUM('pending', 'on_time', 'late', 'early_leave', 'absent', 'exempt', 'rescheduled', 'substitute'),
     allowNull: false,
     defaultValue: 'pending'
   },
@@ -59,6 +59,30 @@ const Attendance = sequelize.define('Attendance', {
     allowNull: false,
     defaultValue: 0,
     comment: 'So phut ve som'
+  },
+  hasPermission: {
+    type: DataTypes.BOOLEAN,
+    allowNull: true,
+    defaultValue: null,
+    comment: 'true = Co phep (co de nghi), false = Khong phep (tu y doi), null = khong ap dung'
+  },
+  rescheduledDate: {
+    type: DataTypes.DATEONLY,
+    allowNull: true,
+    defaultValue: null,
+    comment: 'Ngay doi gio hoac hoc bu'
+  },
+  rescheduledReason: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    defaultValue: '',
+    comment: 'Ly do doi gio / hoc bu'
+  },
+  substituteTeacher: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    defaultValue: '',
+    comment: 'Ten giang vien day thay neu co'
   },
   note: {
     type: DataTypes.TEXT,

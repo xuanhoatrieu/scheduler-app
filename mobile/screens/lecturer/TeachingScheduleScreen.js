@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Modal,
   RefreshControl,
   SafeAreaView,
   ScrollView,
@@ -12,6 +13,7 @@ import {
 } from 'react-native';
 import { getSchedule } from '../../services/api';
 import { Colors, getDayColor } from '../../theme/colors';
+import StudentAttendanceScreen from './StudentAttendanceScreen';
 
 const DAY_NAMES = { 2: 'Thứ 2', 3: 'Thứ 3', 4: 'Thứ 4', 5: 'Thứ 5', 6: 'Thứ 6', 7: 'Thứ 7', 8: 'CN' };
 
@@ -19,6 +21,7 @@ export default function TeachingScheduleScreen({ user }) {
   const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [attendanceModalSchedule, setAttendanceModalSchedule] = useState(null);
 
   const loadData = async (forceSync = false) => {
     const res = await getSchedule(forceSync);
@@ -99,15 +102,24 @@ export default function TeachingScheduleScreen({ user }) {
                       <Text style={styles.creditText}>{item.credits || '?'} TC</Text>
                     </View>
                   </View>
-                  <View style={styles.cardDetails}>
-                    <View style={styles.detailItem}>
-                      <Ionicons name="time-outline" size={14} color={Colors.textMuted} />
-                      <Text style={styles.detailText}>{item.studyTime || 'Chưa rõ'}</Text>
+                  <View style={styles.cardBottomRow}>
+                    <View style={styles.cardDetails}>
+                      <View style={styles.detailItem}>
+                        <Ionicons name="time-outline" size={14} color={Colors.textMuted} />
+                        <Text style={styles.detailText}>{item.studyTime || 'Chưa rõ'}</Text>
+                      </View>
+                      <View style={styles.detailItem}>
+                        <Ionicons name="location-outline" size={14} color={Colors.textMuted} />
+                        <Text style={styles.detailText}>{item.room || 'Chưa rõ'}</Text>
+                      </View>
                     </View>
-                    <View style={styles.detailItem}>
-                      <Ionicons name="location-outline" size={14} color={Colors.textMuted} />
-                      <Text style={styles.detailText}>{item.room || 'Chưa rõ'}</Text>
-                    </View>
+                    <TouchableOpacity
+                      style={styles.attendanceBtn}
+                      onPress={() => setAttendanceModalSchedule(item)}
+                    >
+                      <Ionicons name="clipboard-outline" size={13} color="#fff" />
+                      <Text style={styles.attendanceBtnText}>Điểm danh</Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
               ))}
@@ -121,6 +133,18 @@ export default function TeachingScheduleScreen({ user }) {
           </View>
         )}
       </ScrollView>
+
+      {/* STUDENT ATTENDANCE MODAL */}
+      <Modal
+        visible={Boolean(attendanceModalSchedule)}
+        animationType="slide"
+        onRequestClose={() => setAttendanceModalSchedule(null)}
+      >
+        <StudentAttendanceScreen
+          schedule={attendanceModalSchedule}
+          onClose={() => setAttendanceModalSchedule(null)}
+        />
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -163,7 +187,14 @@ const styles = StyleSheet.create({
     borderRadius: 8, marginLeft: 8,
   },
   creditText: { fontSize: 11, fontWeight: '700', color: Colors.primary },
-  cardDetails: { flexDirection: 'row', gap: 16, marginTop: 10 },
+  cardDetails: { flexDirection: 'row', gap: 14 },
+  cardBottomRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 },
+  attendanceBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: '#2e7d32', paddingHorizontal: 10, paddingVertical: 6,
+    borderRadius: 8,
+  },
+  attendanceBtnText: { color: '#fff', fontSize: 11, fontWeight: '700' },
   detailItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   detailText: { fontSize: 12, color: Colors.textMuted },
   emptyWrap: { alignItems: 'center', paddingTop: 80 },

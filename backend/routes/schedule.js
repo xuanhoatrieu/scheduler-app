@@ -497,11 +497,18 @@ router.post('/sync-history', authMiddleware, async (req, res) => {
 router.get('/curriculum', authMiddleware, async (req, res) => {
   try {
     const Curriculum = require('../models/Curriculum');
+    const MasterCurriculum = require('../models/MasterCurriculum');
 
-    // 1. Lấy CTĐT đã cache
-    const curriculum = await Curriculum.findAll({
+    // 1. Lấy khung chuẩn MasterCurriculum (cho ngành của SV, mặc định '7480201' - 'K56')
+    const masterList = await MasterCurriculum.findAll({
+      where: { majorCode: '7480201', cohort: 'K56', isActive: true },
+      order: [['semester', 'ASC'], ['stt', 'ASC'], ['courseName', 'ASC']]
+    });
+
+    // Fallback: nếu chưa cấu hình MasterCurriculum, dùng rawCurriculum
+    const rawCurriculum = await Curriculum.findAll({
       where: { userId: req.user.id },
-      order: [['knowledgeBlock', 'ASC'], ['courseName', 'ASC']]
+      order: [['semester', 'ASC'], ['knowledgeBlock', 'ASC'], ['courseName', 'ASC']]
     });
 
     // 2. Lấy tất cả điểm đã có
@@ -514,28 +521,143 @@ router.get('/curriculum', authMiddleware, async (req, res) => {
       where: { userId: req.user.id }
     });
 
-    // 4. Tạo lookup maps
-    const gradeMap = {};
+    // 4. Tạo lookup maps cho grades và schedules (ưu tiên theo courseCode, fallback theo courseName)
+    const gradeMapByCode = {};
+    const gradeMapByName = {};
     for (const g of grades) {
-      const key = g.courseName.toLowerCase().trim();
-      // Nếu môn xuất hiện nhiều lần (học lại), lấy kết quả mới nhất
-      if (!gradeMap[key] || (g.totalGrade4 !== null && (gradeMap[key].totalGrade4 === null || g.totalGrade4 > gradeMap[key].totalGrade4))) {
-        gradeMap[key] = g;
+      const codeKey = (g.courseCode || '').toUpperCase().trim();
+      const nameKey = (g.courseName || '').toLowerCase().trim();
+      if (codeKey) {
+        if (!gradeMapByCode[codeKey] || (g.totalGrade4 !== null && (gradeMapByCode[codeKey].totalGrade4 === null || g.totalGrade4 > gradeMapByCode[codeKey].totalGrade4))) {
+          gradeMapByCode[codeKey] = g;
+        }
+      }
+      if (nameKey) {
+        if (!gradeMapByName[nameKey] || (g.totalGrade4 !== null && (gradeMapByName[nameKey].totalGrade4 === null || g.totalGrade4 > gradeMapByName[nameKey].totalGrade4))) {
+          gradeMapByName[nameKey] = g;
+        }
       }
     }
 
-    const studyingSet = new Set();
+    const studyingCodeSet = new Set();
+    const studyingNameSet = new Set();
     for (const s of schedules) {
-      studyingSet.add(s.courseName.toLowerCase().trim());
+      if (s.courseCode) studyingCodeSet.add(s.courseCode.toUpperCase().trim());
+      if (s.courseName) studyingNameSet.add(s.courseName.toLowerCase().trim());
     }
 
-    // 5. Merge: gán status cho từng môn trong CTĐT
-    const mergedCurriculum = curriculum.map(c => {
-      const key = c.courseName.toLowerCase().trim();
-      const grade = gradeMap[key];
-      const isStudying = studyingSet.has(key);
+    // 5. Tính toán Chuẩn đầu ra (Graduation Requirements)
+    // 5.1 Giáo dục thể chất (3 TC): CB701% hoặc các môn thể chất
+    const peCourses = [];
+    let peEarnedCredits = 0;
+    const peKeywords = ['bóng chuyền', 'cầu lông', 'bóng đá', 'pickleball', 'bóng rổ', 'bóng ném', 'thể chất', 'võ', 'golf'];
+    for (const g of grades) {
+      const code = (g.courseCode || '').toUpperCase().trim();
+      const name = (g.courseName || '').toLowerCase().trim();
+      const isPE = code.startsWith('CB701') || peKeywords.some(k => name.includes(k));
+      if (isPE) {
+        const isPassed = g.letterGrade && g.letterGrade !== 'F';
+        const credits = 1;
+        peCourses.push({
+          courseCode: g.courseCode,
+          courseName: g.courseName,
+          letterGrade: g.letterGrade,
+          credits,
+          isPassed
+        });
+        if (isPassed) peEarnedCredits += credits;
+      }
+    }
+    const gdtcMet = peEarnedCredits >= 3;
 
-      let status = 'not_started'; // Chưa học
+    // 5.2 Giáo dục quốc phòng (GDQP)
+    const gdqpGrade = grades.find(g => (g.courseCode || '').toUpperCase().includes('GDQP') || (g.courseName || '').toLowerCase().includes('quốc phòng'));
+    const gdqpMet = Boolean(gdqpGrade && gdqpGrade.letterGrade && gdqpGrade.letterGrade !== 'F');
+
+    // 5.3 Chuẩn đầu ra Tin học: NN703008 (Nhập môn Công nghệ số và Trí tuệ nhân tạo) >= 'C'
+    const tinHocGrade = gradeMapByCode['NN703008'] || gradeMapByName['nhập môn công nghệ số và trí tuệ nhân tạo'];
+    const tinHocScore = tinHocGrade ? tinHocGrade.letterGrade : null;
+    const tinHocMet = Boolean(tinHocGrade && ['A', 'B', 'C'].includes(tinHocScore));
+
+    // 5.4 Chuẩn đầu ra Ngoại ngữ: Tiếng Anh 1 (NN703011), Tiếng Anh 2 (NN703012), Tiếng Anh 3 (NN702013) đều >= 'C'
+    const taList = [
+      { code: 'NN703011', name: 'Tiếng Anh 1', req: '>= C' },
+      { code: 'NN703012', name: 'Tiếng Anh 2', req: '>= C' },
+      { code: 'NN702013', name: 'Tiếng Anh 3', req: '>= C' }
+    ];
+    const foreignLangCourses = taList.map(item => {
+      const g = gradeMapByCode[item.code] || gradeMapByName[item.name.toLowerCase()];
+      const gradeLetter = g ? g.letterGrade : null;
+      const isMet = Boolean(g && ['A', 'B', 'C'].includes(gradeLetter));
+      return {
+        courseCode: item.code,
+        courseName: item.name,
+        letterGrade: gradeLetter,
+        isMet,
+        statusText: !g ? 'Chưa học' : (isMet ? `Đạt chuẩn (Điểm ${gradeLetter})` : `Chưa đạt chuẩn (Điểm ${gradeLetter})`)
+      };
+    });
+    const ngoaiNguMet = foreignLangCourses.every(c => c.isMet);
+
+    const graduationRequirements = {
+      allMet: gdtcMet && gdqpMet && tinHocMet && ngoaiNguMet,
+      gdtc: {
+        title: 'Giáo dục thể chất',
+        requiredCredits: 3,
+        earnedCredits: peEarnedCredits,
+        isMet: gdtcMet,
+        details: gdtcMet ? `Đã hoàn thành ${peEarnedCredits}/3 tín chỉ điều kiện` : `Đạt ${peEarnedCredits}/3 tín chỉ (cần thêm ${3 - peEarnedCredits} TC)`,
+        courses: peCourses
+      },
+      gdqp: {
+        title: 'Giáo dục quốc phòng',
+        isMet: gdqpMet,
+        details: gdqpMet ? `Đã hoàn thành chứng chỉ GDQP (${gdqpGrade?.letterGrade || 'Đạt'})` : 'Chưa hoàn thành chứng chỉ GDQP'
+      },
+      tinHoc: {
+        title: 'Chuẩn đầu ra Tin học',
+        courseCode: 'NN703008',
+        courseName: 'Nhập môn Công nghệ số và Trí tuệ nhân tạo',
+        minGradeRequired: 'C',
+        currentGrade: tinHocScore,
+        isMet: tinHocMet,
+        details: !tinHocGrade 
+          ? 'Chưa học môn này (Yêu cầu đạt điểm C trở lên)' 
+          : (tinHocMet ? `Đã đạt chuẩn đầu ra (Điểm ${tinHocScore})` : `Chưa đạt chuẩn (Điểm ${tinHocScore} — cần cải thiện lên C trở lên)`)
+      },
+      ngoaiNgu: {
+        title: 'Chuẩn đầu ra Ngoại ngữ (Tiếng Anh 1, 2, 3)',
+        minGradeRequired: 'C',
+        isMet: ngoaiNguMet,
+        details: ngoaiNguMet 
+          ? 'Đã đạt chuẩn C cả 3 học phần Tiếng Anh 1, 2, 3' 
+          : 'Yêu cầu đạt điểm C trở lên ở cả 3 học phần',
+        courses: foreignLangCourses
+      }
+    };
+
+    // 6. Xây dựng danh sách môn học đã merge
+    let baseList = [];
+    let isMasterUsed = false;
+    if (masterList.length > 0) {
+      isMasterUsed = true;
+      baseList = masterList;
+    } else {
+      baseList = rawCurriculum;
+    }
+
+    const matchedGrades = new Set();
+
+    const mergedList = baseList.map(c => {
+      const codeKey = (c.courseCode || '').toUpperCase().trim();
+      const nameKey = (c.courseName || '').toLowerCase().trim();
+
+      const grade = (codeKey && gradeMapByCode[codeKey]) || (nameKey && gradeMapByName[nameKey]);
+      const isStudying = (codeKey && studyingCodeSet.has(codeKey)) || (nameKey && studyingNameSet.has(nameKey));
+
+      if (grade) matchedGrades.add(grade.id);
+
+      let status = 'not_started';
       let letterGrade = null;
       let totalGrade10 = null;
       let totalGrade4 = null;
@@ -544,13 +666,12 @@ router.get('/curriculum', authMiddleware, async (req, res) => {
         letterGrade = grade.letterGrade;
         totalGrade10 = grade.totalGrade10;
         totalGrade4 = grade.totalGrade4;
-
         if (grade.letterGrade === 'F') {
-          status = 'failed'; // Điểm F - học lại
+          status = 'failed';
         } else if (grade.letterGrade && grade.letterGrade !== '') {
-          status = 'passed'; // Đã đạt
+          status = 'passed';
         } else if (isStudying) {
-          status = 'studying'; // Đang học
+          status = 'studying';
         }
       } else if (isStudying) {
         status = 'studying';
@@ -558,10 +679,18 @@ router.get('/curriculum', authMiddleware, async (req, res) => {
 
       return {
         courseName: c.courseName,
+        courseNameEn: c.courseNameEn || '',
         courseCode: c.courseCode,
         credits: c.credits,
-        courseType: c.courseType,
-        knowledgeBlock: c.knowledgeBlock,
+        theoryHours: c.theoryHours || 0,
+        practiceHours: c.practiceHours || 0,
+        courseType: c.courseType || (c.isCondition ? 'Điều kiện' : (c.isElective ? 'Tự chọn' : 'Bắt buộc')),
+        isElective: Boolean(c.isElective),
+        isCondition: Boolean(c.isCondition),
+        semester: c.semester,
+        blockCode: c.blockCode || 'I',
+        knowledgeBlock: c.blockName || (c.semester ? `Học kỳ ${c.semester}` : 'Chung'),
+        subBlockName: c.subBlockName || '',
         status,
         letterGrade,
         totalGrade10,
@@ -569,40 +698,134 @@ router.get('/curriculum', authMiddleware, async (req, res) => {
       };
     });
 
-    // 6. Nếu chưa có CTĐT từ portal → fallback: dùng dữ liệu từ bảng điểm
-    let finalData = mergedCurriculum;
-    if (finalData.length === 0 && grades.length > 0) {
-      finalData = grades.map(g => ({
-        courseName: g.courseName,
-        courseCode: '',
-        credits: 0,
-        courseType: 'Đã học',
-        knowledgeBlock: `${g.semester} — ${g.schoolYear}`,
-        status: g.letterGrade === 'F' ? 'failed' : (g.letterGrade ? 'passed' : 'studying'),
-        letterGrade: g.letterGrade,
-        totalGrade10: g.totalGrade10,
-        totalGrade4: g.totalGrade4
-      }));
+    // 7. Bổ sung các môn sinh viên đã học nhưng không có trong Khung chuẩn (ví dụ NN702008, môn tự chọn khác)
+    for (const g of grades) {
+      if (!matchedGrades.has(g.id)) {
+        const code = (g.courseCode || '').toUpperCase().trim();
+        const isPE = code.startsWith('CB701') || peKeywords.some(k => (g.courseName || '').toLowerCase().includes(k));
+        const status = g.letterGrade === 'F' ? 'failed' : (g.letterGrade ? 'passed' : 'studying');
+        mergedList.push({
+          courseName: g.courseName,
+          courseNameEn: '',
+          courseCode: g.courseCode || '',
+          credits: 2,
+          theoryHours: 0,
+          practiceHours: 0,
+          courseType: isPE ? 'Điều kiện' : 'Tự chọn / Bổ sung',
+          isElective: !isPE,
+          isCondition: isPE,
+          semester: null,
+          blockCode: isPE ? 'I.3' : 'II.3',
+          knowledgeBlock: isPE ? 'Khối kiến thức giáo dục thể chất*' : 'Học phần tích lũy đã học khác',
+          subBlockName: `${g.semester} — ${g.schoolYear}`,
+          status,
+          letterGrade: g.letterGrade,
+          totalGrade10: g.totalGrade10,
+          totalGrade4: g.totalGrade4
+        });
+      }
     }
 
-    // 7. Tính thống kê tiến độ
-    const totalCredits = finalData.reduce((sum, c) => sum + (c.credits || 0), 0);
-    const passedCredits = finalData.filter(c => c.status === 'passed').reduce((sum, c) => sum + (c.credits || 0), 0);
-    const failedCount = finalData.filter(c => c.status === 'failed').length;
-    const studyingCount = finalData.filter(c => c.status === 'studying').length;
+    // 8. Gom nhóm theo Khối kiến thức (byBlock)
+    const blockGroups = {};
+    for (const item of mergedList) {
+      const blockKey = item.knowledgeBlock || 'Chung';
+      if (!blockGroups[blockKey]) {
+        blockGroups[blockKey] = {
+          blockName: blockKey,
+          blockCode: item.blockCode || '',
+          isCondition: item.isCondition,
+          totalCourses: 0,
+          passedCourses: 0,
+          totalCredits: 0,
+          passedCredits: 0,
+          courses: []
+        };
+      }
+      blockGroups[blockKey].totalCourses++;
+      blockGroups[blockKey].totalCredits += item.credits;
+      if (item.status === 'passed') {
+        blockGroups[blockKey].passedCourses++;
+        blockGroups[blockKey].passedCredits += item.credits;
+      }
+      blockGroups[blockKey].courses.push(item);
+    }
+    const byBlock = Object.values(blockGroups);
+
+    // 9. Gom nhóm theo Học kỳ (bySemester)
+    const semesterGroups = {};
+    for (let sem = 1; sem <= 8; sem++) {
+      semesterGroups[sem] = {
+        semester: sem,
+        semesterName: `Học kỳ ${sem}`,
+        totalCredits: 0,
+        passedCredits: 0,
+        totalCourses: 0,
+        passedCourses: 0,
+        courses: []
+      };
+    }
+    const otherGroup = {
+      semester: 0,
+      semesterName: 'Học phần bổ sung / Môn điều kiện',
+      totalCredits: 0,
+      passedCredits: 0,
+      totalCourses: 0,
+      passedCourses: 0,
+      courses: []
+    };
+
+    for (const item of mergedList) {
+      const sem = item.semester;
+      if (sem && semesterGroups[sem]) {
+        semesterGroups[sem].totalCourses++;
+        semesterGroups[sem].totalCredits += item.credits;
+        if (item.status === 'passed') {
+          semesterGroups[sem].passedCourses++;
+          semesterGroups[sem].passedCredits += item.credits;
+        }
+        semesterGroups[sem].courses.push(item);
+      } else {
+        otherGroup.totalCourses++;
+        otherGroup.totalCredits += item.credits;
+        if (item.status === 'passed') {
+          otherGroup.passedCourses++;
+          otherGroup.passedCredits += item.credits;
+        }
+        otherGroup.courses.push(item);
+      }
+    }
+    const bySemester = Object.values(semesterGroups);
+    if (otherGroup.courses.length > 0) {
+      bySemester.push(otherGroup);
+    }
+
+    // 10. Thống kê tiến độ tốt nghiệp chuẩn (153 TC)
+    const totalGraduationCredits = 153;
+    const passedCredits = mergedList
+      .filter(c => !c.isCondition && c.status === 'passed')
+      .reduce((sum, c) => sum + (c.credits || 0), 0);
+
+    const failedCount = mergedList.filter(c => c.status === 'failed').length;
+    const studyingCount = mergedList.filter(c => c.status === 'studying').length;
+    const progressPercent = Math.min(100, Math.round((passedCredits / totalGraduationCredits) * 100));
 
     res.json({
       success: true,
-      data: finalData,
+      data: mergedList,
+      byBlock,
+      bySemester,
+      graduationRequirements,
       summary: {
-        totalCourses: finalData.length,
-        totalCredits,
+        totalCourses: mergedList.length,
+        totalCredits: totalGraduationCredits,
         passedCredits,
         failedCount,
         studyingCount,
-        progressPercent: totalCredits > 0 ? Math.round((passedCredits / totalCredits) * 100) : 0
+        progressPercent,
+        conditionCredits: peEarnedCredits
       },
-      source: curriculum.length > 0 ? 'portal' : 'grades_fallback',
+      source: isMasterUsed ? 'master_curriculum' : (rawCurriculum.length > 0 ? 'portal' : 'grades_fallback'),
       lastSyncedAt: req.user.lastSyncedAt
     });
   } catch (error) {

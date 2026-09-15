@@ -8,20 +8,25 @@ const Schedule = require('../models/Schedule');
 const User = require('../models/User');
 const { parsePeriodToTime, calculateAttendanceStatus } = require('../utils/periodMapping');
 const { calculateSummary, groupByLecturer } = require('../utils/attendanceStats');
+const { sendInspectorReportEmail } = require('../services/emailReportService');
 
 /**
- * GET /api/inspector/attendance/today
- * Lay danh sach cac lop hoc hom nay + trang thai diem danh
+ * GET /api/inspector/attendance/today hoặc /api/inspector/attendance/classes?date=YYYY-MM-DD
+ * Lay danh sach cac lop hoc theo ngay + trang thai diem danh
  * @access Private (inspector, admin)
  */
-router.get('/attendance/today', authMiddleware, requireRole('inspector', 'admin'), async (req, res) => {
+const getClassesHandler = async (req, res) => {
   try {
-    // Use Vietnam timezone (UTC+7) for consistent day-of-week and date
     const VN_TZ = 'Asia/Ho_Chi_Minh';
-    const now = new Date();
-    const today = new Date(now.toLocaleString('en-US', { timeZone: VN_TZ }));
-    const dayOfWeek = today.getDay() + 1; // JS: 0=Sun -> 1-based
-    const dateStr = today.toISOString().split('T')[0];
+    let targetDate;
+    if (req.query.date && /^\d{4}-\d{2}-\d{2}$/.test(req.query.date)) {
+      targetDate = new Date(req.query.date + 'T00:00:00+07:00');
+    } else {
+      const now = new Date();
+      targetDate = new Date(now.toLocaleString('en-US', { timeZone: VN_TZ }));
+    }
+    const dayOfWeek = targetDate.getDay() + 1; // JS: 0=Sun -> 1-based
+    const dateStr = targetDate.toISOString().split('T')[0];
 
     const schedules = await Schedule.findAll({
       where: {
@@ -63,6 +68,10 @@ router.get('/attendance/today', authMiddleware, requireRole('inspector', 'admin'
           status: att.status,
           lateMinutes: att.lateMinutes,
           earlyMinutes: att.earlyMinutes,
+          hasPermission: att.hasPermission,
+          rescheduledDate: att.rescheduledDate,
+          rescheduledReason: att.rescheduledReason,
+          substituteTeacher: att.substituteTeacher,
           note: att.note
         } : null
       };
@@ -75,13 +84,16 @@ router.get('/attendance/today', authMiddleware, requireRole('inspector', 'admin'
       data: result
     });
   } catch (error) {
-    console.error('[API /inspector/attendance/today] Loi:', error.message);
+    console.error('[API /inspector/attendance] Loi:', error.message);
     res.status(500).json({
       success: false,
-      message: 'Khong the tai danh sach lop hoc hom nay!'
+      message: 'Khong the tai danh sach lop hoc!'
     });
   }
-});
+};
+
+router.get('/attendance/today', authMiddleware, requireRole('inspector', 'admin'), getClassesHandler);
+router.get('/attendance/classes', authMiddleware, requireRole('inspector', 'admin'), getClassesHandler);
 
 /**
  * POST /api/inspector/attendance
@@ -90,7 +102,11 @@ router.get('/attendance/today', authMiddleware, requireRole('inspector', 'admin'
  */
 router.post('/attendance', authMiddleware, requireRole('inspector', 'admin'), async (req, res) => {
   try {
-    const { scheduleId, date, checkInTime, checkOutTime, note } = req.body;
+    const {
+      scheduleId, date, checkInTime, checkOutTime, note,
+      status: explicitStatus, lateMinutes: explicitLate, earlyMinutes: explicitEarly,
+      hasPermission, rescheduledDate, rescheduledReason, substituteTeacher
+    } = req.body;
 
     if (!scheduleId || !date) {
       return res.status(400).json({
@@ -111,9 +127,20 @@ router.post('/attendance', authMiddleware, requireRole('inspector', 'admin'), as
     const scheduledStart = periodTimes?.scheduledStart || '07:00';
     const scheduledEnd = periodTimes?.scheduledEnd || '17:40';
 
-    const { status, lateMinutes, earlyMinutes } = calculateAttendanceStatus(
-      checkInTime, checkOutTime, scheduledStart, scheduledEnd
-    );
+    let finalStatus = explicitStatus;
+    let finalLate = explicitLate != null ? explicitLate : 0;
+    let finalEarly = explicitEarly != null ? explicitEarly : 0;
+
+    if (!finalStatus && (checkInTime || checkOutTime)) {
+      const calculated = calculateAttendanceStatus(
+        checkInTime, checkOutTime, scheduledStart, scheduledEnd
+      );
+      finalStatus = calculated.status;
+      finalLate = calculated.lateMinutes;
+      finalEarly = calculated.earlyMinutes;
+    } else if (!finalStatus) {
+      finalStatus = 'pending';
+    }
 
     const existing = await Attendance.findOne({
       where: { scheduleId, date }
@@ -121,12 +148,16 @@ router.post('/attendance', authMiddleware, requireRole('inspector', 'admin'), as
 
     let attendance;
     if (existing) {
-      existing.checkInTime = checkInTime || existing.checkInTime;
-      existing.checkOutTime = checkOutTime || existing.checkOutTime;
-      existing.status = status;
-      existing.lateMinutes = lateMinutes;
-      existing.earlyMinutes = earlyMinutes;
-      existing.note = note || existing.note;
+      existing.checkInTime = checkInTime !== undefined ? checkInTime : existing.checkInTime;
+      existing.checkOutTime = checkOutTime !== undefined ? checkOutTime : existing.checkOutTime;
+      existing.status = finalStatus;
+      existing.lateMinutes = finalLate;
+      existing.earlyMinutes = finalEarly;
+      existing.hasPermission = hasPermission !== undefined ? hasPermission : existing.hasPermission;
+      existing.rescheduledDate = rescheduledDate !== undefined ? rescheduledDate : existing.rescheduledDate;
+      existing.rescheduledReason = rescheduledReason !== undefined ? rescheduledReason : existing.rescheduledReason;
+      existing.substituteTeacher = substituteTeacher !== undefined ? substituteTeacher : existing.substituteTeacher;
+      existing.note = note !== undefined ? note : existing.note;
       existing.inspectorId = req.user.id;
       await existing.save();
       attendance = existing;
@@ -136,13 +167,17 @@ router.post('/attendance', authMiddleware, requireRole('inspector', 'admin'), as
         scheduleId,
         lecturerId: schedule.userId,
         inspectorId: req.user.id,
-        checkInTime,
-        checkOutTime,
+        checkInTime: checkInTime || null,
+        checkOutTime: checkOutTime || null,
         scheduledStart,
         scheduledEnd,
-        status,
-        lateMinutes,
-        earlyMinutes,
+        status: finalStatus,
+        lateMinutes: finalLate,
+        earlyMinutes: finalEarly,
+        hasPermission: hasPermission !== undefined ? hasPermission : null,
+        rescheduledDate: rescheduledDate || null,
+        rescheduledReason: rescheduledReason || '',
+        substituteTeacher: substituteTeacher || '',
         note: note || '',
         semester: schedule.semester,
         schoolYear: schedule.schoolYear
@@ -163,6 +198,10 @@ router.post('/attendance', authMiddleware, requireRole('inspector', 'admin'), as
         status: attendance.status,
         lateMinutes: attendance.lateMinutes,
         earlyMinutes: attendance.earlyMinutes,
+        hasPermission: attendance.hasPermission,
+        rescheduledDate: attendance.rescheduledDate,
+        rescheduledReason: attendance.rescheduledReason,
+        substituteTeacher: attendance.substituteTeacher,
         scheduledStart,
         scheduledEnd,
         note: attendance.note
@@ -294,7 +333,12 @@ router.get('/dashboard/today', authMiddleware, requireRole('inspector', 'admin')
         checkOutTime: att?.checkOutTime ? new Date(att.checkOutTime).toTimeString().slice(0, 5) : null,
         status: att?.status || 'pending',
         lateMinutes: att?.lateMinutes || 0,
-        earlyMinutes: att?.earlyMinutes || 0
+        earlyMinutes: att?.earlyMinutes || 0,
+        hasPermission: att?.hasPermission,
+        rescheduledDate: att?.rescheduledDate,
+        rescheduledReason: att?.rescheduledReason,
+        substituteTeacher: att?.substituteTeacher,
+        note: att?.note
       };
     });
 
@@ -315,6 +359,9 @@ router.get('/dashboard/today', authMiddleware, requireRole('inspector', 'admin')
         earlyLeave,
         absent,
         pending,
+        rescheduledPermitted: details.filter(d => d.status === 'rescheduled' && d.hasPermission === true).length,
+        rescheduledUnpermitted: details.filter(d => d.status === 'rescheduled' && d.hasPermission !== true).length,
+        substitute: details.filter(d => d.status === 'substitute').length,
         checkedIn: onTime + late + earlyLeave
       },
       details
@@ -410,4 +457,38 @@ router.get('/dashboard/report', authMiddleware, requireRole('inspector', 'admin'
   }
 });
 
+/**
+ * POST /api/inspector/reports/send-email
+ * Kích hoạt gửi email báo cáo thanh tra theo yêu cầu
+ * @access Private (inspector, admin)
+ */
+router.post('/reports/send-email', authMiddleware, requireRole('inspector', 'admin'), async (req, res) => {
+  try {
+    const { from, to, periodType, customRecipients } = req.body;
+    const result = await sendInspectorReportEmail({ from, to, periodType, customRecipients });
+
+    if (result.success) {
+      res.json({
+        success: true,
+        message: 'Gửi email báo cáo thành công!',
+        ...result
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        message: result.message || 'Không thể gửi email báo cáo!',
+        ...result
+      });
+    }
+  } catch (error) {
+    console.error('[API /inspector/reports/send-email] Lỗi:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi máy chủ khi gửi email báo cáo!',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;
+

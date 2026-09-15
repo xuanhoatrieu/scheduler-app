@@ -7,6 +7,7 @@ require('dotenv').config({ path: __dirname + '/.env' });
 const path = require('path');
 const { connectDB } = require('./config/db');
 const { initCronJob } = require('./jobs/syncScheduler');
+const { initInspectorCronJobs } = require('./jobs/inspectorReportJob');
 const configService = require('./services/configService');
 
 const authRoutes = require('./routes/auth');
@@ -57,8 +58,8 @@ const corsOptions = isDev
     };
 app.use(cors(corsOptions));
 
-// Body parsing with size limit (1MB max)
-app.use(express.json({ limit: '1mb' }));
+// Body parsing with size limit (25MB max for Excel base64 uploads)
+app.use(express.json({ limit: '25mb' }));
 
 // Rate limiting for login endpoint (brute-force protection)
 const loginLimiter = rateLimit({
@@ -159,6 +160,7 @@ const startServices = async () => {
     
     // 3. Khởi chạy lịch chạy ngầm Cron Job
     initCronJob();
+    initInspectorCronJobs();
     
     // 4. Khởi động Web API Server lắng nghe trên 0.0.0.0 (tất cả card mạng LAN & Local)
     app.listen(PORT, '0.0.0.0', () => {

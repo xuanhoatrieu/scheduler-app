@@ -34,6 +34,11 @@ const Curriculum = sequelize.define('Curriculum', {
     type: DataTypes.STRING,
     allowNull: true,
     defaultValue: 'Chung'
+  },
+  semester: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    defaultValue: 1
   }
 });
 

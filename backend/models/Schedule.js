@@ -23,6 +23,11 @@ const Schedule = sequelize.define('Schedule', {
     type: DataTypes.STRING,
     defaultValue: ''
   },
+  idLopTc: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    defaultValue: null
+  },
   studyTime: {
     type: DataTypes.STRING,
     allowNull: false

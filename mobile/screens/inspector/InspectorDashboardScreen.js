@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   RefreshControl,
   SafeAreaView,
@@ -11,34 +12,36 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { getDashboardReport, getDashboardToday } from '../../services/api';
+import {
+  getDashboardReport,
+  getDashboardToday,
+  sendInspectorEmailReport,
+} from '../../services/api';
 import { Colors } from '../../theme/colors';
 
-const STATUS_COLORS = {
-  on_time: Colors.success,
-  late: Colors.danger,
-  early_leave: Colors.warning,
-  absent: Colors.danger,
-  exempt: Colors.info,
-  pending: Colors.textMuted,
+const STATUS_CONFIG = {
+  on_time: { label: 'Đúng giờ', color: '#2e7d32', bg: '#e8f5e9' },
+  late: { label: 'Đi muộn', color: '#e65100', bg: '#fff3e0' },
+  early_leave: { label: 'Về sớm', color: '#f57c00', bg: '#fff8e1' },
+  rescheduled_permitted: { label: 'Đổi giờ (Có phép)', color: '#0277bd', bg: '#e1f5fe' },
+  rescheduled_unpermitted: { label: 'Tự ý đổi giờ', color: '#c62828', bg: '#ffebee' },
+  substitute: { label: 'Dạy thay', color: '#5c6bc0', bg: '#ede7f6' },
+  absent: { label: 'Vắng mặt', color: '#c62828', bg: '#ffebee' },
+  exempt: { label: 'Được miễn', color: '#00838f', bg: '#e0f7fa' },
+  pending: { label: 'Chưa ghi', color: Colors.textMuted, bg: '#f5f5f5' },
 };
 
-const STATUS_LABELS = {
-  on_time: 'Dung gio',
-  late: 'Di muon',
-  early_leave: 'Ve som',
-  absent: 'Vang mat',
-  exempt: 'Duoc mien',
-  pending: 'Chua ghi',
+const getStatusInfo = (d) => {
+  if (d.status === 'rescheduled') {
+    if (d.hasPermission === true) {
+      return STATUS_CONFIG.rescheduled_permitted;
+    }
+    return STATUS_CONFIG.rescheduled_unpermitted;
+  }
+  return STATUS_CONFIG[d.status] || STATUS_CONFIG.pending;
 };
 
 const PIE_SIZE = 120;
-
-const formatTime = (dateStr) => {
-  if (!dateStr) return '--:--';
-  const d = new Date(dateStr);
-  return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
-};
 
 function StatCircle({ value, color, label }) {
   return (
@@ -62,12 +65,14 @@ function PieChart({ data, size = PIE_SIZE }) {
   }
 
   let cumulative = 0;
-  const segments = data.filter(d => d.value > 0).map(d => {
-    const start = cumulative / total;
-    cumulative += d.value;
-    const end = cumulative / total;
-    return { ...d, start, end };
-  });
+  const segments = data
+    .filter((d) => d.value > 0)
+    .map((d) => {
+      const start = cumulative / total;
+      cumulative += d.value;
+      const end = cumulative / total;
+      return { ...d, start, end };
+    });
 
   return (
     <View style={[styles.pieContainer, { width: size, height: size }]}>
@@ -80,7 +85,8 @@ function PieChart({ data, size = PIE_SIZE }) {
             style={[
               styles.pieSlice,
               {
-                width: size, height: size,
+                width: size,
+                height: size,
                 transform: [{ rotate: `${rotation}deg` }],
               },
             ]}
@@ -89,7 +95,8 @@ function PieChart({ data, size = PIE_SIZE }) {
               style={[
                 styles.pieArc,
                 {
-                  width: size, height: size,
+                  width: size,
+                  height: size,
                   borderColor: seg.color,
                   borderWidth: size * 0.25,
                   borderRadius: size / 2,
@@ -102,7 +109,7 @@ function PieChart({ data, size = PIE_SIZE }) {
       })}
       <View style={[styles.pieCenter, { width: size * 0.5, height: size * 0.5 }]}>
         <Text style={styles.pieTotal}>{total}</Text>
-        <Text style={styles.pieTotalLabel}>Lop</Text>
+        <Text style={styles.pieTotalLabel}>Lớp</Text>
       </View>
     </View>
   );
@@ -115,6 +122,7 @@ export default function InspectorDashboardScreen({ user }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState('week');
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   const loadToday = async () => {
     const res = await getDashboardToday();
@@ -127,8 +135,9 @@ export default function InspectorDashboardScreen({ user }) {
   };
 
   useEffect(() => {
-    Promise.all([loadToday(), loadReport(selectedPeriod)])
-      .finally(() => setLoading(false));
+    Promise.all([loadToday(), loadReport(selectedPeriod)]).finally(() =>
+      setLoading(false)
+    );
   }, []);
 
   const onRefresh = useCallback(async () => {
@@ -142,12 +151,81 @@ export default function InspectorDashboardScreen({ user }) {
     await loadReport(period);
   };
 
+  // Xử lý gửi email báo cáo hôm nay cho Ban Giám hiệu
+  const handleSendTodayEmail = () => {
+    const date = todayData?.date;
+    Alert.alert(
+      'Gửi Báo Cáo Ban Giám Hiệu',
+      `Báo cáo thanh tra ngày ${date || 'hôm nay'} sẽ được tổng hợp tự động và gửi qua hệ thống Google Workspace đến Hiệu trưởng và Ban Giám hiệu.\n\nBạn có muốn gửi ngay không?`,
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Gửi ngay',
+          onPress: async () => {
+            setSendingEmail(true);
+            try {
+              const res = await sendInspectorEmailReport({
+                periodType: 'daily',
+                from: date,
+                to: date,
+              });
+              if (res.success) {
+                Alert.alert(
+                  'Thành công',
+                  `Đã gửi báo cáo thanh tra thành công đến:\n${res.recipients?.join(', ') || 'Ban Giám hiệu'}`
+                );
+              } else {
+                Alert.alert('Không thành công', res.message || 'Lỗi gửi email báo cáo');
+              }
+            } catch (err) {
+              Alert.alert('Lỗi', 'Không thể kết nối đến máy chủ gửi email!');
+            } finally {
+              setSendingEmail(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Xử lý gửi email báo cáo theo kỳ (Tuần / Tháng)
+  const handleSendPeriodEmail = () => {
+    const label = selectedPeriod === 'week' ? 'Tuần' : selectedPeriod === 'month' ? 'Tháng' : 'Kỳ học';
+    Alert.alert(
+      `Gửi Báo Cáo ${label}`,
+      `Gửi bảng tổng hợp thanh tra ${label.toLowerCase()} đến Ban Giám hiệu qua email TUAF Google Workspace?`,
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Gửi ngay',
+          onPress: async () => {
+            setSendingEmail(true);
+            try {
+              const res = await sendInspectorEmailReport({
+                periodType: selectedPeriod,
+              });
+              if (res.success) {
+                Alert.alert('Thành công', `Đã gửi báo cáo ${label.toLowerCase()} thành công!`);
+              } else {
+                Alert.alert('Không thành công', res.message || 'Lỗi gửi email');
+              }
+            } catch (err) {
+              Alert.alert('Lỗi', 'Không thể kết nối đến máy chủ gửi email!');
+            } finally {
+              setSendingEmail(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingWrap}>
           <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.loadingText}>Dang tai bao cao...</Text>
+          <Text style={styles.loadingText}>Đang tải báo cáo...</Text>
         </View>
       </SafeAreaView>
     );
@@ -159,18 +237,21 @@ export default function InspectorDashboardScreen({ user }) {
   const byLecturer = reportData?.byLecturer || [];
 
   const pieData = [
-    { name: 'Dung gio', value: todaySummary.onTime || 0, color: Colors.success },
-    { name: 'Di muon', value: todaySummary.late || 0, color: Colors.danger },
-    { name: 'Ve som', value: todaySummary.earlyLeave || 0, color: Colors.warning },
-    { name: 'Chua ghi', value: todaySummary.pending || 0, color: Colors.textMuted },
+    { name: 'Đúng giờ', value: todaySummary.onTime || 0, color: '#2e7d32' },
+    { name: 'Đi muộn', value: todaySummary.late || 0, color: '#e65100' },
+    { name: 'Về sớm', value: todaySummary.earlyLeave || 0, color: '#f57c00' },
+    { name: 'Đổi giờ (CP)', value: todaySummary.rescheduledPermitted || 0, color: '#0277bd' },
+    { name: 'Tự ý đổi giờ', value: todaySummary.rescheduledUnpermitted || 0, color: '#c62828' },
+    { name: 'Dạy thay', value: todaySummary.substitute || 0, color: '#5c6bc0' },
+    { name: 'Chưa ghi', value: todaySummary.pending || 0, color: Colors.textMuted },
   ];
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>Bao Cao</Text>
-          <Text style={styles.headerSubtitle}>Tong quan diem danh</Text>
+          <Text style={styles.headerTitle}>Báo Cáo</Text>
+          <Text style={styles.headerSubtitle}>Tổng quan kiểm tra giảng dạy</Text>
         </View>
         <TouchableOpacity style={styles.syncBtn} onPress={onRefresh} disabled={refreshing}>
           {refreshing ? (
@@ -186,27 +267,28 @@ export default function InspectorDashboardScreen({ user }) {
           style={[styles.tabBtn, activeTab === 'today' && styles.tabBtnActive]}
           onPress={() => setActiveTab('today')}
         >
-          <Text style={[styles.tabBtnText, activeTab === 'today' && styles.tabBtnTextActive]}>Hom nay</Text>
+          <Text style={[styles.tabBtnText, activeTab === 'today' && styles.tabBtnTextActive]}>Hôm nay</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tabBtn, activeTab === 'report' && styles.tabBtnActive]}
           onPress={() => setActiveTab('report')}
         >
-          <Text style={[styles.tabBtnText, activeTab === 'report' && styles.tabBtnTextActive]}>Bao cao</Text>
+          <Text style={[styles.tabBtnText, activeTab === 'report' && styles.tabBtnTextActive]}>Báo cáo</Text>
         </TouchableOpacity>
       </View>
 
       {activeTab === 'today' ? (
-        <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
+        <ScrollView contentContainerStyle={{ paddingBottom: 28 }}>
+          {/* Biểu đồ phân bổ hôm nay */}
           <View style={styles.chartCard}>
-            <Text style={styles.chartTitle}>Tong quan hom nay</Text>
+            <Text style={styles.chartTitle}>Tình hình giảng dạy hôm nay ({todayData?.date || ''})</Text>
             <View style={styles.chartRow}>
               <PieChart data={pieData} />
               <View style={styles.legend}>
                 {pieData.map((d, i) => (
                   <View key={i} style={styles.legendItem}>
                     <View style={[styles.legendDot, { backgroundColor: d.color }]} />
-                    <Text style={styles.legendText}>{d.name}</Text>
+                    <Text style={styles.legendText} numberOfLines={1}>{d.name}</Text>
                     <Text style={styles.legendValue}>{d.value}</Text>
                   </View>
                 ))}
@@ -214,52 +296,127 @@ export default function InspectorDashboardScreen({ user }) {
             </View>
           </View>
 
+          {/* Vòng tròn số liệu tổng quan */}
           <View style={styles.summaryRow}>
-            <StatCircle value={todaySummary.totalClasses || 0} color={Colors.primary} label="Tong lop" />
-            <StatCircle value={todaySummary.onTime || 0} color={Colors.success} label="Dung gio" />
-            <StatCircle value={todaySummary.late || 0} color={Colors.danger} label="Di muon" />
-            <StatCircle value={todaySummary.checkedIn || 0} color={Colors.accentBlue} label="Da ghi" />
+            <StatCircle value={todaySummary.totalClasses || 0} color={Colors.primary} label="Tổng lớp" />
+            <StatCircle value={todaySummary.onTime || 0} color="#2e7d32" label="Đúng giờ" />
+            <StatCircle value={(todaySummary.late || 0) + (todaySummary.earlyLeave || 0)} color="#e65100" label="Muộn/Sớm" />
+            <StatCircle value={todaySummary.checkedIn || 0} color={Colors.accentBlue} label="Đã kiểm tra" />
           </View>
 
-          <Text style={styles.sectionTitle}>Chi tiet lop hoc</Text>
+          {/* Dải thông tin vi phạm / đổi giờ */}
+          <View style={styles.rescheduledRow}>
+            <View style={[styles.rescheduledBadge, { backgroundColor: '#e1f5fe' }]}>
+              <Ionicons name="swap-horizontal" size={14} color="#0277bd" />
+              <Text style={[styles.rescheduledBadgeText, { color: '#0277bd' }]}>
+                Đổi giờ có phép: {todaySummary.rescheduledPermitted || 0}
+              </Text>
+            </View>
+            <View style={[styles.rescheduledBadge, { backgroundColor: '#ffebee' }]}>
+              <Ionicons name="alert-circle" size={14} color="#c62828" />
+              <Text style={[styles.rescheduledBadgeText, { color: '#c62828' }]}>
+                Tự ý đổi: {todaySummary.rescheduledUnpermitted || 0}
+              </Text>
+            </View>
+            <View style={[styles.rescheduledBadge, { backgroundColor: '#ede7f6' }]}>
+              <Ionicons name="people" size={14} color="#5c6bc0" />
+              <Text style={[styles.rescheduledBadgeText, { color: '#5c6bc0' }]}>
+                Dạy thay: {todaySummary.substitute || 0}
+              </Text>
+            </View>
+          </View>
+
+          {/* Banner gửi email báo cáo Ban Giám hiệu */}
+          <View style={styles.emailCard}>
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="mail-outline" size={18} color={Colors.primary} />
+                <Text style={styles.emailCardTitle}>Báo cáo Ban Giám hiệu</Text>
+              </View>
+              <Text style={styles.emailCardDesc}>
+                Tự động gửi lúc 18:00 hàng ngày qua Gmail TUAF. Bạn có thể nhấn để gửi ngay tức thì.
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.sendEmailBtn}
+              onPress={handleSendTodayEmail}
+              disabled={sendingEmail}
+            >
+              {sendingEmail ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="send" size={14} color="#fff" />
+                  <Text style={styles.sendEmailBtnText}>Gửi ngay</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.sectionTitle}>Chi tiết lớp học ({todayDetails.length})</Text>
           {todayDetails.length > 0 ? (
             todayDetails.map((d, idx) => {
-              const statusColor = STATUS_COLORS[d.status] || Colors.textMuted;
-              const statusLabel = STATUS_LABELS[d.status] || 'Chua xac dinh';
+              const info = getStatusInfo(d);
               return (
-                <View key={idx} style={[styles.detailCard, { borderLeftColor: statusColor }]}>
+                <View key={idx} style={[styles.detailCard, { borderLeftColor: info.color }]}>
                   <View style={styles.detailTop}>
-                    <View style={{ flex: 1 }}>
+                    <View style={{ flex: 1, marginRight: 8 }}>
                       <Text style={styles.detailCourse} numberOfLines={1}>{d.courseName}</Text>
-                      <Text style={styles.detailClass}>{d.classCode} - {d.teacherName}</Text>
+                      <Text style={styles.detailClass}>{d.classCode} • GV: {d.teacherName}</Text>
                     </View>
-                    <View style={[styles.statusBadge, { backgroundColor: statusColor + '15' }]}>
-                      <Text style={[styles.statusBadgeText, { color: statusColor }]}>{statusLabel}</Text>
+                    <View style={[styles.statusBadge, { backgroundColor: info.bg }]}>
+                      <Text style={[styles.statusBadgeText, { color: info.color }]}>{info.label}</Text>
                     </View>
                   </View>
+
                   <View style={styles.detailTimes}>
                     <View style={styles.timeItem}>
-                      <Ionicons name="time-outline" size={12} color={Colors.textMuted} />
-                      <Text style={styles.timeText}>Quy dinh: {d.scheduledStart} - {d.scheduledEnd}</Text>
+                      <Ionicons name="time-outline" size={13} color={Colors.textMuted} />
+                      <Text style={styles.timeText}>
+                        Quy định: {d.scheduledStart} - {d.scheduledEnd} | Phòng: {d.room || 'Chưa rõ'}
+                      </Text>
                     </View>
                     {d.checkInTime && (
                       <View style={styles.timeItem}>
-                        <Ionicons name="log-in-outline" size={12} color={Colors.primary} />
+                        <Ionicons name="log-in-outline" size={13} color={Colors.primary} />
                         <Text style={[styles.timeText, { color: Colors.primary, fontWeight: '700' }]}>
-                          Den: {d.checkInTime}
-                          {d.lateMinutes > 0 ? ` (+${d.lateMinutes}p)` : ''}
+                          Đến: {d.checkInTime}
+                          {d.lateMinutes > 0 ? ` (+${d.lateMinutes} phút)` : ''}
                         </Text>
                       </View>
                     )}
                     {d.checkOutTime && (
                       <View style={styles.timeItem}>
-                        <Ionicons name="log-out-outline" size={12} color={Colors.accentOrange} />
+                        <Ionicons name="log-out-outline" size={13} color={Colors.accentOrange} />
                         <Text style={[styles.timeText, { color: Colors.accentOrange, fontWeight: '700' }]}>
-                          Ve: {d.checkOutTime}
-                          {d.earlyMinutes > 0 ? ` (-${d.earlyMinutes}p)` : ''}
+                          Về: {d.checkOutTime}
+                          {d.earlyMinutes > 0 ? ` (-${d.earlyMinutes} phút)` : ''}
                         </Text>
                       </View>
                     )}
+                    {d.status === 'rescheduled' && (
+                      <View style={styles.extraInfoBox}>
+                        <Text style={styles.extraInfoText}>
+                          📅 Lịch học bù: <Text style={{ fontWeight: '700' }}>{d.rescheduledDate || 'Chưa hẹn ngày'}</Text>
+                        </Text>
+                        {d.rescheduledReason ? (
+                          <Text style={styles.extraInfoText}>💬 Lý do: {d.rescheduledReason}</Text>
+                        ) : null}
+                      </View>
+                    )}
+                    {d.status === 'substitute' && d.substituteTeacher && (
+                      <View style={styles.extraInfoBox}>
+                        <Text style={styles.extraInfoText}>
+                          👤 GV dạy thay: <Text style={{ fontWeight: '700' }}>{d.substituteTeacher}</Text>
+                        </Text>
+                      </View>
+                    )}
+                    {d.note ? (
+                      <View style={styles.timeItem}>
+                        <Ionicons name="information-circle-outline" size={13} color={Colors.textMuted} />
+                        <Text style={[styles.timeText, { fontStyle: 'italic' }]}>Ghi chú: {d.note}</Text>
+                      </View>
+                    ) : null}
                   </View>
                 </View>
               );
@@ -267,12 +424,12 @@ export default function InspectorDashboardScreen({ user }) {
           ) : (
             <View style={styles.emptyWrap}>
               <Ionicons name="calendar-outline" size={48} color={Colors.borderLight} />
-              <Text style={styles.emptyText}>Hom nay khong co lop hoc</Text>
+              <Text style={styles.emptyText}>Hôm nay không có lớp học</Text>
             </View>
           )}
         </ScrollView>
       ) : (
-        <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
+        <ScrollView contentContainerStyle={{ paddingBottom: 28 }}>
           <View style={styles.periodBar}>
             {['week', 'month', 'semester'].map((p) => (
               <TouchableOpacity
@@ -281,40 +438,58 @@ export default function InspectorDashboardScreen({ user }) {
                 onPress={() => onPeriodChange(p)}
               >
                 <Text style={[styles.periodBtnText, selectedPeriod === p && styles.periodBtnTextActive]}>
-                  {p === 'week' ? 'Tuan' : p === 'month' ? 'Thang' : 'Ky hoc'}
+                  {p === 'week' ? 'Tuần' : p === 'month' ? 'Tháng' : 'Kỳ học'}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
 
+          {/* Nút gửi email báo cáo định kỳ */}
+          <TouchableOpacity
+            style={styles.periodEmailBtn}
+            onPress={handleSendPeriodEmail}
+            disabled={sendingEmail}
+          >
+            {sendingEmail ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <Ionicons name="mail" size={16} color="#fff" />
+                <Text style={styles.periodEmailBtnText}>
+                  Gửi email báo cáo {selectedPeriod === 'week' ? 'tuần' : selectedPeriod === 'month' ? 'tháng' : 'kỳ'} tới BGH
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
+
           <View style={styles.chartCard}>
-            <Text style={styles.chartTitle}>Thong ke ky luc</Text>
+            <Text style={styles.chartTitle}>Thống kê tổng hợp</Text>
             <View style={styles.reportStats}>
               <View style={styles.reportStatItem}>
                 <Text style={styles.reportStatValue}>{reportSummary.totalRecords || 0}</Text>
-                <Text style={styles.reportStatLabel}>Tong buoi</Text>
+                <Text style={styles.reportStatLabel}>Tổng buổi</Text>
               </View>
               <View style={styles.reportStatItem}>
-                <Text style={[styles.reportStatValue, { color: Colors.success }]}>{reportSummary.onTimePercent || 0}%</Text>
-                <Text style={styles.reportStatLabel}>Dung gio</Text>
+                <Text style={[styles.reportStatValue, { color: '#2e7d32' }]}>{reportSummary.onTimePercent || 0}%</Text>
+                <Text style={styles.reportStatLabel}>Đúng giờ</Text>
               </View>
               <View style={styles.reportStatItem}>
-                <Text style={[styles.reportStatValue, { color: Colors.danger }]}>{reportSummary.latePercent || 0}%</Text>
-                <Text style={styles.reportStatLabel}>Di muon</Text>
+                <Text style={[styles.reportStatValue, { color: '#e65100' }]}>{reportSummary.latePercent || 0}%</Text>
+                <Text style={styles.reportStatLabel}>Đi muộn</Text>
               </View>
               <View style={styles.reportStatItem}>
-                <Text style={[styles.reportStatValue, { color: Colors.warning }]}>{reportSummary.earlyLeavePercent || 0}%</Text>
-                <Text style={styles.reportStatLabel}>Ve som</Text>
+                <Text style={[styles.reportStatValue, { color: '#f57c00' }]}>{reportSummary.earlyLeavePercent || 0}%</Text>
+                <Text style={styles.reportStatLabel}>Về sớm</Text>
               </View>
             </View>
             {reportSummary.avgLateMinutes > 0 && (
               <Text style={styles.avgNote}>
-                Thoi gian di muon TB: {reportSummary.avgLateMinutes} phut/buoi
+                Thời gian đi muộn TB: {reportSummary.avgLateMinutes} phút/buổi
               </Text>
             )}
           </View>
 
-          <Text style={styles.sectionTitle}>Giang vien nhieu vi pham nhat</Text>
+          <Text style={styles.sectionTitle}>Giảng viên cần lưu ý nhất</Text>
           {byLecturer.length > 0 ? (
             byLecturer.slice(0, 10).map((l, idx) => (
               <View key={idx} style={styles.lecturerCard}>
@@ -324,7 +499,7 @@ export default function InspectorDashboardScreen({ user }) {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.lecturerName}>{l.lecturerName}</Text>
                   <Text style={styles.lecturerStats}>
-                    {l.totalClasses} buoi - {l.onTime} dung gio, {l.late} muon, {l.absent} vang
+                    {l.totalClasses} buổi - {l.onTime} đúng giờ, {l.late} muộn, {l.absent} vắng
                   </Text>
                 </View>
                 <View style={styles.violationBadge}>
@@ -336,7 +511,7 @@ export default function InspectorDashboardScreen({ user }) {
           ) : (
             <View style={styles.emptyWrap}>
               <Ionicons name="people-outline" size={48} color={Colors.borderLight} />
-              <Text style={styles.emptyText}>Chua co du lieu bao cao</Text>
+              <Text style={styles.emptyText}>Chưa có dữ liệu báo cáo</Text>
             </View>
           )}
         </ScrollView>
@@ -351,19 +526,29 @@ const styles = StyleSheet.create({
   loadingText: { marginTop: 12, color: Colors.textSecondary, fontSize: 14 },
 
   header: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 12,
   },
   headerTitle: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary },
   headerSubtitle: { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
   syncBtn: {
-    backgroundColor: Colors.primary, borderRadius: 12,
-    paddingHorizontal: 14, paddingVertical: 10,
+    backgroundColor: Colors.primary,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
   },
 
   tabBar: {
-    flexDirection: 'row', marginHorizontal: 16, marginBottom: 12,
-    backgroundColor: Colors.surface, borderRadius: 12, padding: 4,
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginBottom: 12,
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    padding: 4,
   },
   tabBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 10 },
   tabBtnActive: { backgroundColor: Colors.primary },
@@ -371,12 +556,18 @@ const styles = StyleSheet.create({
   tabBtnTextActive: { color: Colors.textOnPrimary },
 
   chartCard: {
-    backgroundColor: Colors.surface, marginHorizontal: 16, marginBottom: 12,
-    borderRadius: 16, padding: 16,
-    elevation: 2, shadowColor: Colors.shadowColor,
-    shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8,
+    backgroundColor: Colors.surface,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    borderRadius: 16,
+    padding: 16,
+    elevation: 2,
+    shadowColor: Colors.shadowColor,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
   },
-  chartTitle: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary, marginBottom: 12 },
+  chartTitle: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary, marginBottom: 12 },
   chartRow: { flexDirection: 'row', alignItems: 'center' },
 
   pieContainer: { position: 'relative', alignItems: 'center', justifyContent: 'center' },
@@ -384,45 +575,104 @@ const styles = StyleSheet.create({
   pieSlice: { position: 'absolute', top: 0, left: 0 },
   pieArc: { position: 'absolute', top: 0, left: 0 },
   pieCenter: {
-    position: 'absolute', borderRadius: 999, backgroundColor: Colors.surface,
-    alignItems: 'center', justifyContent: 'center',
+    position: 'absolute',
+    borderRadius: 999,
+    backgroundColor: Colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   pieTotal: { fontSize: 20, fontWeight: '800', color: Colors.textPrimary },
   pieTotalLabel: { fontSize: 10, color: Colors.textMuted },
 
-  legend: { flex: 1, marginLeft: 16, gap: 8 },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  legendDot: { width: 10, height: 10, borderRadius: 5 },
-  legendText: { flex: 1, fontSize: 12, color: Colors.textSecondary },
-  legendValue: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
+  legend: { flex: 1, marginLeft: 16, gap: 6 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendDot: { width: 8, height: 8, borderRadius: 4 },
+  legendText: { flex: 1, fontSize: 11, color: Colors.textSecondary },
+  legendValue: { fontSize: 12, fontWeight: '700', color: Colors.textPrimary },
 
   summaryRow: {
-    flexDirection: 'row', justifyContent: 'space-around',
-    marginHorizontal: 16, marginBottom: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginHorizontal: 16,
+    marginBottom: 12,
   },
   circleStat: { alignItems: 'center' },
   circle: {
-    width: 56, height: 56, borderRadius: 28, borderWidth: 3,
-    alignItems: 'center', justifyContent: 'center',
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    borderWidth: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  circleValue: { fontSize: 18, fontWeight: '800' },
+  circleValue: { fontSize: 17, fontWeight: '800' },
   circleLabel: { fontSize: 10, color: Colors.textSecondary, marginTop: 4, fontWeight: '600' },
 
+  rescheduledRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginHorizontal: 16,
+    marginBottom: 12,
+  },
+  rescheduledBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    gap: 5,
+  },
+  rescheduledBadgeText: { fontSize: 11, fontWeight: '700' },
+
+  emailCard: {
+    backgroundColor: Colors.surface,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 14,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  emailCardTitle: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
+  emailCardDesc: { fontSize: 11, color: Colors.textSecondary, marginTop: 2, lineHeight: 15 },
+  sendEmailBtn: {
+    backgroundColor: Colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 10,
+  },
+  sendEmailBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+
   sectionTitle: {
-    fontSize: 15, fontWeight: '700', color: Colors.textPrimary,
-    marginHorizontal: 16, marginBottom: 10,
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+    marginHorizontal: 16,
+    marginBottom: 10,
   },
 
   detailCard: {
-    backgroundColor: Colors.surface, marginHorizontal: 16, marginBottom: 10,
-    borderRadius: 12, padding: 14, borderLeftWidth: 4,
+    backgroundColor: Colors.surface,
+    marginHorizontal: 16,
+    marginBottom: 10,
+    borderRadius: 12,
+    padding: 14,
+    borderLeftWidth: 4,
   },
   detailTop: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
   detailCourse: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
   detailClass: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
   statusBadge: {
-    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10,
-    paddingVertical: 4, borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   statusBadgeText: { fontSize: 11, fontWeight: '700' },
 
@@ -430,38 +680,81 @@ const styles = StyleSheet.create({
   timeItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   timeText: { fontSize: 12, color: Colors.textSecondary },
 
+  extraInfoBox: {
+    backgroundColor: Colors.background,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginTop: 4,
+    gap: 2,
+  },
+  extraInfoText: { fontSize: 11, color: Colors.textSecondary },
+
   periodBar: {
-    flexDirection: 'row', marginHorizontal: 16, marginBottom: 12,
-    backgroundColor: Colors.surface, borderRadius: 12, padding: 4,
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginBottom: 12,
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    padding: 4,
   },
   periodBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 10 },
   periodBtnActive: { backgroundColor: Colors.primary },
   periodBtnText: { fontSize: 12, fontWeight: '700', color: Colors.textSecondary },
   periodBtnTextActive: { color: Colors.textOnPrimary },
 
+  periodEmailBtn: {
+    backgroundColor: Colors.primary,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    paddingVertical: 11,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  periodEmailBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+
   reportStats: { flexDirection: 'row', justifyContent: 'space-around' },
   reportStatItem: { alignItems: 'center' },
   reportStatValue: { fontSize: 20, fontWeight: '800', color: Colors.textPrimary },
   reportStatLabel: { fontSize: 10, color: Colors.textSecondary, marginTop: 2, fontWeight: '600' },
   avgNote: {
-    fontSize: 12, color: Colors.warning, textAlign: 'center',
-    marginTop: 12, fontWeight: '600',
+    fontSize: 12,
+    color: Colors.warning,
+    textAlign: 'center',
+    marginTop: 12,
+    fontWeight: '600',
   },
 
   lecturerCard: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surface,
-    marginHorizontal: 16, marginBottom: 8, borderRadius: 12, padding: 14, gap: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    borderRadius: 12,
+    padding: 14,
+    gap: 12,
   },
   rankBadge: {
-    width: 28, height: 28, borderRadius: 14, backgroundColor: Colors.primaryBg,
-    alignItems: 'center', justifyContent: 'center',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: Colors.primaryBg,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   rankText: { fontSize: 13, fontWeight: '800', color: Colors.primary },
   lecturerName: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
   lecturerStats: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
   violationBadge: {
-    alignItems: 'center', backgroundColor: Colors.danger + '10',
-    borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4,
+    alignItems: 'center',
+    backgroundColor: Colors.danger + '10',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
   },
   violationText: { fontSize: 16, fontWeight: '800', color: Colors.danger },
   violationLabel: { fontSize: 9, color: Colors.danger, fontWeight: '700' },

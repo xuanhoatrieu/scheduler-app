@@ -6,6 +6,7 @@ import { Platform, StyleSheet, View } from 'react-native';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import ClassListScreen from '../screens/lecturer/ClassListScreen';
+import HomeroomScreen from '../screens/lecturer/HomeroomScreen';
 import TeachingScheduleScreen from '../screens/lecturer/TeachingScheduleScreen';
 import { Colors } from '../theme/colors';
 
@@ -14,6 +15,7 @@ const Tab = createBottomTabNavigator();
 const TAB_ICONS = {
   TeachingSchedule: { active: 'calendar', inactive: 'calendar-outline' },
   ClassList: { active: 'people', inactive: 'people-outline' },
+  Homeroom: { active: 'school', inactive: 'school-outline' },
   Notifications: { active: 'notifications', inactive: 'notifications-outline' },
   Profile: { active: 'person-circle', inactive: 'person-circle-outline' },
 };
@@ -53,6 +55,12 @@ export default function LecturerNavigator({ user, onLogout }) {
           options={{ tabBarLabel: 'Lớp Học' }}
         >
           {(props) => <ClassListScreen {...props} user={user} />}
+        </Tab.Screen>
+        <Tab.Screen
+          name="Homeroom"
+          options={{ tabBarLabel: 'Chủ Nhiệm' }}
+        >
+          {(props) => <HomeroomScreen {...props} user={user} />}
         </Tab.Screen>
         <Tab.Screen
           name="Notifications"

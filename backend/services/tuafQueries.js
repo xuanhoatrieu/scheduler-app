@@ -432,35 +432,33 @@ async function getStudentDRL(pool, idSv, hocKy, namHoc) {
 }
 
 /**
- * Lấy khung CTĐT theo ngành của SV
+ * Lấy khung CTĐT theo ngành của SV (Chỉ lấy các môn phân từ Học kỳ 1 đến Học kỳ 8)
  */
 async function getStudentCurriculum(pool, idSv) {
   try {
-    const svResult = await safeQuery(pool,
-      `SELECT ID_nganh_ts, Nam_nhap_hoc FROM STU_HoSoSinhVien WHERE ID_sv = @idSv`,
-      [{ name: 'idSv', type: sql.UniqueIdentifier, value: idSv }],
-      { username: 'student-curriculum' }
-    );
-    
-    if (svResult.recordset.length === 0) return [];
-    const { ID_nganh_ts } = svResult.recordset[0];
-    if (!ID_nganh_ts) return [];
-
     const result = await safeQuery(pool,
-      `SELECT
-        mh.Ky_hieu AS courseCode, mh.Ten_mon AS courseName,
-        ctd.So_tin_chi AS credits, ctd.Ly_thuyet, ctd.Thuc_hanh,
-        ctd.Bat_buoc, ctd.Hoc_ky_du_kien, ctd.Ma_nhom_mon_hoc
-      FROM CDDT_ChuongTrinhDaoTao_ChiTiet ctd
-      JOIN CDDT_ChuongTrinhDaoTao ct ON ctd.ID_chuong_trinh = ct.ID_chuong_trinh
+      `SELECT 
+        ctd.Ky_thu AS semester,
+        ctd.So_hoc_trinh AS credits,
+        ctd.Tu_chon AS isElective,
+        ctd.Nhom_tu_chon AS electiveGroup,
+        kt.Ten_kien_thuc AS knowledgeBlockName,
+        mh.Ky_hieu AS courseCode,
+        mh.Ten_mon AS courseName
+      FROM STU_DanhSach ds
+      JOIN STU_Lop l ON ds.ID_lop = l.ID_lop
+      JOIN PLAN_ChuongTrinhDaoTao ct ON ct.ID_dt = COALESCE(NULLIF(ds.ID_dt_sv, 0), l.ID_dt)
+      JOIN PLAN_ChuongTrinhDaoTaoChiTiet ctd ON ct.ID_dt = ctd.ID_dt
       JOIN dmMonHoc mh ON ctd.ID_mon = mh.ID_mon
-      WHERE ct.ID_nganh = @idNganh
-      ORDER BY ctd.Hoc_ky_du_kien, mh.Ten_mon`,
-      [{ name: 'idNganh', type: sql.Int, value: ID_nganh_ts }],
+      LEFT JOIN PLAN_ChuongTrinhDaoTaoKienThuc kt ON ctd.Kien_thuc = kt.ID_kien_thuc
+      WHERE ds.ID_sv = @idSv AND ctd.Ky_thu >= 1 AND ctd.Ky_thu <= 8
+      ORDER BY ctd.Ky_thu, ctd.STT_mon, mh.Ten_mon`,
+      [{ name: 'idSv', type: sql.NVarChar(100), value: String(idSv) }],
       { username: 'student-curriculum' }
     );
     return result.recordset;
   } catch (e) {
+    console.error('❌ [tuafQueries] getStudentCurriculum error:', e.message);
     return [];
   }
 }
@@ -479,7 +477,8 @@ async function getLecturerSchedule(pool, idCb, hocKy, namHoc) {
       sk.Thu, sk.Tiet, sk.So_tiet, sk.Tu_ngay, sk.Den_ngay,
       mh.Ky_hieu AS courseCode, mh.Ten_mon AS courseName,
       mtc.So_tin_chi AS credits,
-      ph.So_phong AS Phong
+      ph.So_phong AS Phong,
+      ltc.ID_lop_tc, ltc.Ten_lop_hp
     FROM PLAN_SukiensTinChi_TC sk
     JOIN PLAN_LopTinChi_TC ltc ON sk.ID_lop_tc = ltc.ID_lop_tc
     JOIN PLAN_MonTinChi_TC mtc ON ltc.ID_mon_tc = mtc.ID_mon_tc
@@ -495,6 +494,301 @@ async function getLecturerSchedule(pool, idCb, hocKy, namHoc) {
     { username: 'lecturer-schedule' }
   );
   return result.recordset;
+}
+
+/**
+ * Lấy danh sách sinh viên đăng ký một lớp tín chỉ (cho Giảng viên học phần điểm danh)
+ */
+async function getClassStudents(pool, idLopTc) {
+  const result = await safeQuery(pool,
+    `SELECT
+      sv.ID_sv,
+      sv.Ma_sv AS studentCode,
+      sv.Ho_ten AS studentName,
+      COALESCE(sv.Ma_lop, sv.Lop, '') AS studentClass,
+      sv.Ngay_sinh AS dob,
+      sv.EmailTruong AS email
+    FROM STU_DanhSachLopTinChi ds
+    JOIN STU_HoSoSinhVien sv ON ds.ID_sv = sv.ID_sv
+    WHERE ds.ID_lop_tc = @idLopTc
+      AND ISNULL(ds.Huy_dang_ky, 0) = 0
+    ORDER BY sv.Ma_lop, sv.Ma_sv, sv.Ho_ten`,
+    [{ name: 'idLopTc', type: sql.Int, value: idLopTc }],
+    { username: 'lecturer-class-students' }
+  );
+  return result.recordset;
+}
+
+/**
+ * Lấy danh sách các lớp mà Giảng viên được phân công làm Chủ nhiệm (GVCN)
+ */
+async function getHomeroomClasses(pool, idCb, namHoc) {
+  let query = `
+    SELECT
+      l.ID_lop AS idLop,
+      COALESCE(l.Ma_lop, '') AS classCode,
+      COALESCE(l.Ten_lop, '') AS className,
+      l.Khoa_hoc AS cohort,
+      l.Nien_khoa AS schoolYearRange,
+      l.So_sv AS studentCount,
+      gv.Nam_hoc AS schoolYear,
+      gv.Tu_ky AS fromTerm,
+      gv.Den_ky AS toTerm
+    FROM STU_GiaoVienChuNghiem gv
+    JOIN STU_Lop l ON gv.ID_lop = l.ID_lop
+    WHERE (gv.Id_cb = @idCb OR CAST(gv.Id_cb AS nvarchar(50)) = @idCb)
+  `;
+  const inputs = [{ name: 'idCb', type: sql.NVarChar(50), value: String(idCb) }];
+  if (namHoc) {
+    query += ` AND gv.Nam_hoc = @namHoc`;
+    inputs.push({ name: 'namHoc', type: sql.NVarChar(50), value: namHoc });
+  }
+  query += ` ORDER BY gv.Nam_hoc DESC, l.Ten_lop ASC`;
+
+  const result = await safeQuery(pool, query, inputs, { username: 'homeroom-classes' });
+  return result.recordset;
+}
+
+/**
+ * Theo dõi đăng ký học của sinh viên lớp chủ nhiệm
+ * - Đếm số tín chỉ đăng ký
+ * - Kiểm tra thiếu môn so với kế hoạch mở TKB cho lớp
+ * - Bỏ qua / phân loại môn học lại / cải thiện
+ */
+async function getHomeroomStudentsRegistration(pool, idLop, hocKy, namHoc) {
+  // 1. Lấy thông tin lớp
+  const classRes = await safeQuery(pool,
+    `SELECT ID_lop, Ma_lop, Ten_lop, Khoa_hoc FROM STU_Lop WHERE ID_lop = @idLop`,
+    [{ name: 'idLop', type: sql.Int, value: idLop }],
+    { username: 'homeroom-class-info' }
+  );
+  if (classRes.recordset.length === 0) return { students: [], plannedCourses: [] };
+
+  const classInfo = classRes.recordset[0];
+  const className = classInfo.Ten_lop || '';
+  const classCode = classInfo.Ma_lop || '';
+
+  // 2. Tìm tất cả kỳ đăng ký
+  const kyDangKys = await findAllKyDangKy(pool, hocKy, namHoc);
+  if (kyDangKys.length === 0) return { students: [], plannedCourses: [] };
+  const kyList = kyDangKys.join(',');
+
+  // 3. Lấy danh sách môn kế hoạch cho lớp trong kỳ này (dựa trên tên lớp học phần mở)
+  const plannedCoursesRes = await safeQuery(pool,
+    `SELECT DISTINCT
+      mh.ID_mon AS courseId,
+      mh.Ky_hieu AS courseCode,
+      mh.Ten_mon AS courseName,
+      mtc.So_tin_chi AS credits
+    FROM PLAN_LopTinChi_TC ltc
+    JOIN PLAN_MonTinChi_TC mtc ON ltc.ID_mon_tc = mtc.ID_mon_tc
+    JOIN dmMonHoc mh ON mtc.ID_mon = mh.ID_mon
+    WHERE mtc.Ky_dang_ky IN (${kyList})
+      AND ISNULL(ltc.Huy_lop, 0) = 0
+      AND (
+        (@className != '' AND ltc.Ten_lop_hp LIKE '%' + @className + '%') OR
+        (@classCode != '' AND ltc.Ten_lop_hp LIKE '%' + @classCode + '%')
+      )`,
+    [
+      { name: 'className', type: sql.NVarChar(100), value: className },
+      { name: 'classCode', type: sql.NVarChar(50), value: classCode }
+    ],
+    { username: 'homeroom-planned-courses' }
+  );
+  const plannedCourses = plannedCoursesRes.recordset;
+
+  // 4. Lấy danh sách SV của lớp
+  const studentsRes = await safeQuery(pool,
+    `SELECT sv.ID_sv, sv.Ma_sv AS studentCode, sv.Ho_ten AS studentName, COALESCE(sv.Ma_lop, sv.Lop, '') AS studentClass
+    FROM STU_HoSoSinhVien sv
+    WHERE sv.Lop = @className OR sv.Ma_lop = @className OR (@classCode != '' AND (sv.Ma_lop = @classCode OR sv.Lop = @classCode))
+    ORDER BY sv.Ma_sv ASC`,
+    [
+      { name: 'className', type: sql.NVarChar(100), value: className },
+      { name: 'classCode', type: sql.NVarChar(50), value: classCode }
+    ],
+    { username: 'homeroom-students' }
+  );
+  const students = studentsRes.recordset;
+  if (students.length === 0) return { students: [], plannedCourses };
+
+  // 5. Lấy tất cả môn đăng ký của các SV trong kỳ này
+  const studentIds = students.map(s => `'${s.ID_sv}'`).join(',');
+  const regRes = await safeQuery(pool,
+    `SELECT
+      ds.ID_sv,
+      mh.ID_mon AS courseId,
+      mh.Ky_hieu AS courseCode,
+      mh.Ten_mon AS courseName,
+      mtc.So_tin_chi AS credits,
+      ltc.Ten_lop_hp AS classSection
+    FROM STU_DanhSachLopTinChi ds
+    JOIN PLAN_LopTinChi_TC ltc ON ds.ID_lop_tc = ltc.ID_lop_tc
+    JOIN PLAN_MonTinChi_TC mtc ON ltc.ID_mon_tc = mtc.ID_mon_tc
+    JOIN dmMonHoc mh ON mtc.ID_mon = mh.ID_mon
+    WHERE ds.ID_sv IN (${studentIds})
+      AND ISNULL(ds.Huy_dang_ky, 0) = 0
+      AND ISNULL(ltc.Huy_lop, 0) = 0
+      AND mtc.Ky_dang_ky IN (${kyList})`,
+    [],
+    { username: 'homeroom-student-registrations' }
+  );
+
+  // Nhóm môn theo ID_sv
+  const regByStudent = {};
+  for (const r of regRes.recordset) {
+    if (!regByStudent[r.ID_sv]) regByStudent[r.ID_sv] = [];
+    regByStudent[r.ID_sv].push(r);
+  }
+
+  // 6. Lấy lịch sử điểm các kỳ trước của các SV để phát hiện môn học lại / cải thiện
+  const pastGradesRes = await safeQuery(pool,
+    `SELECT DISTINCT d.ID_sv, mtc.ID_mon AS courseId
+    FROM MARK_Diem_TC d
+    JOIN PLAN_LopTinChi_TC ltc ON d.ID_lop_tc = ltc.ID_lop_tc
+    JOIN PLAN_MonTinChi_TC mtc ON ltc.ID_mon_tc = mtc.ID_mon_tc
+    WHERE d.ID_sv IN (${studentIds})
+      AND mtc.Ky_dang_ky NOT IN (${kyList})`,
+    [],
+    { username: 'homeroom-past-grades' }
+  );
+
+  const pastGradesByStudent = {};
+  for (const g of pastGradesRes.recordset) {
+    if (!pastGradesByStudent[g.ID_sv]) pastGradesByStudent[g.ID_sv] = new Set();
+    pastGradesByStudent[g.ID_sv].add(g.courseId);
+  }
+
+  // 7. Tổng hợp kết quả cho từng sinh viên
+  const resultStudents = students.map(sv => {
+    const registered = regByStudent[sv.ID_sv] || [];
+    const pastCourses = pastGradesByStudent[sv.ID_sv] || new Set();
+
+    let totalCredits = 0;
+    const coursesWithTag = registered.map(c => {
+      totalCredits += (c.credits || 0);
+      const isRetake = pastCourses.has(c.courseId);
+      return {
+        ...c,
+        isRetake,
+        tag: isRetake ? 'Học lại/Cải thiện' : 'Học lần 1'
+      };
+    });
+
+    const registeredCourseIds = new Set(registered.map(c => c.courseId));
+    // Xác định môn kế hoạch còn thiếu (chỉ so sánh nếu có môn kế hoạch được tìm thấy)
+    const missingPlannedCourses = plannedCourses.filter(pc => !registeredCourseIds.has(pc.courseId));
+
+    return {
+      studentCode: sv.studentCode,
+      studentName: sv.studentName,
+      studentClass: sv.studentClass,
+      totalCredits,
+      registeredCount: registered.length,
+      registeredCourses: coursesWithTag,
+      missingPlannedCourses,
+      hasWarning: missingPlannedCourses.length > 0
+    };
+  });
+
+  return {
+    className,
+    classCode,
+    plannedCourses,
+    students: resultStudents
+  };
+}
+
+/**
+ * Theo dõi công nợ học phí của sinh viên lớp chủ nhiệm
+ * - Phân loại: Còn nợ, Đã nộp đủ, Nộp thừa tiền
+ */
+async function getHomeroomStudentsFinance(pool, idLop, hocKy, namHoc) {
+  const classRes = await safeQuery(pool,
+    `SELECT ID_lop, Ma_lop, Ten_lop FROM STU_Lop WHERE ID_lop = @idLop`,
+    [{ name: 'idLop', type: sql.Int, value: idLop }],
+    { username: 'homeroom-finance-class' }
+  );
+  if (classRes.recordset.length === 0) return { summary: {}, students: [] };
+
+  const classInfo = classRes.recordset[0];
+  const className = classInfo.Ten_lop || '';
+  const classCode = classInfo.Ma_lop || '';
+
+  const query = `
+    SELECT
+      sv.Ma_sv AS studentCode,
+      sv.Ho_ten AS studentName,
+      COALESCE(sv.Ma_lop, sv.Lop, '') AS studentClass,
+      COALESCE(cn.So_tien_phai_nop, 0) AS mustPay,
+      COALESCE(cn.So_tien_da_nop, 0) AS paid,
+      COALESCE(cn.So_tien_mien_giam, 0) AS exemption,
+      COALESCE(cn.Thieu_thua, 0) AS balance
+    FROM STU_HoSoSinhVien sv
+    LEFT JOIN ACC_TongHopCongNoHocPhiTheoKy cn ON cn.ID_sv = sv.ID_sv AND cn.Hoc_ky = @hocKy AND cn.Nam_hoc = @namHoc
+    WHERE sv.Lop = @className OR sv.Ma_lop = @className OR (@classCode != '' AND (sv.Ma_lop = @classCode OR sv.Lop = @classCode))
+    ORDER BY sv.Ma_sv ASC
+  `;
+
+  const result = await safeQuery(pool, query, [
+    { name: 'className', type: sql.NVarChar(100), value: className },
+    { name: 'classCode', type: sql.NVarChar(50), value: classCode },
+    { name: 'hocKy', type: sql.Int, value: hocKy },
+    { name: 'namHoc', type: sql.NVarChar(50), value: namHoc }
+  ], { username: 'homeroom-finance-students' });
+
+  let debtCount = 0;
+  let settledCount = 0;
+  let surplusCount = 0;
+  let totalDebtAmount = 0;
+  let totalPaidAmount = 0;
+
+  const students = result.recordset.map(row => {
+    const balance = row.balance || 0;
+    const mustPay = row.mustPay || 0;
+    const paid = row.paid || 0;
+    let status = 'settled'; // mac dinh da nop du / khong no
+
+    if (balance < 0) {
+      status = 'debt'; // Còn nợ
+      debtCount++;
+      totalDebtAmount += Math.abs(balance);
+    } else if (balance > 0) {
+      status = 'surplus'; // Nộp thừa
+      surplusCount++;
+    } else {
+      settledCount++;
+    }
+
+    totalPaidAmount += paid;
+
+    return {
+      studentCode: row.studentCode,
+      studentName: row.studentName,
+      studentClass: row.studentClass,
+      mustPay,
+      paid,
+      exemption: row.exemption || 0,
+      balance,
+      debtAmount: balance < 0 ? Math.abs(balance) : 0,
+      surplusAmount: balance > 0 ? balance : 0,
+      status
+    };
+  });
+
+  return {
+    className,
+    classCode,
+    summary: {
+      totalStudents: students.length,
+      debtCount,
+      settledCount,
+      surplusCount,
+      totalDebtAmount,
+      totalPaidAmount
+    },
+    students
+  };
 }
 
 // ═══════════════════════════════════════
@@ -793,6 +1087,57 @@ async function getStudentGradesWithSurvey(pool, idSv, hocKy, namHoc) {
   };
 }
 
+/**
+ * Lấy danh sách các Khóa học có CTĐT trong CSDL trường
+ */
+async function getCohorts(pool) {
+  try {
+    const result = await safeQuery(pool,
+      `SELECT DISTINCT Khoa_hoc AS cohort
+       FROM PLAN_ChuongTrinhDaoTao
+       WHERE Khoa_hoc IS NOT NULL AND Khoa_hoc > 0
+       ORDER BY Khoa_hoc DESC`,
+      [],
+      { username: 'admin-curriculum' }
+    );
+    return result.recordset.map(r => r.cohort);
+  } catch (e) {
+    console.error('❌ [tuafQueries] getCohorts error:', e.message);
+    return [58, 57, 56, 55, 54, 53, 52, 51, 50];
+  }
+}
+
+/**
+ * Lấy danh sách các Ngành / Chuyên ngành đào tạo của 1 Khóa học
+ */
+async function getMajorsByCohort(pool, cohort) {
+  try {
+    const result = await safeQuery(pool,
+      `SELECT DISTINCT
+         ct.ID_dt AS idDt,
+         ct.Khoa_hoc AS cohort,
+         ct.ID_chuyen_nganh AS idChuyenNganh,
+         ct.So_hoc_trinh AS totalCredits,
+         ct.So_ky_hoc AS totalSemesters,
+         COALESCE(cn.Ma_chuyen_nganh, n.Ma_nganh, CAST(ct.ID_dt AS VARCHAR)) AS majorCode,
+         COALESCE(cn.Chuyen_nganh, n.Ten_nganh, 'Ngành ' + CAST(ct.ID_dt AS VARCHAR)) AS majorName,
+         cn.Chuyen_nganh AS specializationName,
+         n.Ten_nganh AS baseMajorName
+       FROM PLAN_ChuongTrinhDaoTao ct
+       LEFT JOIN dmChuyenNganh cn ON ct.ID_chuyen_nganh = cn.ID_chuyen_nganh
+       LEFT JOIN dmNganh n ON cn.ID_nganh = n.ID_nganh
+       WHERE ct.Khoa_hoc = @cohort
+       ORDER BY majorName`,
+      [{ name: 'cohort', type: sql.Int, value: parseInt(cohort) || 56 }],
+      { username: 'admin-curriculum' }
+    );
+    return result.recordset;
+  } catch (e) {
+    console.error('❌ [tuafQueries] getMajorsByCohort error:', e.message);
+    return [];
+  }
+}
+
 module.exports = {
   findStudentId,
   getStudentInfo,
@@ -820,5 +1165,11 @@ module.exports = {
   bulkExams,
   bulkGrades,
   bulkFinance,
-  bulkDRL
+  bulkDRL,
+  getCohorts,
+  getMajorsByCohort,
+  getClassStudents,
+  getHomeroomClasses,
+  getHomeroomStudentsRegistration,
+  getHomeroomStudentsFinance
 };

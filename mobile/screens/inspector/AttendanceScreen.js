@@ -6,27 +6,32 @@ import {
   Modal,
   RefreshControl,
   SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { getInspectorToday, submitAttendance } from '../../services/api';
+import { getInspectorClassesByDate, submitAttendance } from '../../services/api';
 import { Colors } from '../../theme/colors';
 
 const DAY_NAMES = {
-  2: 'Thu Hai', 3: 'Thu Ba', 4: 'Thu Tu', 5: 'Thu Nam',
-  6: 'Thu Sau', 7: 'Thu Bay', 8: 'Chu Nhat',
+  2: 'Thứ Hai', 3: 'Thứ Ba', 4: 'Thứ Tư', 5: 'Thứ Năm',
+  6: 'Thứ Sáu', 7: 'Thứ Bảy', 8: 'Chủ Nhật',
 };
 
 const STATUS_CONFIG = {
-  on_time: { label: 'Dung gio', color: Colors.success, icon: 'checkmark-circle' },
-  late: { label: 'Di muon', color: Colors.danger, icon: 'alert-circle' },
-  early_leave: { label: 'Ve som', color: Colors.warning, icon: 'time' },
-  absent: { label: 'Vang mat', color: Colors.danger, icon: 'close-circle' },
-  exempt: { label: 'Duoc mien', color: Colors.info, icon: 'shield-checkmark' },
-  pending: { label: 'Chua ghi', color: Colors.textMuted, icon: 'help-circle' },
+  on_time: { label: 'Đúng giờ', color: '#2e7d32', bg: '#e8f5e9', icon: 'checkmark-circle' },
+  late: { label: 'Đi muộn', color: '#e65100', bg: '#fff3e0', icon: 'alert-circle' },
+  early_leave: { label: 'Về sớm', color: '#f57c00', bg: '#fff8e1', icon: 'time' },
+  rescheduled_permitted: { label: 'Đổi giờ (Có phép)', color: '#0277bd', bg: '#e1f5fe', icon: 'swap-horizontal' },
+  rescheduled_unpermitted: { label: 'Tự ý đổi giờ', color: '#c62828', bg: '#ffebee', icon: 'close-circle' },
+  rescheduled: { label: 'Đổi giờ', color: '#0277bd', bg: '#e1f5fe', icon: 'swap-horizontal' },
+  substitute: { label: 'Dạy thay', color: '#5c6bc0', bg: '#ede7f6', icon: 'people' },
+  absent: { label: 'Vắng mặt', color: '#c62828', bg: '#ffebee', icon: 'close-circle' },
+  exempt: { label: 'Được miễn', color: '#00838f', bg: '#e0f7fa', icon: 'shield-checkmark' },
+  pending: { label: 'Chưa kiểm tra', color: Colors.textMuted, bg: '#f5f5f5', icon: 'help-circle' },
 };
 
 const formatTime = (dateStr) => {
@@ -36,57 +41,96 @@ const formatTime = (dateStr) => {
 };
 
 export default function AttendanceScreen({ user }) {
+  const VN_TZ = 'Asia/Ho_Chi_Minh';
+  const getTodayStr = () => {
+    const now = new Date();
+    const today = new Date(now.toLocaleString('en-US', { timeZone: VN_TZ }));
+    return today.toISOString().split('T')[0];
+  };
+
+  const [currentDate, setCurrentDate] = useState(getTodayStr());
   const [classes, setClasses] = useState([]);
+  const [dayOfWeek, setDayOfWeek] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [todayStr, setTodayStr] = useState('');
-  const [dayOfWeek, setDayOfWeek] = useState(0);
 
+  // Modal State
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedClass, setSelectedClass] = useState(null);
+  const [selectedStatus, setSelectedStatus] = useState('on_time');
+  const [hasPermission, setHasPermission] = useState(true);
   const [checkInTime, setCheckInTime] = useState('');
   const [checkOutTime, setCheckOutTime] = useState('');
+  const [lateMinutes, setLateMinutes] = useState('0');
+  const [earlyMinutes, setEarlyMinutes] = useState('0');
+  const [rescheduledDate, setRescheduledDate] = useState('');
+  const [rescheduledReason, setRescheduledReason] = useState('');
+  const [substituteTeacher, setSubstituteTeacher] = useState('');
   const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
-  const loadData = async () => {
-    const res = await getInspectorToday();
-    if (res.success) {
-      setClasses(res.data || []);
-      setTodayStr(res.date);
-      setDayOfWeek(res.dayOfWeek);
+  const loadData = async (dateStr = currentDate) => {
+    try {
+      const res = await getInspectorClassesByDate(dateStr);
+      if (res.success) {
+        setClasses(res.data || []);
+        setDayOfWeek(res.dayOfWeek);
+      }
+    } catch (e) {
+      console.error(e);
     }
   };
 
   useEffect(() => {
-    loadData().finally(() => setLoading(false));
-  }, []);
+    loadData(currentDate).finally(() => setLoading(false));
+  }, [currentDate]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadData();
+    await loadData(currentDate);
     setRefreshing(false);
-  }, []);
+  }, [currentDate]);
 
-  const isValidTime = (str) => {
-    if (!str) return false;
-    const regex = /^([01]\d|2[0-3]):([0-5]\d)$/;
-    return regex.test(str);
+  const changeDate = (days) => {
+    const d = new Date(currentDate + 'T00:00:00');
+    d.setDate(d.getDate() + days);
+    setCurrentDate(d.toISOString().split('T')[0]);
+  };
+
+  const goToToday = () => {
+    setCurrentDate(getTodayStr());
   };
 
   const openModal = (cls) => {
     setSelectedClass(cls);
     setSubmitError('');
+
     const now = new Date();
     const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+
     if (cls.attendance) {
-      setCheckInTime(cls.attendance.checkInTime ? formatTime(cls.attendance.checkInTime) : currentTime);
-      setCheckOutTime(cls.attendance.checkOutTime ? formatTime(cls.attendance.checkOutTime) : currentTime);
-      setNote(cls.attendance.note || '');
+      const att = cls.attendance;
+      setSelectedStatus(att.status === 'pending' ? 'on_time' : att.status);
+      setHasPermission(att.hasPermission !== false);
+      setCheckInTime(att.checkInTime ? formatTime(att.checkInTime) : currentTime);
+      setCheckOutTime(att.checkOutTime ? formatTime(att.checkOutTime) : '');
+      setLateMinutes(String(att.lateMinutes || '0'));
+      setEarlyMinutes(String(att.earlyMinutes || '0'));
+      setRescheduledDate(att.rescheduledDate || '');
+      setRescheduledReason(att.rescheduledReason || '');
+      setSubstituteTeacher(att.substituteTeacher || '');
+      setNote(att.note || '');
     } else {
+      setSelectedStatus('on_time');
+      setHasPermission(true);
       setCheckInTime(currentTime);
       setCheckOutTime('');
+      setLateMinutes('0');
+      setEarlyMinutes('0');
+      setRescheduledDate('');
+      setRescheduledReason('');
+      setSubstituteTeacher('');
       setNote('');
     }
     setModalVisible(true);
@@ -94,259 +138,366 @@ export default function AttendanceScreen({ user }) {
 
   const handleSubmit = async () => {
     if (!selectedClass) return;
-
-    // Validate check-in time format
-    if (!isValidTime(checkInTime)) {
-      setSubmitError('Gio den khong hop le! Dinh dung: HH:MM (VD: 07:30)');
-      return;
-    }
-    if (checkOutTime && !isValidTime(checkOutTime)) {
-      setSubmitError('Gio ve khong hop le! Dinh dung: HH:MM (VD: 10:45)');
-      return;
-    }
-
-    setSubmitError('');
     setSubmitting(true);
+    setSubmitError('');
 
     const now = new Date();
-    const [inH, inM] = checkInTime.split(':').map(Number);
-    const checkInDate = new Date(now);
-    checkInDate.setHours(inH, inM, 0, 0);
-
+    let checkInDate = null;
     let checkOutDate = null;
-    if (checkOutTime) {
-      const [outH, outM] = checkOutTime.split(':').map(Number);
-      checkOutDate = new Date(now);
-      checkOutDate.setHours(outH, outM, 0, 0);
+
+    if (checkInTime && /^([01]\d|2[0-3]):([0-5]\d)$/.test(checkInTime)) {
+      const [h, m] = checkInTime.split(':').map(Number);
+      checkInDate = new Date(now);
+      checkInDate.setHours(h, m, 0, 0);
     }
 
-    const res = await submitAttendance({
-      scheduleId: selectedClass.scheduleId,
-      date: selectedClass.date,
-      checkInTime: checkInDate.toISOString(),
-      checkOutTime: checkOutDate ? checkOutDate.toISOString() : null,
-      note
-    });
+    if (checkOutTime && /^([01]\d|2[0-3]):([0-5]\d)$/.test(checkOutTime)) {
+      const [h, m] = checkOutTime.split(':').map(Number);
+      checkOutDate = new Date(now);
+      checkOutDate.setHours(h, m, 0, 0);
+    }
 
+    const payload = {
+      scheduleId: selectedClass.scheduleId,
+      date: currentDate,
+      status: selectedStatus,
+      checkInTime: checkInDate ? checkInDate.toISOString() : null,
+      checkOutTime: checkOutDate ? checkOutDate.toISOString() : null,
+      lateMinutes: selectedStatus === 'late' ? (parseInt(lateMinutes) || 0) : 0,
+      earlyMinutes: selectedStatus === 'early_leave' ? (parseInt(earlyMinutes) || 0) : 0,
+      hasPermission: selectedStatus === 'rescheduled' || selectedStatus === 'substitute' ? hasPermission : null,
+      rescheduledDate: selectedStatus === 'rescheduled' ? rescheduledDate : null,
+      rescheduledReason: selectedStatus === 'rescheduled' ? rescheduledReason : '',
+      substituteTeacher: selectedStatus === 'substitute' ? substituteTeacher : '',
+      note
+    };
+
+    const res = await submitAttendance(payload);
     setSubmitting(false);
+
     if (res.success) {
       setModalVisible(false);
-      setSubmitError('');
-      await loadData();
+      await loadData(currentDate);
     } else {
-      setSubmitError(res.message || 'Loi ghi nhan diem danh! Vui long thu lai.');
+      setSubmitError(res.message || 'Lỗi ghi nhận kết quả thanh tra!');
     }
   };
 
-  const stats = {
-    total: classes.length,
-    onTime: classes.filter(c => c.attendance?.status === 'on_time').length,
-    late: classes.filter(c => c.attendance?.status === 'late').length,
-    pending: classes.filter(c => !c.attendance || c.attendance.status === 'pending').length,
-  };
-
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.loadingText}>Dang tai danh sach lop...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  const isToday = currentDate === getTodayStr();
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* HEADER */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>Diem Danh</Text>
-          <Text style={styles.headerSubtitle}>
-            {DAY_NAMES[dayOfWeek] || ''}, {todayStr}
+          <Text style={styles.headerTitle}>Thanh Tra Giảng Dạy</Text>
+          <Text style={styles.headerSubtitle}>{user?.fullName || 'Thanh tra viên'}</Text>
+        </View>
+        <View style={styles.headerCountBadge}>
+          <Text style={styles.headerCountVal}>{classes.length}</Text>
+          <Text style={styles.headerCountLbl}>lớp</Text>
+        </View>
+      </View>
+
+      {/* DATE NAVIGATOR BAR */}
+      <View style={styles.dateNavWrap}>
+        <TouchableOpacity style={styles.dateNavBtn} onPress={() => changeDate(-1)}>
+          <Ionicons name="chevron-back" size={18} color={Colors.textPrimary} />
+        </TouchableOpacity>
+
+        <View style={styles.dateCenter}>
+          <Ionicons name="calendar" size={16} color={Colors.primary} />
+          <Text style={styles.dateText}>
+            {DAY_NAMES[dayOfWeek] || ''}, {currentDate.split('-').reverse().join('/')}
           </Text>
         </View>
-        <TouchableOpacity style={styles.syncBtn} onPress={onRefresh} disabled={refreshing}>
-          {refreshing ? (
-            <ActivityIndicator size="small" color={Colors.textOnPrimary} />
-          ) : (
-            <Ionicons name="sync-outline" size={18} color={Colors.textOnPrimary} />
-          )}
+
+        <TouchableOpacity style={styles.dateNavBtn} onPress={() => changeDate(1)}>
+          <Ionicons name="chevron-forward" size={18} color={Colors.textPrimary} />
         </TouchableOpacity>
+
+        {!isToday && (
+          <TouchableOpacity style={styles.todayBtn} onPress={goToToday}>
+            <Text style={styles.todayBtnText}>Hôm nay</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
-      <View style={styles.statsBar}>
-        <View style={styles.statItem}>
-          <Text style={[styles.statValue, { color: Colors.primary }]}>{stats.total}</Text>
-          <Text style={styles.statLabel}>Tong lop</Text>
+      {/* CLASS LIST */}
+      {loading ? (
+        <View style={styles.centerWrap}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={styles.loadingText}>Đang tải danh sách lớp học phần...</Text>
         </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={[styles.statValue, { color: Colors.success }]}>{stats.onTime}</Text>
-          <Text style={styles.statLabel}>Dung gio</Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={[styles.statValue, { color: Colors.danger }]}>{stats.late}</Text>
-          <Text style={styles.statLabel}>Di muon</Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={[styles.statValue, { color: Colors.textMuted }]}>{stats.pending}</Text>
-          <Text style={styles.statLabel}>Chua ghi</Text>
-        </View>
-      </View>
+      ) : (
+        <FlatList
+          data={classes}
+          keyExtractor={item => item.scheduleId}
+          contentContainerStyle={{ paddingBottom: 32 }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />}
+          renderItem={({ item }) => {
+            let statusKey = item.attendance?.status || 'pending';
+            if (statusKey === 'rescheduled') {
+              statusKey = item.attendance?.hasPermission === false ? 'rescheduled_unpermitted' : 'rescheduled_permitted';
+            }
+            const statusConf = STATUS_CONFIG[statusKey] || STATUS_CONFIG.pending;
 
-      <FlatList
-        data={classes}
-        keyExtractor={(item) => item.scheduleId}
-        contentContainerStyle={{ paddingBottom: 24 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />}
-        renderItem={({ item }) => {
-          const statusConf = STATUS_CONFIG[item.attendance?.status || 'pending'];
-          return (
-            <TouchableOpacity style={styles.card} onPress={() => openModal(item)} activeOpacity={0.7}>
-              <View style={styles.cardTop}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.courseName} numberOfLines={1}>{item.courseName}</Text>
-                  <Text style={styles.classCode}>{item.classCode}</Text>
+            return (
+              <TouchableOpacity
+                style={styles.card}
+                onPress={() => openModal(item)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.cardTop}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.courseName} numberOfLines={1}>{item.courseName}</Text>
+                    <Text style={styles.classCode}>{item.classCode}</Text>
+                  </View>
+                  <View style={[styles.statusBadge, { backgroundColor: statusConf.bg, borderColor: statusConf.color }]}>
+                    <Ionicons name={statusConf.icon} size={13} color={statusConf.color} />
+                    <Text style={[styles.statusText, { color: statusConf.color }]}>{statusConf.label}</Text>
+                  </View>
                 </View>
-                <View style={[styles.statusBadge, { backgroundColor: statusConf.color + '15' }]}>
-                  <Ionicons name={statusConf.icon} size={14} color={statusConf.color} />
-                  <Text style={[styles.statusText, { color: statusConf.color }]}>{statusConf.label}</Text>
-                </View>
-              </View>
 
-              <View style={styles.cardDetails}>
-                <View style={styles.detailItem}>
-                  <Ionicons name="person-outline" size={14} color={Colors.accentPurple} />
-                  <Text style={styles.detailText}>{item.teacherName || 'Chua ro'}</Text>
-                </View>
-                <View style={styles.detailItem}>
-                  <Ionicons name="location-outline" size={14} color={Colors.accentPink} />
-                  <Text style={styles.detailText}>{item.room || 'Chua xep'}</Text>
-                </View>
-                <View style={styles.detailItem}>
-                  <Ionicons name="time-outline" size={14} color={Colors.primary} />
-                  <Text style={styles.detailText}>
-                    {item.scheduledStart} - {item.scheduledEnd} (Tiet {item.periodText})
-                  </Text>
-                </View>
-              </View>
-
-              {item.attendance && item.attendance.checkInTime && (
-                <View style={styles.attendanceResult}>
-                  <View style={styles.resultItem}>
-                    <Text style={styles.resultLabel}>Den:</Text>
-                    <Text style={[styles.resultValue, item.attendance.lateMinutes > 0 && { color: Colors.danger }]}>
-                      {formatTime(item.attendance.checkInTime)}
-                      {item.attendance.lateMinutes > 0 ? ` (+${item.attendance.lateMinutes}p)` : ''}
+                <View style={styles.cardDetails}>
+                  <View style={styles.detailRow}>
+                    <Ionicons name="person-outline" size={14} color="#5c6bc0" />
+                    <Text style={styles.detailText}>{item.teacherName || 'Chưa rõ'}</Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Ionicons name="location-outline" size={14} color="#e91e63" />
+                    <Text style={styles.detailText}>{item.room || 'Chưa xếp phòng'}</Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Ionicons name="time-outline" size={14} color={Colors.primary} />
+                    <Text style={styles.detailText}>
+                      {item.scheduledStart} - {item.scheduledEnd} (Tiết {item.periodText})
                     </Text>
                   </View>
-                  {item.attendance.checkOutTime && (
-                    <View style={styles.resultItem}>
-                      <Text style={styles.resultLabel}>Ve:</Text>
-                      <Text style={[styles.resultValue, item.attendance.earlyMinutes > 0 && { color: Colors.warning }]}>
-                        {formatTime(item.attendance.checkOutTime)}
-                        {item.attendance.earlyMinutes > 0 ? ` (-${item.attendance.earlyMinutes}p)` : ''}
-                      </Text>
-                    </View>
-                  )}
                 </View>
-              )}
 
-              <View style={styles.cardFooter}>
-                <Text style={styles.footerHint}>
-                  {item.attendance ? 'Cham de cap nhat' : 'Cham de ghi nhan'}
-                </Text>
-                <Ionicons name="chevron-forward" size={14} color={Colors.textMuted} />
-              </View>
-            </TouchableOpacity>
-          );
-        }}
-        ListEmptyComponent={
-          <View style={styles.emptyWrap}>
-            <Ionicons name="clipboard-outline" size={64} color={Colors.borderLight} />
-            <Text style={styles.emptyText}>Khong co lop hoc nao hom nay!</Text>
-            <Text style={styles.emptySubText}>Hoac chua den lich day trong hoc ky nay</Text>
-          </View>
-        }
-      />
+                {/* RESULT DETAILS */}
+                {item.attendance && (
+                  <View style={styles.resultBox}>
+                    {item.attendance.status === 'rescheduled' ? (
+                      <View style={{ gap: 2 }}>
+                        <Text style={[styles.resultNote, { color: item.attendance.hasPermission ? '#0277bd' : '#c62828', fontWeight: '700' }]}>
+                          {item.attendance.hasPermission ? '✔ Đổi giờ: Có đề nghị/phê duyệt trước' : '✘ Đổi giờ: Tự ý đổi (Không phép)'}
+                        </Text>
+                        {item.attendance.rescheduledDate ? (
+                          <Text style={styles.resultNote}>Lịch học bù: {item.attendance.rescheduledDate}</Text>
+                        ) : null}
+                        {item.attendance.rescheduledReason ? (
+                          <Text style={styles.resultNote}>Lý do: {item.attendance.rescheduledReason}</Text>
+                        ) : null}
+                      </View>
+                    ) : item.attendance.status === 'substitute' ? (
+                      <Text style={[styles.resultNote, { color: '#5c6bc0', fontWeight: '700' }]}>
+                        Dạy thay bởi: {item.attendance.substituteTeacher || 'GV khác'}
+                      </Text>
+                    ) : (
+                      <View style={{ flexDirection: 'row', gap: 14 }}>
+                        <Text style={styles.resultTime}>
+                          Vào: {item.attendance.checkInTime ? formatTime(item.attendance.checkInTime) : '--:--'}
+                          {item.attendance.lateMinutes > 0 ? ` (+${item.attendance.lateMinutes}p)` : ''}
+                        </Text>
+                        <Text style={styles.resultTime}>
+                          Ra: {item.attendance.checkOutTime ? formatTime(item.attendance.checkOutTime) : '--:--'}
+                          {item.attendance.earlyMinutes > 0 ? ` (-${item.attendance.earlyMinutes}p)` : ''}
+                        </Text>
+                      </View>
+                    )}
+                    {item.attendance.note ? (
+                      <Text style={styles.resultNote}>Ghi chú: {item.attendance.note}</Text>
+                    ) : null}
+                  </View>
+                )}
 
-      <Modal visible={modalVisible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
+                <View style={styles.cardFooter}>
+                  <Text style={styles.footerHint}>
+                    {item.attendance ? 'Chạm để cập nhật biên bản' : 'Chạm để ghi nhận sự vụ'}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={14} color={Colors.textMuted} />
+                </View>
+              </TouchableOpacity>
+            );
+          }}
+          ListEmptyComponent={
+            <View style={styles.emptyWrap}>
+              <Ionicons name="clipboard-outline" size={64} color={Colors.borderLight} />
+              <Text style={styles.emptyText}>Không có lớp học nào trong ngày này!</Text>
+              <Text style={styles.emptySub}>Vui lòng chọn ngày khác để kiểm tra</Text>
+            </View>
+          }
+        />
+      )}
+
+      {/* MODAL GHI NHẬN SỰ VỤ THANH TRA */}
+      <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={() => setModalVisible(false)}>
+        <View style={styles.modalBackdrop}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Ghi Nhan Diem Danh</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Ionicons name="close-circle" size={28} color={Colors.textMuted} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>Biên Bản Kiểm Tra</Text>
+                <Text style={styles.modalSub}>{selectedClass?.courseName} • Phòng {selectedClass?.room}</Text>
+              </View>
+              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.modalCloseBtn}>
+                <Ionicons name="close" size={20} color="#555" />
               </TouchableOpacity>
             </View>
 
-            {selectedClass && (
-              <View style={styles.modalClassInfo}>
-                <Text style={styles.modalCourseName}>{selectedClass.courseName}</Text>
-                <Text style={styles.modalClassCode}>{selectedClass.classCode} - {selectedClass.teacherName}</Text>
-                <Text style={styles.modalPeriod}>
-                  Gio quy dinh: {selectedClass.scheduledStart} - {selectedClass.scheduledEnd}
-                </Text>
+            <ScrollView style={{ maxHeight: 460 }}>
+              {/* STATUS SELECTION CHIPS */}
+              <Text style={styles.inputLabel}>Tình trạng giảng dạy:</Text>
+              <View style={styles.statusSelectGrid}>
+                {[
+                  { id: 'on_time', label: 'Đúng giờ', icon: 'checkmark-circle', color: '#2e7d32' },
+                  { id: 'late', label: 'Đến muộn', icon: 'alert-circle', color: '#e65100' },
+                  { id: 'early_leave', label: 'Về sớm', icon: 'time', color: '#f57c00' },
+                  { id: 'rescheduled', label: 'Đổi giờ', icon: 'swap-horizontal', color: '#0277bd' },
+                  { id: 'substitute', label: 'Dạy thay', icon: 'people', color: '#5c6bc0' },
+                  { id: 'absent', label: 'Vắng/Bỏ tiết', icon: 'close-circle', color: '#c62828' },
+                ].map(st => {
+                  const isSelected = selectedStatus === st.id;
+                  return (
+                    <TouchableOpacity
+                      key={st.id}
+                      style={[
+                        styles.statusSelectBtn,
+                        isSelected && { backgroundColor: st.color, borderColor: st.color }
+                      ]}
+                      onPress={() => setSelectedStatus(st.id)}
+                    >
+                      <Ionicons name={st.icon} size={15} color={isSelected ? '#fff' : st.color} />
+                      <Text style={[styles.statusSelectText, isSelected && { color: '#fff' }]}>{st.label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
-            )}
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Gio den (HH:MM)</Text>
-              <TextInput
-                style={styles.timeInput}
-                value={checkInTime}
-                onChangeText={setCheckInTime}
-                placeholder="07:00"
-                placeholderTextColor={Colors.textMuted}
-                keyboardType="numbers-and-punctuation"
-                maxLength={5}
-              />
-            </View>
+              {/* CONDITIONAL: RESCHEDULED PERMISSION SWITCH */}
+              {selectedStatus === 'rescheduled' && (
+                <View style={styles.rescheduledBox}>
+                  <Text style={styles.inputLabel}>Xác nhận đề nghị đổi giờ:</Text>
+                  <View style={styles.permRow}>
+                    <TouchableOpacity
+                      style={[styles.permBtn, hasPermission && styles.permBtnActiveGreen]}
+                      onPress={() => setHasPermission(true)}
+                    >
+                      <Ionicons name="checkmark-circle" size={16} color={hasPermission ? '#fff' : '#2e7d32'} />
+                      <Text style={[styles.permBtnText, hasPermission && { color: '#fff' }]}>Có phép (Đã có đề nghị)</Text>
+                    </TouchableOpacity>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Gio ve (HH:MM)</Text>
-              <TextInput
-                style={styles.timeInput}
-                value={checkOutTime}
-                onChangeText={setCheckOutTime}
-                placeholder="10:45"
-                placeholderTextColor={Colors.textMuted}
-                keyboardType="numbers-and-punctuation"
-                maxLength={5}
-              />
-            </View>
+                    <TouchableOpacity
+                      style={[styles.permBtn, !hasPermission && styles.permBtnActiveRed]}
+                      onPress={() => setHasPermission(false)}
+                    >
+                      <Ionicons name="close-circle" size={16} color={!hasPermission ? '#fff' : '#c62828'} />
+                      <Text style={[styles.permBtnText, !hasPermission && { color: '#fff' }]}>Không phép (Tự ý đổi)</Text>
+                    </TouchableOpacity>
+                  </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Ghi chu (tu chon)</Text>
-              <TextInput
-                style={styles.noteInput}
-                value={note}
-                onChangeText={setNote}
-                placeholder="Ly do neu co..."
-                placeholderTextColor={Colors.textMuted}
-                multiline
-              />
-            </View>
+                  <Text style={[styles.inputLabel, { marginTop: 10 }]}>Ngày học bù dự kiến:</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="VD: 2026-09-22"
+                    placeholderTextColor={Colors.textMuted}
+                    value={rescheduledDate}
+                    onChangeText={setRescheduledDate}
+                  />
 
-            {submitError ? (
-              <View style={styles.errorWrap}>
-                <Ionicons name="alert-circle" size={16} color={Colors.danger} />
-                <Text style={styles.errorText}>{submitError}</Text>
+                  <Text style={[styles.inputLabel, { marginTop: 10 }]}>Lý do đổi giờ / học bù:</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="VD: Bận công tác Hội đồng trường..."
+                    placeholderTextColor={Colors.textMuted}
+                    value={rescheduledReason}
+                    onChangeText={setRescheduledReason}
+                  />
+                </View>
+              )}
+
+              {/* CONDITIONAL: SUBSTITUTE TEACHER */}
+              {selectedStatus === 'substitute' && (
+                <View style={styles.substituteBox}>
+                  <Text style={styles.inputLabel}>Họ tên giảng viên dạy thay:</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="Nhập họ tên giảng viên dạy thay..."
+                    placeholderTextColor={Colors.textMuted}
+                    value={substituteTeacher}
+                    onChangeText={setSubstituteTeacher}
+                  />
+                </View>
+              )}
+
+              {/* CONDITIONAL: LATE / EARLY MINUTES */}
+              {(selectedStatus === 'late' || selectedStatus === 'early_leave' || selectedStatus === 'on_time') && (
+                <View style={styles.timeInputsRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.inputLabel}>Giờ đến thực tế (HH:MM):</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="07:05"
+                      placeholderTextColor={Colors.textMuted}
+                      value={checkInTime}
+                      onChangeText={setCheckInTime}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.inputLabel}>Giờ về thực tế (HH:MM):</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="10:45"
+                      placeholderTextColor={Colors.textMuted}
+                      value={checkOutTime}
+                      onChangeText={setCheckOutTime}
+                    />
+                  </View>
+                </View>
+              )}
+
+              {selectedStatus === 'late' && (
+                <View style={{ marginTop: 8 }}>
+                  <Text style={styles.inputLabel}>Số phút đến muộn:</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="VD: 15"
+                    keyboardType="numeric"
+                    placeholderTextColor={Colors.textMuted}
+                    value={lateMinutes}
+                    onChangeText={setLateMinutes}
+                  />
+                </View>
+              )}
+
+              {/* GENERAL NOTE */}
+              <View style={{ marginTop: 10 }}>
+                <Text style={styles.inputLabel}>Ghi chú thêm của thanh tra viên:</Text>
+                <TextInput
+                  style={[styles.textInput, { height: 60, textAlignVertical: 'top' }]}
+                  placeholder="Nhập ghi chú hoặc biên bản tóm tắt..."
+                  placeholderTextColor={Colors.textMuted}
+                  multiline
+                  value={note}
+                  onChangeText={setNote}
+                />
               </View>
-            ) : null}
+
+              {submitError ? (
+                <Text style={styles.submitErrorText}>{submitError}</Text>
+              ) : null}
+            </ScrollView>
 
             <TouchableOpacity
-              style={[styles.submitBtn, submitting && styles.submitBtnDisabled]}
+              style={[styles.submitBtn, submitting && { opacity: 0.7 }]}
               onPress={handleSubmit}
               disabled={submitting}
-              activeOpacity={0.8}
             >
               {submitting ? (
-                <ActivityIndicator color={Colors.textOnPrimary} size="small" />
+                <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Text style={styles.submitBtnText}>LUU DIEM DANH</Text>
+                <Text style={styles.submitBtnText}>Lưu Biên Bản Thanh Tra</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -358,118 +509,108 @@ export default function AttendanceScreen({ user }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  loadingText: { marginTop: 12, color: Colors.textSecondary, fontSize: 14 },
-
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12,
+    backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.borderLight,
   },
-  headerTitle: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary },
+  headerTitle: { fontSize: 24, fontWeight: '800', color: Colors.textPrimary },
   headerSubtitle: { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
-  syncBtn: {
-    backgroundColor: Colors.primary, borderRadius: 12,
-    paddingHorizontal: 14, paddingVertical: 10,
+  headerCountBadge: {
+    alignItems: 'center', justifyContent: 'center',
+    width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.primary,
   },
-
-  statsBar: {
-    flexDirection: 'row', backgroundColor: Colors.surface, marginHorizontal: 16,
-    borderRadius: 16, padding: 16, marginBottom: 12,
-    elevation: 2, shadowColor: Colors.shadowColor,
-    shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8,
+  headerCountVal: { fontSize: 16, fontWeight: '800', color: '#fff' },
+  headerCountLbl: { fontSize: 9, color: '#fff', marginTop: -2 },
+  dateNavWrap: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: Colors.surface, paddingHorizontal: 16, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: Colors.borderLight,
   },
-  statItem: { flex: 1, alignItems: 'center' },
-  statValue: { fontSize: 22, fontWeight: '800' },
-  statLabel: { fontSize: 11, color: Colors.textSecondary, marginTop: 2, fontWeight: '600' },
-  statDivider: { width: 1, backgroundColor: Colors.borderLight, marginVertical: 2 },
-
+  dateNavBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: '#f0f2f5', alignItems: 'center', justifyContent: 'center',
+  },
+  dateCenter: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  dateText: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
+  todayBtn: {
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8,
+    backgroundColor: Colors.primary + '15',
+  },
+  todayBtnText: { fontSize: 11, fontWeight: '700', color: Colors.primary },
+  centerWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60 },
+  loadingText: { marginTop: 10, fontSize: 13, color: Colors.textSecondary },
+  emptyWrap: { alignItems: 'center', paddingTop: 80 },
+  emptyText: { fontSize: 15, fontWeight: '700', color: Colors.textMuted, marginTop: 12 },
+  emptySub: { fontSize: 12, color: Colors.textMuted, marginTop: 4 },
   card: {
-    backgroundColor: Colors.surface, marginHorizontal: 16, marginBottom: 12,
-    borderRadius: 16, padding: 16, borderLeftWidth: 4, borderLeftColor: Colors.primary,
-    elevation: 2, shadowColor: Colors.shadowColor,
-    shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8,
+    backgroundColor: Colors.surface, marginHorizontal: 16, marginTop: 10,
+    borderRadius: 14, padding: 14, borderWidth: 1, borderColor: Colors.borderLight,
   },
-  cardTop: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  courseName: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary, flex: 1 },
+  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  courseName: { fontSize: 15, fontWeight: '800', color: Colors.textPrimary },
   classCode: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
   statusBadge: {
-    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10,
-    paddingVertical: 5, borderRadius: 20, gap: 4,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1,
   },
-  statusText: { fontSize: 12, fontWeight: '700' },
-
-  cardDetails: { gap: 6, marginBottom: 10 },
-  detailItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  detailText: { fontSize: 13, color: Colors.textSecondary },
-
-  attendanceResult: {
-    flexDirection: 'row', gap: 20, paddingTop: 10,
-    borderTopWidth: 1, borderTopColor: Colors.borderLight,
+  statusText: { fontSize: 11, fontWeight: '700' },
+  cardDetails: { marginTop: 8, gap: 4 },
+  detailRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  detailText: { fontSize: 12, color: Colors.textSecondary },
+  resultBox: {
+    backgroundColor: '#fafafa', borderRadius: 8, padding: 8,
+    marginTop: 8, borderLeftWidth: 3, borderLeftColor: Colors.primary,
   },
-  resultItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  resultLabel: { fontSize: 12, color: Colors.textMuted, fontWeight: '600' },
-  resultValue: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
-
+  resultTime: { fontSize: 12, fontWeight: '600', color: Colors.textPrimary },
+  resultNote: { fontSize: 11, color: Colors.textSecondary, marginTop: 2 },
   cardFooter: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    marginTop: 10, paddingTop: 8, borderTopWidth: 1, borderTopColor: Colors.borderLight,
+    marginTop: 10, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#f5f5f5',
   },
   footerHint: { fontSize: 11, color: Colors.textMuted },
-
-  emptyWrap: { alignItems: 'center', paddingTop: 60 },
-  emptyText: { fontSize: 16, fontWeight: '700', color: Colors.textSecondary, marginTop: 16 },
-  emptySubText: { fontSize: 13, color: Colors.textMuted, marginTop: 4 },
-
-  modalOverlay: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalContent: {
-    backgroundColor: Colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    padding: 24, paddingBottom: 40,
+    backgroundColor: Colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    padding: 20, paddingBottom: 36,
   },
-  modalHeader: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16,
-  },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
   modalTitle: { fontSize: 18, fontWeight: '800', color: Colors.textPrimary },
-
-  modalClassInfo: {
-    backgroundColor: Colors.primaryBg, borderRadius: 12, padding: 14, marginBottom: 20,
+  modalSub: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
+  modalCloseBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#f0f0f0', alignItems: 'center', justifyContent: 'center' },
+  inputLabel: { fontSize: 12, fontWeight: '700', color: Colors.textSecondary, marginBottom: 6 },
+  statusSelectGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
+  statusSelectBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8,
+    backgroundColor: '#f5f5f5', borderWidth: 1, borderColor: '#e0e0e0',
   },
-  modalCourseName: { fontSize: 15, fontWeight: '700', color: Colors.primary },
-  modalClassCode: { fontSize: 13, color: Colors.textSecondary, marginTop: 4 },
-  modalPeriod: { fontSize: 12, color: Colors.primaryLight, marginTop: 4, fontWeight: '600' },
-
-  inputGroup: { marginBottom: 16 },
-  inputLabel: {
-    fontSize: 12, fontWeight: '700', color: Colors.textSecondary,
-    marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5,
+  statusSelectText: { fontSize: 12, fontWeight: '700', color: Colors.textSecondary },
+  rescheduledBox: {
+    backgroundColor: '#e1f5fe15', borderRadius: 10, padding: 12,
+    borderWidth: 1, borderColor: '#b3e5fc', marginBottom: 12,
   },
-  timeInput: {
-    backgroundColor: Colors.background, borderWidth: 1.5, borderColor: Colors.border,
-    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
-    fontSize: 18, fontWeight: '700', color: Colors.textPrimary,
-    textAlign: 'center', letterSpacing: 2,
+  permRow: { flexDirection: 'row', gap: 8 },
+  permBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
+    paddingVertical: 8, borderRadius: 8, backgroundColor: '#f5f5f5', borderWidth: 1, borderColor: '#ddd',
   },
-  noteInput: {
-    backgroundColor: Colors.background, borderWidth: 1.5, borderColor: Colors.border,
-    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
-    fontSize: 14, color: Colors.textPrimary, minHeight: 60, textAlignVertical: 'top',
+  permBtnActiveGreen: { backgroundColor: '#2e7d32', borderColor: '#2e7d32' },
+  permBtnActiveRed: { backgroundColor: '#c62828', borderColor: '#c62828' },
+  permBtnText: { fontSize: 11, fontWeight: '700', color: Colors.textSecondary },
+  substituteBox: {
+    backgroundColor: '#ede7f615', borderRadius: 10, padding: 12,
+    borderWidth: 1, borderColor: '#d1c4e9', marginBottom: 12,
   },
-
+  timeInputsRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
+  textInput: {
+    backgroundColor: '#f9f9f9', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8,
+    fontSize: 13, color: Colors.textPrimary, borderWidth: 1, borderColor: '#e0e0e0',
+  },
+  submitErrorText: { color: '#c62828', fontSize: 12, marginTop: 8 },
   submitBtn: {
-    backgroundColor: Colors.primary, borderRadius: 14, paddingVertical: 15,
-    alignItems: 'center', marginTop: 8,
-    elevation: 4, shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.3, shadowRadius: 6,
+    backgroundColor: Colors.primary, height: 46, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center', marginTop: 14,
   },
-  submitBtnDisabled: { backgroundColor: Colors.primaryMuted },
-  submitBtnText: { color: Colors.textOnPrimary, fontSize: 14, fontWeight: '800', letterSpacing: 0.5 },
-
-  errorWrap: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#FFF0F0', padding: 12, borderRadius: 10,
-    marginBottom: 12, gap: 8,
-  },
-  errorText: { color: Colors.danger, fontSize: 13, fontWeight: '600', flex: 1 },
+  submitBtnText: { color: '#fff', fontSize: 15, fontWeight: '800' },
 });

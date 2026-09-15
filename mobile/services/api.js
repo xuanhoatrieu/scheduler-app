@@ -256,9 +256,9 @@ export const syncHistory = async () => {
 export const getCurriculum = async () => {
   try {
     const response = await api.get('/curriculum');
-    const { data, summary, source } = response.data;
-    await AsyncStorage.setItem('cached_curriculum', JSON.stringify({ data, summary, source }));
-    return { success: true, data, summary, source, networkSource: 'network' };
+    const { data, summary, source, graduationRequirements, byBlock, bySemester } = response.data;
+    await AsyncStorage.setItem('cached_curriculum', JSON.stringify({ data, summary, source, graduationRequirements, byBlock, bySemester }));
+    return { success: true, data, summary, graduationRequirements, byBlock, bySemester, source, networkSource: 'network' };
   } catch (error) {
     const cached = await AsyncStorage.getItem('cached_curriculum');
     if (cached) {
@@ -349,6 +349,127 @@ export const getDashboardReport = async (params) => {
     return { success: true, ...response.data };
   } catch (error) {
     return { success: false, message: error.response?.data?.message || 'Loi tai bao cao!' };
+  }
+};
+
+/**
+ * Lấy danh sách sinh viên của lớp tín chỉ
+ */
+export const getClassStudents = async (idLopTc) => {
+  try {
+    const response = await api.get(`/lecturer/classes/${idLopTc}/students`);
+    return response.data;
+  } catch (error) {
+    return { success: false, message: error.response?.data?.message || 'Không thể tải danh sách sinh viên!' };
+  }
+};
+
+/**
+ * Lấy bảng điểm danh buổi học đã lưu
+ */
+export const getSessionAttendance = async (scheduleId, date) => {
+  try {
+    const response = await api.get(`/lecturer/attendance?scheduleId=${scheduleId}&date=${date}`);
+    return response.data;
+  } catch (error) {
+    return { success: false, message: error.response?.data?.message || 'Không thể tải điểm danh buổi học!' };
+  }
+};
+
+/**
+ * Lưu điểm danh sinh viên buổi học
+ */
+export const submitSessionAttendance = async (payload) => {
+  try {
+    const response = await api.post('/lecturer/attendance', payload);
+    return response.data;
+  } catch (error) {
+    return { success: false, message: error.response?.data?.message || 'Không thể lưu điểm danh!' };
+  }
+};
+
+/**
+ * Lấy danh sách lớp chủ nhiệm (GVCN)
+ */
+export const getHomeroomClasses = async (schoolYear = null) => {
+  try {
+    const url = schoolYear ? `/lecturer/homeroom/classes?schoolYear=${schoolYear}` : '/lecturer/homeroom/classes';
+    const response = await api.get(url);
+    return response.data;
+  } catch (error) {
+    return { success: false, message: error.response?.data?.message || 'Không thể tải danh sách lớp chủ nhiệm!' };
+  }
+};
+
+/**
+ * Theo dõi đăng ký học lớp chủ nhiệm
+ */
+export const getHomeroomRegistration = async (idLop, semester = 1, schoolYear = '2026-2027') => {
+  try {
+    const response = await api.get(`/lecturer/homeroom/${idLop}/course-registration?semester=${semester}&schoolYear=${schoolYear}`);
+    return response.data;
+  } catch (error) {
+    return { success: false, message: error.response?.data?.message || 'Không thể tải dữ liệu đăng ký học!' };
+  }
+};
+
+/**
+ * Theo dõi công nợ học phí lớp chủ nhiệm
+ */
+export const getHomeroomTuition = async (idLop, semester = 1, schoolYear = '2026-2027') => {
+  try {
+    const response = await api.get(`/lecturer/homeroom/${idLop}/tuition?semester=${semester}&schoolYear=${schoolYear}`);
+    return response.data;
+  } catch (error) {
+    return { success: false, message: error.response?.data?.message || 'Không thể tải dữ liệu học phí!' };
+  }
+};
+
+/**
+ * Lấy danh sách thông báo điểm danh từ GV học phần gửi cho GVCN
+ */
+export const getHomeroomAlerts = async () => {
+  try {
+    const response = await api.get('/lecturer/homeroom/alerts');
+    return response.data;
+  } catch (error) {
+    return { success: false, message: error.response?.data?.message || 'Không thể tải thông báo!' };
+  }
+};
+
+/**
+ * Đánh dấu thông báo GVCN đã đọc
+ */
+export const markHomeroomAlertRead = async (id) => {
+  try {
+    const response = await api.put(`/lecturer/homeroom/alerts/${id}/read`);
+    return response.data;
+  } catch (error) {
+    return { success: false };
+  }
+};
+
+/**
+ * Lấy danh sách lớp thanh tra theo ngày bất kỳ
+ */
+export const getInspectorClassesByDate = async (dateStr) => {
+  try {
+    const response = await api.get(`/inspector/attendance/classes?date=${dateStr}`);
+    return response.data;
+  } catch (error) {
+    return { success: false, message: error.response?.data?.message || 'Không thể tải danh sách lớp!' };
+  }
+};
+
+/**
+ * Gửi email báo cáo thanh tra theo yêu cầu
+ */
+export const sendInspectorEmailReport = async (payload) => {
+  try {
+    const response = await api.post('/inspector/reports/send-email', payload);
+    return response.data;
+  } catch (error) {
+    return { success: false, message: error.response?.data?.message || 'Không thể gửi email báo cáo!' };
   }
 };
 
