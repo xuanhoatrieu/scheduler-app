@@ -489,7 +489,7 @@ async function getLecturerSchedule(pool, idCb, hocKy, namHoc) {
       AND mtc.Ky_dang_ky IN (${kyList})
     ORDER BY sk.Thu, sk.Tiet`,
     [
-      { name: 'idCb', type: sql.UniqueIdentifier, value: idCb }
+      { name: 'idCb', type: sql.NVarChar(50), value: String(idCb) }
     ],
     { username: 'lecturer-schedule' }
   );

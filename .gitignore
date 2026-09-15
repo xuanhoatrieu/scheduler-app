@@ -16,6 +16,8 @@ backend/test_deep_explore.js
 # Build outputs
 dist/
 build/
+*.apk
+*.aab
 
 # IDE files
 .idea/

@@ -36,7 +36,9 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response && error.response.status === 401) {
+    // Chỉ kích hoạt popup hết hạn phiên đối với các request đang dùng Token, không áp dụng cho request đăng nhập (/auth/login)
+    const isLoginRequest = error.config && error.config.url && error.config.url.includes('/auth/login');
+    if (error.response && error.response.status === 401 && !isLoginRequest) {
       console.warn('⚠️ [API] Phiên đăng nhập hết hạn (401). Đang đăng xuất...');
       await logout();
       if (sessionExpiredCallback) {

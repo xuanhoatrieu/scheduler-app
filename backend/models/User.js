@@ -10,7 +10,6 @@ const User = sequelize.define('User', {
   username: {
     type: DataTypes.STRING,
     allowNull: false,
-    unique: true,
     validate: {
       notEmpty: true
     }
@@ -46,6 +45,13 @@ const User = sequelize.define('User', {
     defaultValue: null,
     comment: 'ID_sv/ID_cb UUID từ SQL Server TUAF — cache lại để không lookup mỗi lần'
   }
+}, {
+  indexes: [
+    {
+      unique: true,
+      fields: ['username', 'role']
+    }
+  ]
 });
 
 module.exports = User;

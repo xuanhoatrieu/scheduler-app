@@ -97,6 +97,7 @@ export default function LoginScreen({ onLoginSuccess }) {
               style={[styles.roleTab, role === 'student' && styles.activeTab]}
               onPress={() => {
                 setRole('student');
+                setErrorMsg('');
               }}
               activeOpacity={0.8}
             >
@@ -106,13 +107,14 @@ export default function LoginScreen({ onLoginSuccess }) {
                 color={role === 'student' ? Colors.textOnPrimary : Colors.textSecondary}
               />
               <Text style={[styles.roleTabText, role === 'student' && styles.activeTabText]}>
-                Sinh Vien
+                Sinh Viên
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.roleTab, role === 'lecturer' && styles.activeTab]}
               onPress={() => {
                 setRole('lecturer');
+                setErrorMsg('');
               }}
               activeOpacity={0.8}
             >
@@ -122,13 +124,14 @@ export default function LoginScreen({ onLoginSuccess }) {
                 color={role === 'lecturer' ? Colors.textOnPrimary : Colors.textSecondary}
               />
               <Text style={[styles.roleTabText, role === 'lecturer' && styles.activeTabText]}>
-                Giang Vien
+                Giảng Viên
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.roleTab, role === 'inspector' && styles.activeTab]}
               onPress={() => {
                 setRole('inspector');
+                setErrorMsg('');
               }}
               activeOpacity={0.8}
             >
@@ -154,13 +157,23 @@ export default function LoginScreen({ onLoginSuccess }) {
           {/* Username Input */}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>
-              {role === 'student' ? 'Mã sinh viên (MSSV)' : 'Tên tài khoản'}
+              {role === 'student'
+                ? 'Mã sinh viên (MSSV)'
+                : role === 'lecturer'
+                ? 'Tài khoản SSO / Mã cán bộ'
+                : 'Tài khoản Thanh tra hoặc Cán bộ'}
             </Text>
             <View style={styles.inputWrap}>
               <Ionicons name="person-outline" size={18} color={Colors.textMuted} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
-                placeholder={role === 'student' ? 'VD: DTN245748004' : 'VD: xuanhoatrieu'}
+                placeholder={
+                  role === 'student'
+                    ? 'VD: DTN245748004'
+                    : role === 'lecturer'
+                    ? 'VD: xuanhoatrieu hoặc mã CB'
+                    : 'VD: thanhtra hoặc tài khoản cán bộ'
+                }
                 placeholderTextColor={Colors.textMuted}
                 value={username}
                 onChangeText={setUsername}
@@ -172,7 +185,13 @@ export default function LoginScreen({ onLoginSuccess }) {
 
           {/* Password Input */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Mật khẩu cổng thông tin</Text>
+            <Text style={styles.inputLabel}>
+              {role === 'student'
+                ? 'Mật khẩu cổng sinh viên'
+                : role === 'lecturer'
+                ? 'Mật khẩu cổng thông tin / SSO'
+                : 'Mật khẩu thanh tra / SSO'}
+            </Text>
             <View style={styles.inputWrap}>
               <Ionicons name="lock-closed-outline" size={18} color={Colors.textMuted} style={styles.inputIcon} />
               <TextInput

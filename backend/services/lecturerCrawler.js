@@ -1,13 +1,15 @@
+const fs = require('fs');
 const puppeteer = require('puppeteer-core');
 const cheerio = require('cheerio');
 const { parseLecturerSchedule } = require('./parsers/lecturerParser');
+const { authenticateLecturer } = require('./lecturerAuth');
 
 const SSO_URL = 'https://sso.tuaf.edu.vn';
 const GV_URL = 'https://giangvien.tuaf.edu.vn';
-const CHROME_PATH = '/usr/bin/google-chrome';
+const CHROME_PATH = process.env.CHROME_PATH || '/usr/bin/google-chrome';
 
 /**
- * Đăng nhập SSO Giảng viên bằng Puppeteer headless browser.
+ * Đăng nhập SSO Giảng viên bằng Puppeteer headless browser (hoặc fallback lecturerAuth).
  * Cổng GV dùng SPA + OIDC client-side → cần browser thật để xử lý JS.
  *
  * @param {string} username - Tài khoản giảng viên
@@ -17,6 +19,12 @@ const CHROME_PATH = '/usr/bin/google-chrome';
 const loginLecturer = async (username, password) => {
   let browser;
   try {
+    if (!fs.existsSync(CHROME_PATH)) {
+      console.log('ℹ️ [Lecturer] Không tìm thấy Chrome binary, chuyển hướng xác thực qua lecturerAuth...');
+      const authRes = await authenticateLecturer(username, password);
+      return authRes;
+    }
+
     console.log('🔐 [Lecturer] Khởi động Puppeteer headless...');
     browser = await puppeteer.launch({
       executablePath: CHROME_PATH,

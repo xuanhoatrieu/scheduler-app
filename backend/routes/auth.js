@@ -47,34 +47,59 @@ router.post('/login', async (req, res) => {
 
     // === Inspector & Admin: Dang nhap truc tiep, khong crawl portal ===
     if (role === 'inspector' || role === 'admin') {
-      if (!user) {
-        // Tao tai khoan moi cho inspector/admin
+      const { decrypt } = require('../utils/security');
+      const { authenticateLecturer } = require('../services/lecturerAuth');
+
+      let authenticated = false;
+      let inspectorName = username;
+
+      if (user) {
+        // 1. Kiem tra mat khau cuc bo
+        try {
+          const storedPassword = decrypt(user.encryptedPassword);
+          if (safeCompare(storedPassword, password)) {
+            authenticated = true;
+          }
+        } catch (err) {
+          // Loi giai ma hoac key thay doi -> se fallback xuong buoc 2
+        }
+
+        // 2. Neu mat khau cuc bo khong dung hoac loi giai ma, thu xac thuc qua tai khoan can bo TUAF
+        if (!authenticated) {
+          const staffAuth = await authenticateLecturer(username, password).catch(() => null);
+          if (staffAuth && staffAuth.success) {
+            authenticated = true;
+            inspectorName = staffAuth.fullName || user.fullName || username;
+            // Cap nhat lai mat khau ma hoa moi de lan sau login nhanh
+            user.encryptedPassword = encrypt(password);
+            user.fullName = inspectorName;
+            await user.save();
+          }
+        }
+
+        if (!authenticated) {
+          return res.status(401).json({
+            success: false,
+            message: 'Sai mật khẩu tài khoản Thanh tra! Vui lòng kiểm tra lại.'
+          });
+        }
+      } else {
+        // Tai khoan chua co trong PostgreSQL:
+        // Kiem tra xem co phai tai khoan can bo/giang vien TUAF khong
+        const staffAuth = await authenticateLecturer(username, password).catch(() => null);
+        if (staffAuth && staffAuth.success) {
+          inspectorName = staffAuth.fullName || username;
+        }
+
         isNewUser = true;
         user = await User.create({
           username,
           encryptedPassword: encrypt(password),
           role,
-          fullName: username,
+          fullName: inspectorName,
           className: '',
           department: 'Thanh tra'
         });
-      } else {
-        // Kiem tra mat khau: decrypt stored password, so sanh voi input
-        const { decrypt } = require('../utils/security');
-        try {
-          const storedPassword = decrypt(user.encryptedPassword);
-          if (!safeCompare(storedPassword, password)) {
-            return res.status(401).json({
-              success: false,
-              message: 'Sai mat khau! Vui long kiem tra lai.'
-            });
-          }
-        } catch (err) {
-          return res.status(401).json({
-            success: false,
-            message: 'Loi xac thuc mat khau!'
-          });
-        }
       }
 
       const token = jwt.sign(
@@ -109,12 +134,12 @@ router.post('/login', async (req, res) => {
         department: 'TUAF'
       });
     } else {
-      // Cập nhật mật khẩu mới nhất (SV có thể đổi pass portal)
+      // Cập nhật mật khẩu mới nhất (SV/GV có thể đổi pass portal)
       user.encryptedPassword = encrypt(password);
       await user.save();
     }
 
-    // ─── Bước 1: XÁC THỰC qua portal crawler ───
+    // ─── Bước 1: XÁC THỰC qua portal crawler / SQL Server ───
     // (chỉ khi DATA_SOURCE=database, vì CrawlerStrategy tự auth bên trong)
     const dataSource = process.env.DATA_SOURCE || 'database';
     let portalAuth = null;
@@ -124,11 +149,10 @@ router.post('/login', async (req, res) => {
         const { loginStudent } = require('../services/studentCrawler');
         portalAuth = await loginStudent(username, password);
       } else if (role === 'lecturer') {
-        const { loginLecturer } = require('../services/lecturerCrawler');
-        portalAuth = await loginLecturer(username, password);
-        // Đóng browser sau khi auth xong (lecturerCrawler dùng Puppeteer)
-        if (portalAuth.browser) {
-          await portalAuth.browser.close().catch(() => {});
+        const { authenticateLecturer } = require('../services/lecturerAuth');
+        portalAuth = await authenticateLecturer(username, password);
+        if (portalAuth && portalAuth.success && portalAuth.lecturerId) {
+          user.tuafStudentId = portalAuth.lecturerId;
         }
       }
 
@@ -205,10 +229,10 @@ router.post('/login', async (req, res) => {
       await User.destroy({ where: { username, role } });
     }
 
-    // Trả lỗi chung — KHÔNG lộ chi tiết DB/SQL Server
-    const userMessage = error.message.includes('portal') || error.message.includes('không chính xác')
+    // Trả lỗi thân thiện cho người dùng
+    const userMessage = error.message.includes('portal') || error.message.includes('chính xác') || error.message.includes('mật khẩu') || error.message.includes('kết nối')
       ? error.message
-      : 'Dang nhap khong thanh cong. Vui long kiem tra lai tai khoan va mat khau!';
+      : 'Đăng nhập không thành công. Vui lòng kiểm tra lại tài khoản và mật khẩu!';
 
     res.status(401).json({
       success: false,
