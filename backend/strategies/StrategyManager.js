@@ -33,6 +33,14 @@ class StrategyManager {
   }
 
   /**
+   * Lấy DatabaseStrategy để đọc trực tiếp SQL Server
+   * @returns {DatabaseStrategy}
+   */
+  getDatabaseStrategy() {
+    return this.strategies.database;
+  }
+
+  /**
    * Lấy CrawlerStrategy cho fallback khi DatabaseStrategy lỗi
    * @returns {CrawlerStrategy}
    */

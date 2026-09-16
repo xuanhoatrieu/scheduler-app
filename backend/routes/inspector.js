@@ -9,6 +9,98 @@ const User = require('../models/User');
 const { parsePeriodToTime, calculateAttendanceStatus } = require('../utils/periodMapping');
 const { calculateSummary, groupByLecturer } = require('../utils/attendanceStats');
 const { sendInspectorReportEmail } = require('../services/emailReportService');
+const namvietConnector = require('../services/namvietConnector');
+const tuafQueries = require('../services/tuafQueries');
+
+/**
+ * Lấy danh sách lớp học theo ngày cho Thanh tra:
+ * Ưu tiên đọc trực tiếp từ SQL Server TUAF (toàn trường), đồng bộ vào bảng Schedules của PostgreSQL để phục vụ ghi điểm danh.
+ * Fallback sang PostgreSQL nếu mất kết nối SQL Server.
+ */
+async function fetchInspectorSchedulesByDate(dateStr, dayOfWeek, thuSql) {
+  let schedules = [];
+  try {
+    const pool = await namvietConnector.getPool();
+    const rawClasses = await tuafQueries.getInspectorClassesByDate(pool, dateStr, thuSql);
+
+    if (rawClasses && rawClasses.length > 0) {
+      const idLopTcList = rawClasses.map(c => c.idLopTc).filter(Boolean);
+      const existingSchedules = await Schedule.findAll({
+        where: {
+          idLopTc: { [Op.in]: idLopTcList },
+          dayOfWeek
+        }
+      });
+
+      const scheduleMap = new Map();
+      for (const s of existingSchedules) {
+        scheduleMap.set(`${s.idLopTc}_${s.periodText}_${s.room || ''}`, s);
+        if (!scheduleMap.has(`${s.idLopTc}_${s.periodText}`)) {
+          scheduleMap.set(`${s.idLopTc}_${s.periodText}`, s);
+        }
+      }
+
+      const toCreate = [];
+      for (const c of rawClasses) {
+        const pText = `${c.startPeriod}-${c.startPeriod + c.periodCount - 1}`;
+        const keyExact = `${c.idLopTc}_${pText}_${c.room || ''}`;
+        const keyGeneral = `${c.idLopTc}_${pText}`;
+
+        if (!scheduleMap.has(keyExact) && !scheduleMap.has(keyGeneral)) {
+          let uId = '00000000-0000-0000-0000-000000000000';
+          if (c.lecturerId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(c.lecturerId)) {
+            uId = c.lecturerId;
+          }
+          toCreate.push({
+            userId: uId,
+            courseName: c.courseName || '',
+            credits: c.credits || 0,
+            classCode: c.classCode || '',
+            idLopTc: c.idLopTc,
+            studyTime: dateStr,
+            dayOfWeek,
+            room: c.room || '',
+            teacherName: c.teacherName || '',
+            periodText: pText,
+            semester: 'HocKy1',
+            schoolYear: '2026-2027',
+            batch: 'Dothoc1'
+          });
+        }
+      }
+
+      if (toCreate.length > 0) {
+        const created = await Schedule.bulkCreate(toCreate);
+        for (const s of created) {
+          scheduleMap.set(`${s.idLopTc}_${s.periodText}_${s.room || ''}`, s);
+          scheduleMap.set(`${s.idLopTc}_${s.periodText}`, s);
+        }
+      }
+
+      schedules = rawClasses.map(c => {
+        const pText = `${c.startPeriod}-${c.startPeriod + c.periodCount - 1}`;
+        return scheduleMap.get(`${c.idLopTc}_${pText}_${c.room || ''}`) ||
+               scheduleMap.get(`${c.idLopTc}_${pText}`);
+      }).filter(Boolean);
+    }
+  } catch (sqlErr) {
+    console.warn('⚠️ [Inspector] Không thể lấy lịch từ SQL Server, fallback sang PostgreSQL cache:', sqlErr.message);
+  }
+
+  if (schedules.length === 0) {
+    schedules = await Schedule.findAll({
+      where: {
+        dayOfWeek,
+        [Op.and]: [
+          { studyTime: { [Op.like]: `%${dateStr.substring(0, 7)}%` } }
+        ]
+      },
+      order: [['studyTime', 'ASC'], ['classCode', 'ASC']]
+    });
+  }
+
+  return schedules;
+}
 
 /**
  * GET /api/inspector/attendance/today hoặc /api/inspector/attendance/classes?date=YYYY-MM-DD
@@ -18,33 +110,32 @@ const { sendInspectorReportEmail } = require('../services/emailReportService');
 const getClassesHandler = async (req, res) => {
   try {
     let dateStr;
-    let dayOfWeek;
+    let jsDay;
     if (req.query.date && /^\d{4}-\d{2}-\d{2}$/.test(req.query.date)) {
       dateStr = req.query.date;
       const [y, m, d] = dateStr.split('-').map(Number);
       const dt = new Date(y, m - 1, d);
-      dayOfWeek = dt.getDay() + 1;
+      jsDay = dt.getDay();
     } else {
       const vnTime = new Date(Date.now() + 7 * 3600 * 1000);
       const year = vnTime.getUTCFullYear();
       const month = String(vnTime.getUTCMonth() + 1).padStart(2, '0');
       const day = String(vnTime.getUTCDate()).padStart(2, '0');
       dateStr = `${year}-${month}-${day}`;
-      dayOfWeek = vnTime.getUTCDay() + 1;
+      jsDay = vnTime.getUTCDay();
     }
 
-    const schedules = await Schedule.findAll({
-      where: {
-        dayOfWeek,
-        [Op.and]: [
-          { studyTime: { [Op.like]: `%${dateStr.substring(0, 7)}%` } }
-        ]
-      },
-      order: [['studyTime', 'ASC'], ['classCode', 'ASC']]
-    });
+    const dayOfWeek = jsDay === 0 ? 8 : jsDay + 1;
+    const thuSql = jsDay === 0 ? 6 : jsDay - 1;
 
+    const schedules = await fetchInspectorSchedulesByDate(dateStr, dayOfWeek, thuSql);
+
+    const scheduleIds = schedules.map(s => s.id);
     const attendance = await Attendance.findAll({
-      where: { date: dateStr }
+      where: {
+        date: dateStr,
+        scheduleId: { [Op.in]: scheduleIds }
+      }
     });
 
     const attendanceMap = {};
@@ -303,19 +394,18 @@ router.get('/dashboard/today', authMiddleware, requireRole('inspector', 'admin')
     const month = String(vnTime.getUTCMonth() + 1).padStart(2, '0');
     const day = String(vnTime.getUTCDate()).padStart(2, '0');
     const dateStr = `${year}-${month}-${day}`;
-    const dayOfWeek = vnTime.getUTCDay() + 1;
+    const jsDay = vnTime.getUTCDay();
+    const dayOfWeek = jsDay === 0 ? 8 : jsDay + 1;
+    const thuSql = jsDay === 0 ? 6 : jsDay - 1;
 
-    const schedules = await Schedule.findAll({
-      where: {
-        dayOfWeek,
-        [Op.and]: [
-          { studyTime: { [Op.like]: `%${dateStr.substring(0, 7)}%` } }
-        ]
-      }
-    });
+    const schedules = await fetchInspectorSchedulesByDate(dateStr, dayOfWeek, thuSql);
 
+    const scheduleIds = schedules.map(s => s.id);
     const attendance = await Attendance.findAll({
-      where: { date: dateStr }
+      where: {
+        date: dateStr,
+        scheduleId: { [Op.in]: scheduleIds }
+      }
     });
 
     const attendanceMap = {};
@@ -328,6 +418,7 @@ router.get('/dashboard/today', authMiddleware, requireRole('inspector', 'admin')
       const periodTimes = parsePeriodToTime(schedule.periodText);
 
       return {
+        scheduleId: schedule.id,
         courseName: schedule.courseName,
         classCode: schedule.classCode,
         teacherName: schedule.teacherName,

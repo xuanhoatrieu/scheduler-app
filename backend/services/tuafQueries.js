@@ -1138,6 +1138,53 @@ async function getMajorsByCohort(pool, cohort) {
   }
 }
 
+/**
+ * Lấy danh sách toàn bộ các lớp học phần diễn ra trong ngày trên toàn trường (phục vụ Thanh tra đào tạo)
+ * @param {sql.ConnectionPool} pool
+ * @param {string} dateStr - 'YYYY-MM-DD'
+ * @param {number} thuSql - 0=Thứ 2 .. 6=Chủ Nhật
+ */
+async function getInspectorClassesByDate(pool, dateStr, thuSql) {
+  try {
+    const result = await safeQuery(pool,
+      `SELECT
+        sk.ID AS scheduleEventId,
+        sk.Thu,
+        sk.Tiet AS startPeriod,
+        sk.So_tiet AS periodCount,
+        sk.Tu_ngay AS fromDate,
+        sk.Den_ngay AS toDate,
+        mh.Ky_hieu AS courseCode,
+        mh.Ten_mon AS courseName,
+        mtc.So_tin_chi AS credits,
+        COALESCE(ph.So_phong, '') AS room,
+        ltc.ID_lop_tc AS idLopTc,
+        ltc.Ten_lop_hp AS classCode,
+        COALESCE(cb.Ho_ten, 'Chưa phân công') AS teacherName,
+        COALESCE(sk.ID_cb, ltc.ID_cb) AS lecturerId
+      FROM PLAN_SukiensTinChi_TC sk
+      JOIN PLAN_LopTinChi_TC ltc ON sk.ID_lop_tc = ltc.ID_lop_tc
+      JOIN PLAN_MonTinChi_TC mtc ON ltc.ID_mon_tc = mtc.ID_mon_tc
+      JOIN dmMonHoc mh ON mtc.ID_mon = mh.ID_mon
+      LEFT JOIN PLAN_PhongHoc ph ON sk.ID_phong = ph.ID_phong
+      LEFT JOIN HR_LyLich cb ON cb.ID_cb = COALESCE(sk.ID_cb, ltc.ID_cb)
+      WHERE sk.Thu = @thuSql
+        AND sk.Tu_ngay <= @targetDate AND sk.Den_ngay >= @targetDate
+        AND ISNULL(ltc.Huy_lop, 0) = 0
+      ORDER BY sk.Tiet ASC, ltc.Ten_lop_hp ASC`,
+      [
+        { name: 'thuSql', type: sql.Int, value: thuSql },
+        { name: 'targetDate', type: sql.Date, value: dateStr }
+      ],
+      { username: 'inspector-classes-by-date' }
+    );
+    return result.recordset;
+  } catch (e) {
+    console.error('❌ [tuafQueries] getInspectorClassesByDate error:', e.message);
+    return [];
+  }
+}
+
 module.exports = {
   findStudentId,
   getStudentInfo,
@@ -1171,5 +1218,6 @@ module.exports = {
   getClassStudents,
   getHomeroomClasses,
   getHomeroomStudentsRegistration,
-  getHomeroomStudentsFinance
+  getHomeroomStudentsFinance,
+  getInspectorClassesByDate
 };
