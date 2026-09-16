@@ -70,6 +70,26 @@ export const login = async (username, password, role) => {
 };
 
 /**
+ * Chuyển đổi vai trò nhanh giữa Giảng viên và Thanh tra (Dual Role)
+ */
+export const switchRole = async (targetRole) => {
+  try {
+    const response = await api.post('/auth/switch-role', { targetRole });
+    const { token, user } = response.data;
+
+    await SecureStore.setItemAsync('jwt_token', token);
+    await AsyncStorage.setItem('user_profile', JSON.stringify(user));
+    await AsyncStorage.setItem('saved_role', user.role);
+
+    return { success: true, user };
+  } catch (error) {
+    console.error('API switchRole error:', error.response?.data || error.message);
+    const msg = error.response?.data?.message || 'Lỗi khi chuyển đổi vai trò!';
+    return { success: false, message: msg };
+  }
+};
+
+/**
  * Lấy danh sách các học kỳ có dữ liệu hoặc đang hoạt động
  */
 export const getScheduleSemesters = async () => {

@@ -124,6 +124,56 @@ const DEFAULT_CONFIGS = [
     description: 'Biểu thức Cron quét tự động (Mặc định "0 3 * * *" = 3:00 sáng hàng ngày)',
     defaultValue: '0 3 * * *',
     isSecret: false
+  },
+
+  // 6. Cấu hình Email Báo Cáo & SMTP Gateway
+  {
+    key: 'SMTP_HOST',
+    category: 'email',
+    label: 'Máy chủ SMTP (SMTP Host)',
+    description: 'Địa chỉ máy chủ gửi thư (Mặc định: smtp.gmail.com cho Gmail / Google Workspace)',
+    defaultValue: 'smtp.gmail.com',
+    isSecret: false
+  },
+  {
+    key: 'SMTP_PORT',
+    category: 'email',
+    label: 'Cổng SMTP (SMTP Port)',
+    description: 'Cổng kết nối gửi thư (465 cho SSL, hoặc 587 cho TLS/STARTTLS)',
+    defaultValue: '465',
+    isSecret: false
+  },
+  {
+    key: 'SMTP_USER',
+    category: 'email',
+    label: 'Tài Khoản Email Gửi (SMTP User)',
+    description: 'Địa chỉ email dùng để gửi thư thông báo và báo cáo (VD: thanhtra.tuaf@gmail.com hoặc Google Workspace)',
+    defaultValue: '',
+    isSecret: false
+  },
+  {
+    key: 'SMTP_PASS',
+    category: 'email',
+    label: 'Mật Khẩu Ứng Dụng Email (SMTP App Password)',
+    description: 'Mật khẩu ứng dụng 16 ký tự tạo từ tài khoản Google (Bảo mật -> Xác minh 2 bước -> Mật khẩu ứng dụng)',
+    defaultValue: '',
+    isSecret: true
+  },
+  {
+    key: 'SMTP_FROM_NAME',
+    category: 'email',
+    label: 'Tên Người Gửi Hiển Thị (From Name)',
+    description: 'Tên cơ quan/đơn vị hiển thị trên hộp thư đến của người nhận',
+    defaultValue: 'Thanh Tra Đào Tạo TUAF',
+    isSecret: false
+  },
+  {
+    key: 'INSPECTOR_REPORT_EMAILS',
+    category: 'email',
+    label: 'Danh Sách Email Nhận Báo Cáo (BGH & Lãnh Đạo)',
+    description: 'Các địa chỉ email nhận báo cáo tự động, phân cách bằng dấu phẩy (VD: hieutruong@tuaf.edu.vn, bgh@tuaf.edu.vn)',
+    defaultValue: '',
+    isSecret: false
   }
 ];
 

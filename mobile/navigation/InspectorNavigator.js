@@ -16,7 +16,7 @@ const TAB_ICONS = {
   Profile: { active: 'person-circle', inactive: 'person-circle-outline' },
 };
 
-export default function InspectorNavigator({ user, onLogout }) {
+export default function InspectorNavigator({ user, onLogout, onSwitchRole }) {
   return (
     <NavigationContainer>
       <Tab.Navigator
@@ -40,14 +40,14 @@ export default function InspectorNavigator({ user, onLogout }) {
           tabBarItemStyle: styles.tabBarItem,
         })}
       >
-        <Tab.Screen name="Attendance" options={{ tabBarLabel: 'Diem Danh' }}>
-          {(props) => <AttendanceScreen {...props} user={user} />}
+        <Tab.Screen name="Attendance" options={{ tabBarLabel: 'Điểm Danh' }}>
+          {(props) => <AttendanceScreen {...props} user={user} onSwitchRole={onSwitchRole} />}
         </Tab.Screen>
-        <Tab.Screen name="Dashboard" options={{ tabBarLabel: 'Bao Cao' }}>
-          {(props) => <InspectorDashboardScreen {...props} user={user} />}
+        <Tab.Screen name="Dashboard" options={{ tabBarLabel: 'Báo Cáo' }}>
+          {(props) => <InspectorDashboardScreen {...props} user={user} onSwitchRole={onSwitchRole} />}
         </Tab.Screen>
-        <Tab.Screen name="Profile" options={{ tabBarLabel: 'Ho So' }}>
-          {(props) => <ProfileScreen {...props} user={user} onLogout={onLogout} />}
+        <Tab.Screen name="Profile" options={{ tabBarLabel: 'Hồ Sơ' }}>
+          {(props) => <ProfileScreen {...props} user={user} onLogout={onLogout} onSwitchRole={onSwitchRole} />}
         </Tab.Screen>
       </Tab.Navigator>
     </NavigationContainer>

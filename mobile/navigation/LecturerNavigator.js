@@ -20,7 +20,7 @@ const TAB_ICONS = {
   Profile: { active: 'person-circle', inactive: 'person-circle-outline' },
 };
 
-export default function LecturerNavigator({ user, onLogout }) {
+export default function LecturerNavigator({ user, onLogout, onSwitchRole }) {
   return (
     <NavigationContainer>
       <Tab.Navigator
@@ -48,7 +48,7 @@ export default function LecturerNavigator({ user, onLogout }) {
           name="TeachingSchedule"
           options={{ tabBarLabel: 'Lịch Dạy' }}
         >
-          {(props) => <TeachingScheduleScreen {...props} user={user} />}
+          {(props) => <TeachingScheduleScreen {...props} user={user} onSwitchRole={onSwitchRole} />}
         </Tab.Screen>
         <Tab.Screen
           name="ClassList"
@@ -72,7 +72,7 @@ export default function LecturerNavigator({ user, onLogout }) {
           name="Profile"
           options={{ tabBarLabel: 'Hồ Sơ' }}
         >
-          {(props) => <ProfileScreen {...props} user={user} onLogout={onLogout} />}
+          {(props) => <ProfileScreen {...props} user={user} onLogout={onLogout} onSwitchRole={onSwitchRole} />}
         </Tab.Screen>
       </Tab.Navigator>
     </NavigationContainer>

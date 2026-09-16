@@ -285,19 +285,28 @@ class DatabaseStrategy extends ScheduleStrategy {
       // SQL Server TUAF: 0=Thứ 2, 1=Thứ 3, 2=Thứ 4, 3=Thứ 5, 4=Thứ 6, 5=Thứ 7, 6=Chủ Nhật, -1=Chưa xếp
       const dayOfWeek = r.Thu != null && r.Thu >= 0 ? (r.Thu === 6 ? 8 : r.Thu + 2) : 0;
 
+      const dateRangeStr = this._formatDateRange(r.Tu_ngay, r.Den_ngay);
+
+      let batchName = 'Đợt 1';
+      if (r.Tu_tuan != null && r.Tu_tuan > 0) {
+        if (r.Tu_tuan <= 6) batchName = 'Giai đoạn 1';
+        else if (r.Tu_tuan <= 11) batchName = 'Giai đoạn 2';
+        else batchName = 'Giai đoạn 3';
+      }
+
       return {
         courseName: r.courseName || '',
         credits: r.credits || 0,
         classCode: r.Ten_lop_hp || r.courseCode || '',
         idLopTc: r.ID_lop_tc || null,
-        studyTime: this._formatDateRange(r.Tu_ngay, r.Den_ngay),
+        studyTime: dateRangeStr,
         dayOfWeek,
-        room: r.Phong || '',
+        room: (r.Phong || '').trim(),
         teacherName: r.teacherName || '',
         periodText,
         semester,
         schoolYear,
-        batch: 'Dothoc1'
+        batch: batchName
       };
     });
   }

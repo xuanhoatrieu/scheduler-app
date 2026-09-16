@@ -26,7 +26,7 @@ const STATUS_CONFIG = {
   rescheduled_permitted: { label: 'Đổi giờ (Có phép)', color: '#0277bd', bg: '#e1f5fe' },
   rescheduled_unpermitted: { label: 'Tự ý đổi giờ', color: '#c62828', bg: '#ffebee' },
   substitute: { label: 'Dạy thay', color: '#5c6bc0', bg: '#ede7f6' },
-  absent: { label: 'Vắng mặt', color: '#c62828', bg: '#ffebee' },
+  absent: { label: 'Vắng / Bỏ tiết', color: '#c62828', bg: '#ffebee' },
   exempt: { label: 'Được miễn', color: '#00838f', bg: '#e0f7fa' },
   pending: { label: 'Chưa ghi', color: Colors.textMuted, bg: '#f5f5f5' },
 };
@@ -203,6 +203,8 @@ export default function InspectorDashboardScreen({ user }) {
             try {
               const res = await sendInspectorEmailReport({
                 periodType: selectedPeriod,
+                from: reportData?.from,
+                to: reportData?.to,
               });
               if (res.success) {
                 Alert.alert('Thành công', `Đã gửi báo cáo ${label.toLowerCase()} thành công!`);
@@ -240,8 +242,9 @@ export default function InspectorDashboardScreen({ user }) {
     { name: 'Đúng giờ', value: todaySummary.onTime || 0, color: '#2e7d32' },
     { name: 'Đi muộn', value: todaySummary.late || 0, color: '#e65100' },
     { name: 'Về sớm', value: todaySummary.earlyLeave || 0, color: '#f57c00' },
+    { name: 'Bỏ tiết', value: todaySummary.absent || 0, color: '#c62828' },
     { name: 'Đổi giờ (CP)', value: todaySummary.rescheduledPermitted || 0, color: '#0277bd' },
-    { name: 'Tự ý đổi giờ', value: todaySummary.rescheduledUnpermitted || 0, color: '#c62828' },
+    { name: 'Tự ý đổi', value: todaySummary.rescheduledUnpermitted || 0, color: '#880e4f' },
     { name: 'Dạy thay', value: todaySummary.substitute || 0, color: '#5c6bc0' },
     { name: 'Chưa ghi', value: todaySummary.pending || 0, color: Colors.textMuted },
   ];
@@ -301,20 +304,26 @@ export default function InspectorDashboardScreen({ user }) {
             <StatCircle value={todaySummary.totalClasses || 0} color={Colors.primary} label="Tổng lớp" />
             <StatCircle value={todaySummary.onTime || 0} color="#2e7d32" label="Đúng giờ" />
             <StatCircle value={(todaySummary.late || 0) + (todaySummary.earlyLeave || 0)} color="#e65100" label="Muộn/Sớm" />
-            <StatCircle value={todaySummary.checkedIn || 0} color={Colors.accentBlue} label="Đã kiểm tra" />
+            <StatCircle value={todaySummary.absent || 0} color="#c62828" label="Bỏ tiết" />
           </View>
 
           {/* Dải thông tin vi phạm / đổi giờ */}
           <View style={styles.rescheduledRow}>
+            <View style={[styles.rescheduledBadge, { backgroundColor: '#ffebee' }]}>
+              <Ionicons name="close-circle" size={14} color="#c62828" />
+              <Text style={[styles.rescheduledBadgeText, { color: '#c62828' }]}>
+                Bỏ tiết: {todaySummary.absent || 0}
+              </Text>
+            </View>
             <View style={[styles.rescheduledBadge, { backgroundColor: '#e1f5fe' }]}>
               <Ionicons name="swap-horizontal" size={14} color="#0277bd" />
               <Text style={[styles.rescheduledBadgeText, { color: '#0277bd' }]}>
                 Đổi giờ có phép: {todaySummary.rescheduledPermitted || 0}
               </Text>
             </View>
-            <View style={[styles.rescheduledBadge, { backgroundColor: '#ffebee' }]}>
-              <Ionicons name="alert-circle" size={14} color="#c62828" />
-              <Text style={[styles.rescheduledBadgeText, { color: '#c62828' }]}>
+            <View style={[styles.rescheduledBadge, { backgroundColor: '#fff3e0' }]}>
+              <Ionicons name="alert-circle" size={14} color="#e65100" />
+              <Text style={[styles.rescheduledBadgeText, { color: '#e65100' }]}>
                 Tự ý đổi: {todaySummary.rescheduledUnpermitted || 0}
               </Text>
             </View>
@@ -480,6 +489,10 @@ export default function InspectorDashboardScreen({ user }) {
               <View style={styles.reportStatItem}>
                 <Text style={[styles.reportStatValue, { color: '#f57c00' }]}>{reportSummary.earlyLeavePercent || 0}%</Text>
                 <Text style={styles.reportStatLabel}>Về sớm</Text>
+              </View>
+              <View style={styles.reportStatItem}>
+                <Text style={[styles.reportStatValue, { color: '#c62828' }]}>{reportSummary.absentPercent || 0}%</Text>
+                <Text style={styles.reportStatLabel}>Bỏ tiết ({reportSummary.absent || 0})</Text>
               </View>
             </View>
             {reportSummary.avgLateMinutes > 0 && (

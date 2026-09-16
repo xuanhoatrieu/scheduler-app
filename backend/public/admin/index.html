@@ -1376,6 +1376,68 @@ label {
               </div>
             </div>
           </div>
+
+          <!-- CARD 5: CẤU HÌNH EMAIL BÁO CÁO & SMTP -->
+          <div class="card glass-card" style="grid-column: 1 / -1;">
+            <div class="card-header">
+              <div class="card-title">
+                <span class="icon">📧</span>
+                <h3>Cấu Hình Email Báo Cáo & SMTP Gateway (Google Workspace / Gmail)</h3>
+              </div>
+              <button type="button" class="btn btn-sm btn-primary btn-test" data-target="email">
+                ⚡ Gửi Email Thử Nghiệm
+              </button>
+            </div>
+            <div class="card-body">
+              <div class="alert-banner" style="margin-bottom: 16px; background: rgba(46, 125, 50, 0.08); border-color: rgba(46, 125, 50, 0.3);">
+                <div class="alert-icon">💡</div>
+                <div class="alert-content" style="font-size: 13px;">
+                  <strong>Hướng dẫn kết nối Gmail / Google Workspace:</strong> Nhập địa chỉ email trường (ví dụ: <code>thongbao@tuaf.edu.vn</code>). Với tài khoản Google, hãy bật <em>Xác minh 2 bước</em> và tạo <em>Mật khẩu ứng dụng (App Password)</em> gồm 16 ký tự để điền vào ô Mật khẩu bên dưới.
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group col-8">
+                  <label for="cfg_SMTP_HOST">Máy Chủ SMTP (SMTP Host)</label>
+                  <input type="text" id="cfg_SMTP_HOST" name="SMTP_HOST" class="form-control code-font" placeholder="smtp.gmail.com">
+                  <span class="form-hint">Mặc định: <code>smtp.gmail.com</code> (dùng cho cả Gmail và Google Workspace).</span>
+                </div>
+                <div class="form-group col-4">
+                  <label for="cfg_SMTP_PORT">Cổng SMTP (Port)</label>
+                  <input type="text" id="cfg_SMTP_PORT" name="SMTP_PORT" class="form-control code-font" placeholder="465">
+                  <span class="form-hint"><code>465</code> (SSL bảo mật) hoặc <code>587</code> (STARTTLS).</span>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group col-6">
+                  <label for="cfg_SMTP_USER">Tài Khoản Email Gửi (SMTP User)</label>
+                  <input type="email" id="cfg_SMTP_USER" name="SMTP_USER" class="form-control code-font" placeholder="thanhtra@tuaf.edu.vn">
+                  <span class="form-hint">Địa chỉ email trường hoặc Gmail dùng làm trạm phát thư.</span>
+                </div>
+                <div class="form-group col-6">
+                  <label for="cfg_SMTP_PASS">Mật Khẩu Ứng Dụng (App Password)</label>
+                  <div class="input-password-wrapper">
+                    <input type="password" id="cfg_SMTP_PASS" name="SMTP_PASS" class="form-control code-font" autocomplete="off" placeholder="••••••••••••••••">
+                    <button type="button" class="btn-toggle-mask">👁️</button>
+                  </div>
+                  <span class="form-hint">Mật khẩu ứng dụng 16 ký tự của Google (không dùng mật khẩu đăng nhập chính).</span>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="cfg_SMTP_FROM_NAME">Tên Người Gửi Hiển Thị (From Name)</label>
+                <input type="text" id="cfg_SMTP_FROM_NAME" name="SMTP_FROM_NAME" class="form-control" placeholder="Thanh Tra Đào Tạo TUAF">
+                <span class="form-hint">Tên đơn vị hiển thị trong hộp thư đến của Lãnh đạo Nhà trường.</span>
+              </div>
+
+              <div class="form-group">
+                <label for="cfg_INSPECTOR_REPORT_EMAILS">Danh Sách Email Nhận Báo Cáo (Ban Giám Hiệu & Lãnh Đạo)</label>
+                <textarea id="cfg_INSPECTOR_REPORT_EMAILS" name="INSPECTOR_REPORT_EMAILS" class="form-control code-font" rows="3" placeholder="hieutruong@tuaf.edu.vn, bgh@tuaf.edu.vn, phongdaotao@tuaf.edu.vn"></textarea>
+                <span class="form-hint">Nhập các địa chỉ email nhận báo cáo tự động (18:00 hàng ngày, Thứ Hai đầu tuần và ngày 01 đầu tháng). Phân cách các email bằng <strong>dấu phẩy (,)</strong>.</span>
+              </div>
+            </div>
+          </div>
         </form>
 
         <!-- Sticky Save Bar -->
@@ -1441,6 +1503,17 @@ label {
             <div class="node-detail code-font" id="node-portals-detail">sinhvien / giangvien / sso</div>
             <div class="node-footer">
               <button class="btn btn-xs btn-outline btn-test" data-target="portals">Kiểm tra lại</button>
+            </div>
+          </div>
+
+          <div class="node-card glass-card" id="node-email">
+            <div class="node-header">
+              <span class="node-title">Email Gateway (SMTP)</span>
+              <span class="node-badge checking">Checking...</span>
+            </div>
+            <div class="node-detail code-font" id="node-email-detail">smtp.gmail.com:465</div>
+            <div class="node-footer">
+              <button class="btn btn-xs btn-outline btn-test" data-target="email">Kiểm tra & Gửi thử</button>
             </div>
           </div>
         </div>
@@ -2275,6 +2348,38 @@ async function runTestConnection(target, buttonEl) {
     if (truong) overrides.NAMVIET_MA_TRUONG = truong;
     if (usr) overrides.NAMVIET_USERNAME = usr;
     if (key && !key.includes('•')) overrides.NAMVIET_SECRET_KEY = key;
+  } else if (target === 'email') {
+    const host = document.getElementById('cfg_SMTP_HOST')?.value;
+    const port = document.getElementById('cfg_SMTP_PORT')?.value;
+    const user = document.getElementById('cfg_SMTP_USER')?.value;
+    const pass = document.getElementById('cfg_SMTP_PASS')?.value;
+    const fromName = document.getElementById('cfg_SMTP_FROM_NAME')?.value;
+    const reportEmails = document.getElementById('cfg_INSPECTOR_REPORT_EMAILS')?.value;
+    if (host) overrides.SMTP_HOST = host;
+    if (port) overrides.SMTP_PORT = port;
+    if (user) overrides.SMTP_USER = user;
+    if (pass && !pass.includes('•')) overrides.SMTP_PASS = pass;
+    if (fromName) overrides.SMTP_FROM_NAME = fromName;
+    if (reportEmails) overrides.INSPECTOR_REPORT_EMAILS = reportEmails;
+
+    let defaultRecipient = '';
+    if (reportEmails) {
+      const parts = reportEmails.split(',').map(e => e.trim()).filter(Boolean);
+      if (parts.length > 0) defaultRecipient = parts[0];
+    }
+    if (!defaultRecipient && user) defaultRecipient = user;
+
+    const testTo = prompt('Nhập địa chỉ email người nhận thư thử nghiệm:', defaultRecipient);
+    if (testTo === null) {
+      if (buttonEl) {
+        buttonEl.disabled = false;
+        buttonEl.textContent = originalText;
+      }
+      return;
+    }
+    if (testTo.trim()) {
+      overrides.TEST_RECIPIENT_EMAIL = testTo.trim();
+    }
   }
 
   try {
@@ -2322,6 +2427,13 @@ function updateNodeBadge(target, isOnline, latencyMs) {
       badge.textContent = 'Offline';
     }
   }
+
+  if (target === 'email') {
+    const detail = document.getElementById('node-email-detail');
+    const host = document.getElementById('cfg_SMTP_HOST')?.value || 'smtp.gmail.com';
+    const port = document.getElementById('cfg_SMTP_PORT')?.value || '465';
+    if (detail) detail.textContent = `${host}:${port}`;
+  }
 }
 
 /* ── 4. Sức khỏe & Giám sát (Health Tab) ── */
@@ -2351,7 +2463,7 @@ async function loadHealthData() {
 }
 
 async function checkAllNodes() {
-  const nodes = ['sqlserver', 'namviet', 'postgres', 'portals'];
+  const nodes = ['sqlserver', 'namviet', 'postgres', 'portals', 'email'];
 
   nodes.forEach(target => {
     const card = document.getElementById(`node-${target}`);

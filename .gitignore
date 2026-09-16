@@ -38,3 +38,4 @@ harness.db-wal
 harness.db-shm
 harness.db-journal
 
+*.log

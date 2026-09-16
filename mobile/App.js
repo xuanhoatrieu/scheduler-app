@@ -51,6 +51,23 @@ export default function App() {
     setUser(userProfile);
   };
 
+  const handleSwitchRole = async (targetRole) => {
+    setLoading(true);
+    try {
+      const { switchRole } = require('./services/api');
+      const res = await switchRole(targetRole);
+      if (res.success) {
+        setUser(res.user);
+      } else {
+        Alert.alert('Thông báo', res.message || 'Không thể chuyển đổi vai trò!');
+      }
+    } catch (err) {
+      Alert.alert('Lỗi', err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleLogout = async () => {
     setLoading(true);
     try {
@@ -76,9 +93,9 @@ export default function App() {
       <StatusBar style="dark" />
       {user ? (
         user.role === 'inspector' || user.role === 'admin' ? (
-          <InspectorNavigator user={user} onLogout={handleLogout} />
+          <InspectorNavigator user={user} onLogout={handleLogout} onSwitchRole={handleSwitchRole} />
         ) : user.role === 'lecturer' ? (
-          <LecturerNavigator user={user} onLogout={handleLogout} />
+          <LecturerNavigator user={user} onLogout={handleLogout} onSwitchRole={handleSwitchRole} />
         ) : (
           <AppNavigator user={user} onLogout={handleLogout} />
         )

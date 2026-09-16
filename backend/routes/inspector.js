@@ -38,15 +38,25 @@ async function fetchInspectorSchedulesByDate(dateStr, dayOfWeek, thuSql) {
         if (!scheduleMap.has(`${s.idLopTc}_${s.periodText}`)) {
           scheduleMap.set(`${s.idLopTc}_${s.periodText}`, s);
         }
+        if (!scheduleMap.has(`${s.idLopTc}`)) {
+          scheduleMap.set(`${s.idLopTc}`, s);
+        }
       }
 
       const toCreate = [];
-      for (const c of rawClasses) {
-        const pText = `${c.startPeriod}-${c.startPeriod + c.periodCount - 1}`;
-        const keyExact = `${c.idLopTc}_${pText}_${c.room || ''}`;
-        const keyGeneral = `${c.idLopTc}_${pText}`;
+      const toUpdate = [];
 
-        if (!scheduleMap.has(keyExact) && !scheduleMap.has(keyGeneral)) {
+      for (const c of rawClasses) {
+        const startP = (c.startPeriod != null && c.startPeriod >= 0) ? c.startPeriod + 1 : 1;
+        const endP = startP + (c.periodCount || 1) - 1;
+        const pText = `${startP}-${endP}`;
+        const cleanRoom = (c.room || '').replace(/[\r\n]+/g, '').trim();
+
+        const keyExact = `${c.idLopTc}_${pText}_${cleanRoom}`;
+        const keyGeneral = `${c.idLopTc}_${pText}`;
+        const existing = scheduleMap.get(keyExact) || scheduleMap.get(keyGeneral) || scheduleMap.get(`${c.idLopTc}`);
+
+        if (!existing) {
           let uId = '00000000-0000-0000-0000-000000000000';
           if (c.lecturerId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(c.lecturerId)) {
             uId = c.lecturerId;
@@ -59,13 +69,30 @@ async function fetchInspectorSchedulesByDate(dateStr, dayOfWeek, thuSql) {
             idLopTc: c.idLopTc,
             studyTime: dateStr,
             dayOfWeek,
-            room: c.room || '',
+            room: cleanRoom,
             teacherName: c.teacherName || '',
             periodText: pText,
             semester: 'HocKy1',
             schoolYear: '2026-2027',
             batch: 'Dothoc1'
           });
+        } else {
+          let needsUpdate = false;
+          if (cleanRoom && existing.room !== cleanRoom) {
+            existing.room = cleanRoom;
+            needsUpdate = true;
+          }
+          if (pText && existing.periodText !== pText) {
+            existing.periodText = pText;
+            needsUpdate = true;
+          }
+          if (c.teacherName && existing.teacherName !== c.teacherName) {
+            existing.teacherName = c.teacherName;
+            needsUpdate = true;
+          }
+          if (needsUpdate) {
+            toUpdate.push(existing.save());
+          }
         }
       }
 
@@ -74,13 +101,31 @@ async function fetchInspectorSchedulesByDate(dateStr, dayOfWeek, thuSql) {
         for (const s of created) {
           scheduleMap.set(`${s.idLopTc}_${s.periodText}_${s.room || ''}`, s);
           scheduleMap.set(`${s.idLopTc}_${s.periodText}`, s);
+          scheduleMap.set(`${s.idLopTc}`, s);
         }
       }
 
+      if (toUpdate.length > 0) {
+        await Promise.allSettled(toUpdate);
+      }
+
       schedules = rawClasses.map(c => {
-        const pText = `${c.startPeriod}-${c.startPeriod + c.periodCount - 1}`;
-        return scheduleMap.get(`${c.idLopTc}_${pText}_${c.room || ''}`) ||
-               scheduleMap.get(`${c.idLopTc}_${pText}`);
+        const startP = (c.startPeriod != null && c.startPeriod >= 0) ? c.startPeriod + 1 : 1;
+        const endP = startP + (c.periodCount || 1) - 1;
+        const pText = `${startP}-${endP}`;
+        const cleanRoom = (c.room || '').replace(/[\r\n]+/g, '').trim();
+
+        const s = scheduleMap.get(`${c.idLopTc}_${pText}_${cleanRoom}`) ||
+                  scheduleMap.get(`${c.idLopTc}_${pText}`) ||
+                  scheduleMap.get(`${c.idLopTc}`);
+
+        if (s) {
+          if (cleanRoom) s.room = cleanRoom;
+          if (pText) s.periodText = pText;
+          if (c.teacherName) s.teacherName = c.teacherName;
+          return s;
+        }
+        return null;
       }).filter(Boolean);
     }
   } catch (sqlErr) {
@@ -227,7 +272,10 @@ router.post('/attendance', authMiddleware, requireRole('inspector', 'admin'), as
     let finalLate = explicitLate != null ? explicitLate : 0;
     let finalEarly = explicitEarly != null ? explicitEarly : 0;
 
-    if (!finalStatus && (checkInTime || checkOutTime)) {
+    if (finalStatus === 'absent') {
+      finalLate = 0;
+      finalEarly = 0;
+    } else if (!finalStatus && (checkInTime || checkOutTime)) {
       const calculated = calculateAttendanceStatus(
         checkInTime, checkOutTime, scheduledStart, scheduledEnd
       );
@@ -244,15 +292,15 @@ router.post('/attendance', authMiddleware, requireRole('inspector', 'admin'), as
 
     let attendance;
     if (existing) {
-      existing.checkInTime = checkInTime !== undefined ? checkInTime : existing.checkInTime;
-      existing.checkOutTime = checkOutTime !== undefined ? checkOutTime : existing.checkOutTime;
+      existing.checkInTime = finalStatus === 'absent' ? null : (checkInTime !== undefined ? checkInTime : existing.checkInTime);
+      existing.checkOutTime = finalStatus === 'absent' ? null : (checkOutTime !== undefined ? checkOutTime : existing.checkOutTime);
       existing.status = finalStatus;
       existing.lateMinutes = finalLate;
       existing.earlyMinutes = finalEarly;
       existing.hasPermission = hasPermission !== undefined ? hasPermission : existing.hasPermission;
       existing.rescheduledDate = rescheduledDate !== undefined ? rescheduledDate : existing.rescheduledDate;
       existing.rescheduledReason = rescheduledReason !== undefined ? rescheduledReason : existing.rescheduledReason;
-      existing.substituteTeacher = substituteTeacher !== undefined ? substituteTeacher : existing.substituteTeacher;
+      substituteTeacher !== undefined ? existing.substituteTeacher = substituteTeacher : null;
       existing.note = note !== undefined ? note : existing.note;
       existing.inspectorId = req.user.id;
       await existing.save();
@@ -263,8 +311,8 @@ router.post('/attendance', authMiddleware, requireRole('inspector', 'admin'), as
         scheduleId,
         lecturerId: schedule.userId,
         inspectorId: req.user.id,
-        checkInTime: checkInTime || null,
-        checkOutTime: checkOutTime || null,
+        checkInTime: finalStatus === 'absent' ? null : (checkInTime || null),
+        checkOutTime: finalStatus === 'absent' ? null : (checkOutTime || null),
         scheduledStart,
         scheduledEnd,
         status: finalStatus,

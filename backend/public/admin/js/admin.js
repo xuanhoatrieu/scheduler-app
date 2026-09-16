@@ -221,6 +221,38 @@ async function runTestConnection(target, buttonEl) {
     if (truong) overrides.NAMVIET_MA_TRUONG = truong;
     if (usr) overrides.NAMVIET_USERNAME = usr;
     if (key && !key.includes('•')) overrides.NAMVIET_SECRET_KEY = key;
+  } else if (target === 'email') {
+    const host = document.getElementById('cfg_SMTP_HOST')?.value;
+    const port = document.getElementById('cfg_SMTP_PORT')?.value;
+    const user = document.getElementById('cfg_SMTP_USER')?.value;
+    const pass = document.getElementById('cfg_SMTP_PASS')?.value;
+    const fromName = document.getElementById('cfg_SMTP_FROM_NAME')?.value;
+    const reportEmails = document.getElementById('cfg_INSPECTOR_REPORT_EMAILS')?.value;
+    if (host) overrides.SMTP_HOST = host;
+    if (port) overrides.SMTP_PORT = port;
+    if (user) overrides.SMTP_USER = user;
+    if (pass && !pass.includes('•')) overrides.SMTP_PASS = pass;
+    if (fromName) overrides.SMTP_FROM_NAME = fromName;
+    if (reportEmails) overrides.INSPECTOR_REPORT_EMAILS = reportEmails;
+
+    let defaultRecipient = '';
+    if (reportEmails) {
+      const parts = reportEmails.split(',').map(e => e.trim()).filter(Boolean);
+      if (parts.length > 0) defaultRecipient = parts[0];
+    }
+    if (!defaultRecipient && user) defaultRecipient = user;
+
+    const testTo = prompt('Nhập địa chỉ email người nhận thư thử nghiệm:', defaultRecipient);
+    if (testTo === null) {
+      if (buttonEl) {
+        buttonEl.disabled = false;
+        buttonEl.textContent = originalText;
+      }
+      return;
+    }
+    if (testTo.trim()) {
+      overrides.TEST_RECIPIENT_EMAIL = testTo.trim();
+    }
   }
 
   try {
@@ -268,6 +300,13 @@ function updateNodeBadge(target, isOnline, latencyMs) {
       badge.textContent = 'Offline';
     }
   }
+
+  if (target === 'email') {
+    const detail = document.getElementById('node-email-detail');
+    const host = document.getElementById('cfg_SMTP_HOST')?.value || 'smtp.gmail.com';
+    const port = document.getElementById('cfg_SMTP_PORT')?.value || '465';
+    if (detail) detail.textContent = `${host}:${port}`;
+  }
 }
 
 /* ── 4. Sức khỏe & Giám sát (Health Tab) ── */
@@ -297,7 +336,7 @@ async function loadHealthData() {
 }
 
 async function checkAllNodes() {
-  const nodes = ['sqlserver', 'namviet', 'postgres', 'portals'];
+  const nodes = ['sqlserver', 'namviet', 'postgres', 'portals', 'email'];
 
   nodes.forEach(target => {
     const card = document.getElementById(`node-${target}`);

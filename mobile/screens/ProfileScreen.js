@@ -13,7 +13,7 @@ import {
 import { syncHistory } from '../services/api';
 import { Colors } from '../theme/colors';
 
-export default function ProfileScreen({ user, onLogout }) {
+export default function ProfileScreen({ user, onLogout, onSwitchRole }) {
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState(null);
 
@@ -188,6 +188,59 @@ export default function ProfileScreen({ user, onLogout }) {
         </View>
         )}
 
+        {/* Role Switch Section - Cho tài khoản Giảng viên / Thanh tra */}
+        {onSwitchRole && (
+          (user?.role === 'lecturer' && user?.availableRoles?.includes('inspector')) ||
+          (user?.role === 'inspector' && user?.availableRoles?.includes('lecturer'))
+        ) && (
+          <View style={styles.actionSection}>
+            <Text style={styles.sectionTitle}>CHUYỂN ĐỔI VAI TRÒ</Text>
+            {user?.role === 'lecturer' ? (
+              <TouchableOpacity
+                style={[styles.switchRoleCard, { borderColor: '#c7d2fe', backgroundColor: '#eef2ff' }]}
+                onPress={() => onSwitchRole('inspector')}
+                activeOpacity={0.8}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 }}>
+                  <View style={[styles.roleSwitchIconWrap, { backgroundColor: '#e0e7ff' }]}>
+                    <Ionicons name="shield-checkmark" size={24} color="#4338ca" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.roleSwitchTitle, { color: '#312e81' }]}>
+                      Chuyển sang Thanh tra đào tạo
+                    </Text>
+                    <Text style={styles.roleSwitchSubtitle}>
+                      Kiểm tra, điểm danh lớp học toàn trường
+                    </Text>
+                  </View>
+                </View>
+                <Ionicons name="swap-horizontal" size={20} color="#4338ca" />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[styles.switchRoleCard, { borderColor: '#bbf7d0', backgroundColor: '#f0fdf4' }]}
+                onPress={() => onSwitchRole('lecturer')}
+                activeOpacity={0.8}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 }}>
+                  <View style={[styles.roleSwitchIconWrap, { backgroundColor: '#dcfce7' }]}>
+                    <Ionicons name="school" size={24} color="#15803d" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.roleSwitchTitle, { color: '#14532d' }]}>
+                      Chuyển sang Giảng viên
+                    </Text>
+                    <Text style={styles.roleSwitchSubtitle}>
+                      Xem lịch giảng dạy & quản lý lớp chủ nhiệm
+                    </Text>
+                  </View>
+                </View>
+                <Ionicons name="swap-horizontal" size={20} color="#15803d" />
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
         {/* App Info */}
         <View style={styles.actionSection}>
           <Text style={styles.sectionTitle}>ỨNG DỤNG</Text>
@@ -299,4 +352,17 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   logoutText: { fontSize: 15, fontWeight: '700', color: Colors.danger },
+  // Role Switch Card
+  switchRoleCard: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    padding: 16, borderRadius: 16, borderWidth: 1.5,
+    elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05, shadowRadius: 4,
+  },
+  roleSwitchIconWrap: {
+    width: 44, height: 44, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  roleSwitchTitle: { fontSize: 15, fontWeight: '800' },
+  roleSwitchSubtitle: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
 });

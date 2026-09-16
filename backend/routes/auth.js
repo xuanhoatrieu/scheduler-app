@@ -84,21 +84,12 @@ router.post('/login', async (req, res) => {
           });
         }
       } else {
-        // Tai khoan chua co trong PostgreSQL:
-        // Kiem tra xem co phai tai khoan can bo/giang vien TUAF khong
-        const staffAuth = await authenticateLecturer(username, password).catch(() => null);
-        if (staffAuth && staffAuth.success) {
-          inspectorName = staffAuth.fullName || username;
-        }
-
-        isNewUser = true;
-        user = await User.create({
-          username,
-          encryptedPassword: encrypt(password),
-          role,
-          fullName: inspectorName,
-          className: '',
-          department: 'Thanh tra'
+        // Chỉ tài khoản đã được quản trị viên cấp quyền thanh tra trong CSDL mới được phép đăng nhập
+        return res.status(403).json({
+          success: false,
+          message: role === 'inspector'
+            ? 'Tài khoản của bạn chưa được cấp quyền Thanh tra! Vui lòng liên hệ Quản trị viên.'
+            : 'Tài khoản của bạn chưa được cấp quyền Quản trị viên!'
         });
       }
 
@@ -107,6 +98,11 @@ router.post('/login', async (req, res) => {
         JWT_SECRET,
         { expiresIn: '30d' }
       );
+
+      const userRoles = await User.findAll({
+        where: { username },
+        attributes: ['role']
+      });
 
       return res.json({
         success: true,
@@ -117,7 +113,8 @@ router.post('/login', async (req, res) => {
           fullName: user.fullName || username,
           className: '',
           department: user.department,
-          lastSyncedAt: user.lastSyncedAt
+          lastSyncedAt: user.lastSyncedAt,
+          availableRoles: userRoles.map(r => r.role)
         }
       });
     }
@@ -234,6 +231,11 @@ router.post('/login', async (req, res) => {
       });
     }
 
+    const userRoles = await User.findAll({
+      where: { username },
+      attributes: ['role']
+    });
+
     res.json({
       success: true,
       token,
@@ -243,7 +245,8 @@ router.post('/login', async (req, res) => {
         fullName: result.fullName || user.fullName,
         className: result.className || user.className,
         department: result.department || user.department,
-        lastSyncedAt: result.lastSyncedAt
+        lastSyncedAt: result.lastSyncedAt,
+        availableRoles: userRoles.map(r => r.role)
       }
     });
   } catch (error) {
@@ -272,6 +275,11 @@ router.post('/login', async (req, res) => {
  */
 router.get('/me', authMiddleware, async (req, res) => {
   try {
+    const userRoles = await User.findAll({
+      where: { username: req.user.username },
+      attributes: ['role']
+    });
+
     res.json({
       success: true,
       user: {
@@ -280,7 +288,8 @@ router.get('/me', authMiddleware, async (req, res) => {
         fullName: req.user.fullName,
         className: req.user.className,
         department: req.user.department,
-        lastSyncedAt: req.user.lastSyncedAt
+        lastSyncedAt: req.user.lastSyncedAt,
+        availableRoles: userRoles.map(r => r.role)
       }
     });
   } catch (error) {
@@ -289,6 +298,76 @@ router.get('/me', authMiddleware, async (req, res) => {
       message: 'Lỗi server khi lấy thông tin người dùng!',
       error: error.message
     });
+  }
+});
+
+/**
+ * @route   POST /api/auth/switch-role
+ * @desc    Chuyển đổi vai trò nhanh giữa Giảng viên và Thanh tra (Dual Role)
+ * @access  Private
+ */
+router.post('/switch-role', authMiddleware, async (req, res) => {
+  try {
+    const { targetRole } = req.body;
+    const username = req.user.username;
+
+    if (!['lecturer', 'inspector', 'student'].includes(targetRole)) {
+      return res.status(400).json({ success: false, message: 'Vai trò không hợp lệ' });
+    }
+
+    if (req.user.role === targetRole) {
+      return res.json({
+        success: true,
+        message: 'Đang ở vai trò này',
+        user: {
+          id: req.user.id,
+          username: req.user.username,
+          role: req.user.role,
+          fullName: req.user.fullName,
+          className: req.user.className,
+          department: req.user.department,
+          lastSyncedAt: req.user.lastSyncedAt
+        }
+      });
+    }
+
+    let targetUser = await User.findOne({ where: { username, role: targetRole } });
+
+    if (!targetUser) {
+      return res.status(403).json({
+        success: false,
+        message: `Tài khoản "${username}" chưa được cấp quyền vai trò "${targetRole}"!`
+      });
+    }
+
+    const token = jwt.sign(
+      { id: targetUser.id, username: targetUser.username, role: targetUser.role },
+      JWT_SECRET,
+      { expiresIn: '30d' }
+    );
+
+    const userRoles = await User.findAll({
+      where: { username },
+      attributes: ['role']
+    });
+
+    return res.json({
+      success: true,
+      token,
+      user: {
+        id: targetUser.id,
+        username: targetUser.username,
+        role: targetUser.role,
+        fullName: targetUser.fullName || username,
+        className: targetUser.className || '',
+        department: targetUser.department || '',
+        lastSyncedAt: targetUser.lastSyncedAt,
+        availableRoles: userRoles.map(r => r.role)
+      }
+    });
+  } catch (err) {
+    console.error('❌ [Auth API] switch-role error:', err.message);
+    return res.status(500).json({ success: false, message: err.message });
   }
 });
 

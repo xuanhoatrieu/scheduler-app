@@ -29,7 +29,7 @@ const STATUS_CONFIG = {
   rescheduled_unpermitted: { label: 'Tự ý đổi giờ', color: '#c62828', bg: '#ffebee', icon: 'close-circle' },
   rescheduled: { label: 'Đổi giờ', color: '#0277bd', bg: '#e1f5fe', icon: 'swap-horizontal' },
   substitute: { label: 'Dạy thay', color: '#5c6bc0', bg: '#ede7f6', icon: 'people' },
-  absent: { label: 'Vắng mặt', color: '#c62828', bg: '#ffebee', icon: 'close-circle' },
+  absent: { label: 'Vắng / Bỏ tiết', color: '#c62828', bg: '#ffebee', icon: 'close-circle' },
   exempt: { label: 'Được miễn', color: '#00838f', bg: '#e0f7fa', icon: 'shield-checkmark' },
   pending: { label: 'Chưa kiểm tra', color: Colors.textMuted, bg: '#f5f5f5', icon: 'help-circle' },
 };
@@ -40,7 +40,45 @@ const formatTime = (dateStr) => {
   return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
 };
 
-export default function AttendanceScreen({ user }) {
+// Hàm tiện ích chuyển HH:MM thành số phút trong ngày
+const timeToMinutes = (str) => {
+  if (!str || typeof str !== 'string' || !str.includes(':')) return null;
+  const [h, m] = str.split(':').map(Number);
+  if (isNaN(h) || isNaN(m)) return null;
+  return h * 60 + m;
+};
+
+// Chuyển số phút trong ngày thành chuỗi HH:MM
+const minutesToTime = (totalMins) => {
+  let mins = Math.max(0, Math.min(1439, Math.round(totalMins)));
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+};
+
+// Cộng số phút vào HH:MM
+const addMinutesToTime = (timeStr, mins) => {
+  const base = timeToMinutes(timeStr);
+  if (base == null) return timeStr || '';
+  return minutesToTime(base + (parseInt(mins, 10) || 0));
+};
+
+// Trừ số phút từ HH:MM
+const subtractMinutesFromTime = (timeStr, mins) => {
+  const base = timeToMinutes(timeStr);
+  if (base == null) return timeStr || '';
+  return minutesToTime(base - (parseInt(mins, 10) || 0));
+};
+
+// Tính khoảng cách phút giữa 2 mốc giờ HH:MM
+const getDiffMinutes = (startTimeStr, endTimeStr) => {
+  const t1 = timeToMinutes(startTimeStr);
+  const t2 = timeToMinutes(endTimeStr);
+  if (t1 == null || t2 == null) return 0;
+  return Math.max(0, t2 - t1);
+};
+
+export default function AttendanceScreen({ user, onSwitchRole }) {
   const getTodayStr = () => {
     const now = new Date();
     const year = now.getFullYear();
@@ -117,15 +155,16 @@ export default function AttendanceScreen({ user }) {
     setSelectedClass(cls);
     setSubmitError('');
 
-    const now = new Date();
-    const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    const scheduledStart = cls.scheduledStart || '07:00';
+    const scheduledEnd = cls.scheduledEnd || '10:45';
 
     if (cls.attendance) {
       const att = cls.attendance;
-      setSelectedStatus(att.status === 'pending' ? 'on_time' : att.status);
+      const status = att.status === 'pending' ? 'on_time' : att.status;
+      setSelectedStatus(status);
       setHasPermission(att.hasPermission !== false);
-      setCheckInTime(att.checkInTime ? formatTime(att.checkInTime) : currentTime);
-      setCheckOutTime(att.checkOutTime ? formatTime(att.checkOutTime) : '');
+      setCheckInTime(att.checkInTime ? formatTime(att.checkInTime) : (status === 'absent' ? '' : scheduledStart));
+      setCheckOutTime(att.checkOutTime ? formatTime(att.checkOutTime) : (status === 'absent' ? '' : scheduledEnd));
       setLateMinutes(String(att.lateMinutes || '0'));
       setEarlyMinutes(String(att.earlyMinutes || '0'));
       setRescheduledDate(att.rescheduledDate || '');
@@ -135,8 +174,8 @@ export default function AttendanceScreen({ user }) {
     } else {
       setSelectedStatus('on_time');
       setHasPermission(true);
-      setCheckInTime(currentTime);
-      setCheckOutTime('');
+      setCheckInTime(scheduledStart);
+      setCheckOutTime(scheduledEnd);
       setLateMinutes('0');
       setEarlyMinutes('0');
       setRescheduledDate('');
@@ -145,6 +184,94 @@ export default function AttendanceScreen({ user }) {
       setNote('');
     }
     setModalVisible(true);
+  };
+
+  // Chọn tình trạng giảng dạy: tự động tính giờ và thông số tương ứng
+  const handleSelectStatus = (newStatus) => {
+    setSelectedStatus(newStatus);
+    const scheduledStart = selectedClass?.scheduledStart || '07:00';
+    const scheduledEnd = selectedClass?.scheduledEnd || '10:45';
+
+    if (newStatus === 'on_time') {
+      setCheckInTime(scheduledStart);
+      setCheckOutTime(scheduledEnd);
+      setLateMinutes('0');
+      setEarlyMinutes('0');
+    } else if (newStatus === 'late') {
+      const currentLate = parseInt(lateMinutes, 10) || 15;
+      const mins = currentLate > 0 ? currentLate : 15;
+      setLateMinutes(String(mins));
+      setCheckInTime(addMinutesToTime(scheduledStart, mins));
+      setCheckOutTime(scheduledEnd);
+      setEarlyMinutes('0');
+    } else if (newStatus === 'early_leave') {
+      const currentEarly = parseInt(earlyMinutes, 10) || 15;
+      const mins = currentEarly > 0 ? currentEarly : 15;
+      setEarlyMinutes(String(mins));
+      setCheckInTime(scheduledStart);
+      setCheckOutTime(subtractMinutesFromTime(scheduledEnd, mins));
+      setLateMinutes('0');
+    } else if (newStatus === 'absent') {
+      setCheckInTime('');
+      setCheckOutTime('');
+      setLateMinutes('0');
+      setEarlyMinutes('0');
+    } else {
+      if (!checkInTime) setCheckInTime(scheduledStart);
+      if (!checkOutTime) setCheckOutTime(scheduledEnd);
+    }
+  };
+
+  // Khi sửa số phút đến muộn -> Tự động tính giờ đến thực tế
+  const handleLateMinutesChange = (text) => {
+    const clean = text.replace(/[^0-9]/g, '');
+    setLateMinutes(clean);
+    const mins = parseInt(clean, 10) || 0;
+    const scheduledStart = selectedClass?.scheduledStart || '07:00';
+    setCheckInTime(addMinutesToTime(scheduledStart, mins));
+  };
+
+  // Nút bấm nhanh số phút muộn
+  const handleQuickLate = (mins) => {
+    setLateMinutes(String(mins));
+    const scheduledStart = selectedClass?.scheduledStart || '07:00';
+    setCheckInTime(addMinutesToTime(scheduledStart, mins));
+  };
+
+  // Khi sửa trực tiếp giờ đến -> Tự động tính lại số phút muộn
+  const handleCheckInTimeChange = (text) => {
+    setCheckInTime(text);
+    if (/^([01]\d|2[0-3]):([0-5]\d)$/.test(text)) {
+      const scheduledStart = selectedClass?.scheduledStart || '07:00';
+      const diff = getDiffMinutes(scheduledStart, text);
+      setLateMinutes(String(diff));
+    }
+  };
+
+  // Khi sửa số phút về sớm -> Tự động tính giờ về thực tế
+  const handleEarlyMinutesChange = (text) => {
+    const clean = text.replace(/[^0-9]/g, '');
+    setEarlyMinutes(clean);
+    const mins = parseInt(clean, 10) || 0;
+    const scheduledEnd = selectedClass?.scheduledEnd || '10:45';
+    setCheckOutTime(subtractMinutesFromTime(scheduledEnd, mins));
+  };
+
+  // Nút bấm nhanh số phút về sớm
+  const handleQuickEarly = (mins) => {
+    setEarlyMinutes(String(mins));
+    const scheduledEnd = selectedClass?.scheduledEnd || '10:45';
+    setCheckOutTime(subtractMinutesFromTime(scheduledEnd, mins));
+  };
+
+  // Khi sửa trực tiếp giờ về -> Tự động tính lại số phút về sớm
+  const handleCheckOutTimeChange = (text) => {
+    setCheckOutTime(text);
+    if (/^([01]\d|2[0-3]):([0-5]\d)$/.test(text)) {
+      const scheduledEnd = selectedClass?.scheduledEnd || '10:45';
+      const diff = getDiffMinutes(text, scheduledEnd);
+      setEarlyMinutes(String(diff));
+    }
   };
 
   const handleSubmit = async () => {
@@ -156,16 +283,18 @@ export default function AttendanceScreen({ user }) {
     let checkInDate = null;
     let checkOutDate = null;
 
-    if (checkInTime && /^([01]\d|2[0-3]):([0-5]\d)$/.test(checkInTime)) {
-      const [h, m] = checkInTime.split(':').map(Number);
-      checkInDate = new Date(now);
-      checkInDate.setHours(h, m, 0, 0);
-    }
+    if (selectedStatus !== 'absent') {
+      if (checkInTime && /^([01]\d|2[0-3]):([0-5]\d)$/.test(checkInTime)) {
+        const [h, m] = checkInTime.split(':').map(Number);
+        checkInDate = new Date(now);
+        checkInDate.setHours(h, m, 0, 0);
+      }
 
-    if (checkOutTime && /^([01]\d|2[0-3]):([0-5]\d)$/.test(checkOutTime)) {
-      const [h, m] = checkOutTime.split(':').map(Number);
-      checkOutDate = new Date(now);
-      checkOutDate.setHours(h, m, 0, 0);
+      if (checkOutTime && /^([01]\d|2[0-3]):([0-5]\d)$/.test(checkOutTime)) {
+        const [h, m] = checkOutTime.split(':').map(Number);
+        checkOutDate = new Date(now);
+        checkOutDate.setHours(h, m, 0, 0);
+      }
     }
 
     const payload = {
@@ -174,8 +303,8 @@ export default function AttendanceScreen({ user }) {
       status: selectedStatus,
       checkInTime: checkInDate ? checkInDate.toISOString() : null,
       checkOutTime: checkOutDate ? checkOutDate.toISOString() : null,
-      lateMinutes: selectedStatus === 'late' ? (parseInt(lateMinutes) || 0) : 0,
-      earlyMinutes: selectedStatus === 'early_leave' ? (parseInt(earlyMinutes) || 0) : 0,
+      lateMinutes: selectedStatus === 'late' ? (parseInt(lateMinutes, 10) || 0) : 0,
+      earlyMinutes: selectedStatus === 'early_leave' ? (parseInt(earlyMinutes, 10) || 0) : 0,
       hasPermission: selectedStatus === 'rescheduled' || selectedStatus === 'substitute' ? hasPermission : null,
       rescheduledDate: selectedStatus === 'rescheduled' ? rescheduledDate : null,
       rescheduledReason: selectedStatus === 'rescheduled' ? rescheduledReason : '',
@@ -200,13 +329,25 @@ export default function AttendanceScreen({ user }) {
     <SafeAreaView style={styles.container}>
       {/* HEADER */}
       <View style={styles.header}>
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>Thanh Tra Giảng Dạy</Text>
-          <Text style={styles.headerSubtitle}>{user?.fullName || 'Thanh tra viên'}</Text>
+          <Text style={styles.headerSubtitle} numberOfLines={1}>{user?.fullName || 'Thanh tra viên'}</Text>
         </View>
-        <View style={styles.headerCountBadge}>
-          <Text style={styles.headerCountVal}>{classes.length}</Text>
-          <Text style={styles.headerCountLbl}>lớp</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          {onSwitchRole && (
+            <TouchableOpacity
+              style={styles.switchRoleHeaderBtn}
+              onPress={() => onSwitchRole('lecturer')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="school-outline" size={15} color="#16a34a" />
+              <Text style={styles.switchRoleHeaderText}>Giảng viên</Text>
+            </TouchableOpacity>
+          )}
+          <View style={styles.headerCountBadge}>
+            <Text style={styles.headerCountVal}>{classes.length}</Text>
+            <Text style={styles.headerCountLbl}>lớp</Text>
+          </View>
         </View>
       </View>
 
@@ -290,7 +431,14 @@ export default function AttendanceScreen({ user }) {
                 {/* RESULT DETAILS */}
                 {item.attendance && (
                   <View style={styles.resultBox}>
-                    {item.attendance.status === 'rescheduled' ? (
+                    {item.attendance.status === 'absent' ? (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Ionicons name="close-circle" size={16} color="#c62828" />
+                        <Text style={[styles.resultNote, { color: '#c62828', fontWeight: '700' }]}>
+                          Giảng viên vắng mặt / Bỏ tiết giảng dạy
+                        </Text>
+                      </View>
+                    ) : item.attendance.status === 'rescheduled' ? (
                       <View style={{ gap: 2 }}>
                         <Text style={[styles.resultNote, { color: item.attendance.hasPermission ? '#0277bd' : '#c62828', fontWeight: '700' }]}>
                           {item.attendance.hasPermission ? '✔ Đổi giờ: Có đề nghị/phê duyệt trước' : '✘ Đổi giờ: Tự ý đổi (Không phép)'}
@@ -358,6 +506,22 @@ export default function AttendanceScreen({ user }) {
             </View>
 
             <ScrollView style={{ maxHeight: 460 }}>
+              {/* TKB SCHEDULE INFO BADGE */}
+              <View style={styles.tkbReferenceCard}>
+                <View style={styles.tkbRefRow}>
+                  <Ionicons name="time" size={15} color={Colors.primary} />
+                  <Text style={styles.tkbRefText}>
+                    Giờ chuẩn TKB: <Text style={{ fontWeight: '800' }}>{selectedClass?.scheduledStart} - {selectedClass?.scheduledEnd}</Text> (Tiết {selectedClass?.periodText})
+                  </Text>
+                </View>
+                <View style={[styles.tkbRefRow, { marginTop: 4 }]}>
+                  <Ionicons name="location" size={15} color="#e91e63" />
+                  <Text style={styles.tkbRefSub}>
+                    Phòng: <Text style={{ fontWeight: '700', color: Colors.textPrimary }}>{selectedClass?.room || 'Chưa rõ'}</Text> • GV: <Text style={{ fontWeight: '700', color: Colors.textPrimary }}>{selectedClass?.teacherName || 'Chưa rõ'}</Text>
+                  </Text>
+                </View>
+              </View>
+
               {/* STATUS SELECTION CHIPS */}
               <Text style={styles.inputLabel}>Tình trạng giảng dạy:</Text>
               <View style={styles.statusSelectGrid}>
@@ -377,7 +541,7 @@ export default function AttendanceScreen({ user }) {
                         styles.statusSelectBtn,
                         isSelected && { backgroundColor: st.color, borderColor: st.color }
                       ]}
-                      onPress={() => setSelectedStatus(st.id)}
+                      onPress={() => handleSelectStatus(st.id)}
                     >
                       <Ionicons name={st.icon} size={15} color={isSelected ? '#fff' : st.color} />
                       <Text style={[styles.statusSelectText, isSelected && { color: '#fff' }]}>{st.label}</Text>
@@ -385,6 +549,19 @@ export default function AttendanceScreen({ user }) {
                   );
                 })}
               </View>
+
+              {/* CONDITIONAL: ABSENT NOTICE */}
+              {selectedStatus === 'absent' && (
+                <View style={styles.absentNoticeBox}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Ionicons name="alert-circle" size={20} color="#c62828" />
+                    <Text style={styles.absentNoticeTitle}>Ghi nhận vi phạm: Bỏ tiết / Vắng mặt</Text>
+                  </View>
+                  <Text style={styles.absentNoticeSub}>
+                    Lớp học không diễn ra theo thời khóa biểu. Dữ liệu sẽ được ghi nhận vào biên bản vi phạm và báo cáo trực tiếp đến Ban Giám hiệu.
+                  </Text>
+                </View>
+              )}
 
               {/* CONDITIONAL: RESCHEDULED PERMISSION SWITCH */}
               {selectedStatus === 'rescheduled' && (
@@ -442,43 +619,105 @@ export default function AttendanceScreen({ user }) {
                 </View>
               )}
 
-              {/* CONDITIONAL: LATE / EARLY MINUTES */}
+              {/* CONDITIONAL: LATE / EARLY MINUTES / ON_TIME */}
               {(selectedStatus === 'late' || selectedStatus === 'early_leave' || selectedStatus === 'on_time') && (
                 <View style={styles.timeInputsRow}>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.inputLabel}>Giờ đến thực tế (HH:MM):</Text>
                     <TextInput
-                      style={styles.textInput}
-                      placeholder="07:05"
+                      style={[styles.textInput, selectedStatus === 'late' && styles.textInputHighlight]}
+                      placeholder={selectedClass?.scheduledStart || '07:00'}
                       placeholderTextColor={Colors.textMuted}
                       value={checkInTime}
-                      onChangeText={setCheckInTime}
+                      onChangeText={handleCheckInTimeChange}
                     />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.inputLabel}>Giờ về thực tế (HH:MM):</Text>
                     <TextInput
-                      style={styles.textInput}
-                      placeholder="10:45"
+                      style={[styles.textInput, selectedStatus === 'early_leave' && styles.textInputHighlight]}
+                      placeholder={selectedClass?.scheduledEnd || '10:45'}
                       placeholderTextColor={Colors.textMuted}
                       value={checkOutTime}
-                      onChangeText={setCheckOutTime}
+                      onChangeText={handleCheckOutTimeChange}
                     />
                   </View>
                 </View>
               )}
 
+              {/* SỐ PHÚT ĐẾN MUỘN VỚI TÍNH NĂNG CHỌN NHANH */}
               {selectedStatus === 'late' && (
-                <View style={{ marginTop: 8 }}>
-                  <Text style={styles.inputLabel}>Số phút đến muộn:</Text>
+                <View style={styles.minutesBox}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={styles.inputLabel}>Số phút đến muộn:</Text>
+                    <Text style={styles.autoCalcHint}>
+                      Giờ đến: {checkInTime || '--:--'}
+                    </Text>
+                  </View>
                   <TextInput
-                    style={styles.textInput}
+                    style={[styles.textInput, { fontWeight: '700', fontSize: 15, color: '#e65100' }]}
                     placeholder="VD: 15"
                     keyboardType="numeric"
                     placeholderTextColor={Colors.textMuted}
                     value={lateMinutes}
-                    onChangeText={setLateMinutes}
+                    onChangeText={handleLateMinutesChange}
                   />
+                  <View style={styles.quickMinutesRow}>
+                    <Text style={styles.quickMinutesLabel}>Chọn nhanh:</Text>
+                    {[5, 10, 15, 20, 30, 45].map((m) => (
+                      <TouchableOpacity
+                        key={m}
+                        style={[
+                          styles.quickMinuteBtn,
+                          parseInt(lateMinutes, 10) === m && styles.quickMinuteBtnActiveLate
+                        ]}
+                        onPress={() => handleQuickLate(m)}
+                      >
+                        <Text style={[
+                          styles.quickMinuteBtnText,
+                          parseInt(lateMinutes, 10) === m && { color: '#fff' }
+                        ]}>+{m}p</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {/* SỐ PHÚT VỀ SỚM VỚI TÍNH NĂNG CHỌN NHANH */}
+              {selectedStatus === 'early_leave' && (
+                <View style={styles.minutesBox}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={styles.inputLabel}>Số phút về sớm:</Text>
+                    <Text style={[styles.autoCalcHint, { color: '#f57c00' }]}>
+                      Giờ về: {checkOutTime || '--:--'}
+                    </Text>
+                  </View>
+                  <TextInput
+                    style={[styles.textInput, { fontWeight: '700', fontSize: 15, color: '#f57c00' }]}
+                    placeholder="VD: 15"
+                    keyboardType="numeric"
+                    placeholderTextColor={Colors.textMuted}
+                    value={earlyMinutes}
+                    onChangeText={handleEarlyMinutesChange}
+                  />
+                  <View style={styles.quickMinutesRow}>
+                    <Text style={styles.quickMinutesLabel}>Chọn nhanh:</Text>
+                    {[5, 10, 15, 20, 30, 45].map((m) => (
+                      <TouchableOpacity
+                        key={m}
+                        style={[
+                          styles.quickMinuteBtn,
+                          parseInt(earlyMinutes, 10) === m && styles.quickMinuteBtnActiveEarly
+                        ]}
+                        onPress={() => handleQuickEarly(m)}
+                      >
+                        <Text style={[
+                          styles.quickMinuteBtnText,
+                          parseInt(earlyMinutes, 10) === m && { color: '#fff' }
+                        ]}>-{m}p</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
                 </View>
               )}
 
@@ -618,10 +857,51 @@ const styles = StyleSheet.create({
     backgroundColor: '#f9f9f9', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8,
     fontSize: 13, color: Colors.textPrimary, borderWidth: 1, borderColor: '#e0e0e0',
   },
+  textInputHighlight: {
+    borderColor: '#f97316',
+    backgroundColor: '#fff7ed',
+  },
   submitErrorText: { color: '#c62828', fontSize: 12, marginTop: 8 },
   submitBtn: {
     backgroundColor: Colors.primary, height: 46, borderRadius: 12,
     alignItems: 'center', justifyContent: 'center', marginTop: 14,
   },
   submitBtnText: { color: '#fff', fontSize: 15, fontWeight: '800' },
+  switchRoleHeaderBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: '#f0fdf4', paddingHorizontal: 10, paddingVertical: 6,
+    borderRadius: 16, borderWidth: 1, borderColor: '#bbf7d0',
+  },
+  switchRoleHeaderText: { fontSize: 12, fontWeight: '700', color: '#16a34a' },
+  tkbReferenceCard: {
+    backgroundColor: '#f0fdf4', borderRadius: 10, padding: 10,
+    borderWidth: 1, borderColor: '#bbf7d0', marginBottom: 12,
+  },
+  tkbRefRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  tkbRefText: { fontSize: 13, color: '#166534', fontWeight: '600' },
+  tkbRefSub: { fontSize: 12, color: Colors.textSecondary },
+  absentNoticeBox: {
+    backgroundColor: '#fef2f2', borderRadius: 10, padding: 12,
+    borderWidth: 1, borderColor: '#fecaca', marginBottom: 12, gap: 4,
+  },
+  absentNoticeTitle: { fontSize: 13, fontWeight: '800', color: '#b91c1c' },
+  absentNoticeSub: { fontSize: 12, color: '#7f1d1d', lineHeight: 17 },
+  minutesBox: {
+    marginTop: 10, backgroundColor: '#fafafa', padding: 10,
+    borderRadius: 10, borderWidth: 1, borderColor: '#eee',
+  },
+  autoCalcHint: { fontSize: 11, color: Colors.primary, fontWeight: '700' },
+  quickMinutesRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 8 },
+  quickMinutesLabel: { fontSize: 11, fontWeight: '700', color: Colors.textMuted },
+  quickMinuteBtn: {
+    paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6,
+    backgroundColor: '#f0f2f5', borderWidth: 1, borderColor: '#e2e8f0',
+  },
+  quickMinuteBtnActiveLate: {
+    backgroundColor: '#e65100', borderColor: '#e65100',
+  },
+  quickMinuteBtnActiveEarly: {
+    backgroundColor: '#f57c00', borderColor: '#f57c00',
+  },
+  quickMinuteBtnText: { fontSize: 11, fontWeight: '700', color: Colors.textPrimary },
 });

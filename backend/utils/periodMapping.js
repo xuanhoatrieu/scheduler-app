@@ -5,27 +5,31 @@
 
 const PERIOD_START = {
   1: '07:00', 2: '07:55', 3: '08:50', 4: '09:55', 5: '10:50',
-  6: '13:00', 7: '13:55', 8: '14:50', 9: '15:55', 10: '16:50'
+  6: '13:00', 7: '13:55', 8: '14:50', 9: '15:55', 10: '16:50',
+  11: '18:00', 12: '18:50', 13: '19:40', 14: '20:30'
 };
 
 const PERIOD_END = {
   1: '07:50', 2: '08:45', 3: '09:40', 4: '10:45', 5: '11:40',
-  6: '13:50', 7: '14:45', 8: '15:40', 9: '16:45', 10: '17:40'
+  6: '13:50', 7: '14:45', 8: '15:40', 9: '16:45', 10: '17:40',
+  11: '18:45', 12: '19:35', 13: '20:25', 14: '21:15'
 };
 
 /**
- * Chuyen periodText (VD: "1-4") thanh { scheduledStart, scheduledEnd }
- * @param {string} periodText - Chuoi tiet hocVD: "1-4", "6-8"
+ * Chuyen periodText (VD: "1-4", "6-8", "Tiết 1-4") thanh { scheduledStart, scheduledEnd }
+ * @param {string} periodText - Chuoi tiet hoc VD: "1-4", "6-8"
  * @returns {{ scheduledStart: string, scheduledEnd: string } | null}
  */
 const parsePeriodToTime = (periodText) => {
   if (!periodText) return null;
 
-  const parts = periodText.split('-').map(s => parseInt(s.trim()));
-  if (parts.length < 2 || isNaN(parts[0]) || isNaN(parts[1])) return null;
+  // Lọc chỉ giữ số và dấu gạch nối, ví dụ "Tiết 1 - 4" -> "1-4"
+  const clean = String(periodText).replace(/[^\d-]/g, '');
+  const parts = clean.split('-').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
+  if (parts.length === 0) return null;
 
   const startPeriod = parts[0];
-  const endPeriod = parts[1];
+  const endPeriod = parts.length > 1 ? parts[1] : parts[0];
 
   const scheduledStart = PERIOD_START[startPeriod];
   const scheduledEnd = PERIOD_END[endPeriod];

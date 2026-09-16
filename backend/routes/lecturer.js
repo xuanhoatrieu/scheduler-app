@@ -13,10 +13,10 @@ const { getPool, sql } = require('../services/namvietConnector');
  * Helper lấy idCb của giảng viên
  */
 async function resolveLecturerIdCb(pool, user) {
-  if (user.tuafLecturerId) return user.tuafLecturerId;
+  if (user.tuafStudentId) return user.tuafStudentId;
   const cb = await tuafQueries.findLecturerId(pool, user.username);
   if (cb && cb.ID_cb) {
-    user.tuafLecturerId = cb.ID_cb;
+    user.tuafStudentId = cb.ID_cb;
     await user.save().catch(() => {});
     return cb.ID_cb;
   }
@@ -187,38 +187,88 @@ router.post('/attendance', authMiddleware, async (req, res) => {
         const pool = await getPool();
         const schedule = await Schedule.findByPk(scheduleId);
 
-        // Nhóm SV theo lớp sinh hoạt
+        // Lấy thông tin lớp chủ nhiệm & GVCN thực tế cho từng sinh viên bất thường từ SQL Server
+        const studentCodes = abnormalStudents.map(s => s.studentCode).filter(Boolean);
+        const studentInfoMap = new Map();
+
+        if (studentCodes.length > 0) {
+          const codeList = studentCodes.map(c => `'${c.replace(/'/g, '')}'`).join(',');
+          const stuClassRes = await pool.request().query(`
+            SELECT
+              sv.Ma_sv,
+              l.ID_lop AS idLop,
+              COALESCE(l.Ten_lop, l.Ma_lop, '') AS homeroomClassName,
+              gv.Id_cb AS gvcnIdCb
+            FROM STU_HoSoSinhVien sv
+            LEFT JOIN (
+              SELECT dsl.ID_sv, MAX(dsl.ID_lop) AS ID_lop
+              FROM STU_DanhSach dsl
+              WHERE ISNULL(dsl.Trang_thai, 0) = 0
+              GROUP BY dsl.ID_sv
+            ) dsl ON sv.ID_sv = dsl.ID_sv
+            LEFT JOIN STU_Lop l ON dsl.ID_lop = l.ID_lop
+            LEFT JOIN STU_GiaoVienChuNghiem gv ON l.ID_lop = gv.ID_lop
+            WHERE sv.Ma_sv IN (${codeList})
+            ORDER BY gv.Nam_hoc DESC
+          `);
+
+          for (const row of stuClassRes.recordset) {
+            if (!studentInfoMap.has(row.Ma_sv)) {
+              studentInfoMap.set(row.Ma_sv, row);
+            }
+          }
+        }
+
+        // Nhóm SV theo lớp sinh hoạt thực tế
         const byClass = {};
         for (const s of abnormalStudents) {
-          const cls = s.studentClass || 'Chưa rõ';
-          if (!byClass[cls]) byClass[cls] = [];
-          byClass[cls].push(s);
+          const info = studentInfoMap.get(s.studentCode);
+          const cls = (info?.homeroomClassName || s.studentClass || 'Chưa rõ').trim();
+          s.studentClass = cls;
+          if (!byClass[cls]) {
+            byClass[cls] = {
+              gvcnIdCb: info?.gvcnIdCb,
+              students: []
+            };
+          }
+          byClass[cls].students.push(s);
         }
 
         // Với mỗi lớp sinh hoạt có SV vắng/muộn, tạo thông báo gửi GVCN
-        for (const [homeroomClass, studentsList] of Object.entries(byClass)) {
+        for (const [homeroomClass, group] of Object.entries(byClass)) {
+          const studentsList = group.students;
           const absentCount = studentsList.filter(s => s.status === 'absent').length;
           const lateCount = studentsList.filter(s => s.status === 'late').length;
           const excusedCount = studentsList.filter(s => s.status === 'excused').length;
 
-          // Tra cứu GVCN của lớp này từ SQL Server
-          let tuafGvcnId = null;
+          let tuafGvcnId = group.gvcnIdCb ? String(group.gvcnIdCb) : null;
           let homeroomTeacherUserId = null;
 
-          const gvcnRes = await pool.request()
-            .input('homeroomClass', sql.NVarChar(100), homeroomClass)
-            .query(`
-              SELECT TOP 1 gv.Id_cb
-              FROM STU_GiaoVienChuNghiem gv
-              JOIN STU_Lop l ON gv.ID_lop = l.ID_lop
-              WHERE l.Ten_lop = @homeroomClass OR l.Ma_lop = @homeroomClass
-              ORDER BY gv.Nam_hoc DESC
-            `);
+          if (!tuafGvcnId && homeroomClass !== 'Chưa rõ') {
+            const gvcnRes = await pool.request()
+              .input('homeroomClass', sql.NVarChar(100), homeroomClass)
+              .query(`
+                SELECT TOP 1 gv.Id_cb
+                FROM STU_GiaoVienChuNghiem gv
+                JOIN STU_Lop l ON gv.ID_lop = l.ID_lop
+                WHERE l.Ten_lop = @homeroomClass 
+                   OR l.Ma_lop = @homeroomClass
+                   OR REPLACE(l.Ten_lop, ' ', '') = REPLACE(@homeroomClass, ' ', '')
+                ORDER BY gv.Nam_hoc DESC
+              `);
 
-          if (gvcnRes.recordset.length > 0) {
-            tuafGvcnId = String(gvcnRes.recordset[0].Id_cb);
+            if (gvcnRes.recordset.length > 0) {
+              tuafGvcnId = String(gvcnRes.recordset[0].Id_cb);
+            }
+          }
+
+          if (tuafGvcnId) {
             const gvcnUser = await User.findOne({
-              where: { tuafLecturerId: tuafGvcnId }
+              where: {
+                [Op.or]: [
+                  { tuafStudentId: tuafGvcnId }
+                ]
+              }
             });
             if (gvcnUser) homeroomTeacherUserId = gvcnUser.id;
           }
@@ -240,7 +290,7 @@ router.post('/attendance', authMiddleware, async (req, res) => {
             isRead: false
           });
 
-          console.log(`📢 [GVCN Alert] Đã tạo thông báo điểm danh cho lớp ${homeroomClass}: ${absentCount} vắng, ${lateCount} muộn, ${excusedCount} phép`);
+          console.log(`📢 [GVCN Alert] Đã tạo thông báo điểm danh cho lớp ${homeroomClass} (GVCN: ${tuafGvcnId}): ${absentCount} vắng, ${lateCount} muộn, ${excusedCount} phép`);
         }
       } catch (notifErr) {
         console.error('⚠️ [Attendance Notification Warning] Không thể tạo thông báo GVCN:', notifErr.message);
@@ -315,10 +365,13 @@ router.get('/homeroom/:idLop/course-registration', authMiddleware, async (req, r
 
     // Tính toán tóm tắt
     const students = result.students || [];
-    const warningCount = students.filter(s => s.hasWarning).length;
-    const normalCount = students.length - warningCount;
-    const avgCredits = students.length > 0
-      ? Math.round((students.reduce((sum, s) => sum + s.totalCredits, 0) / students.length) * 10) / 10
+    const activeStudents = students.filter(s => s.statusId === 0);
+    const leaveStudents = students.filter(s => s.statusId === 2);
+    const reservedStudents = students.filter(s => s.statusId === 1);
+    const warningCount = activeStudents.filter(s => s.hasWarning).length;
+    const normalCount = activeStudents.length - warningCount;
+    const avgCredits = activeStudents.length > 0
+      ? Math.round((activeStudents.reduce((sum, s) => sum + s.totalCredits, 0) / activeStudents.length) * 10) / 10
       : 0;
 
     res.json({
@@ -329,9 +382,13 @@ router.get('/homeroom/:idLop/course-registration', authMiddleware, async (req, r
         plannedCourses: result.plannedCourses || [],
         summary: {
           totalStudents: students.length,
+          activeCount: activeStudents.length,
+          leaveCount: leaveStudents.length,
+          reservedCount: reservedStudents.length,
           warningCount,
           normalCount,
-          avgCredits
+          avgCredits,
+          averageCredits: avgCredits
         },
         students
       }
@@ -381,10 +438,19 @@ router.get('/homeroom/alerts', authMiddleware, async (req, res) => {
     const idCb = await resolveLecturerIdCb(pool, req.user);
 
     // Lấy danh sách tên các lớp chủ nhiệm của GV này
-    let homeroomClassNames = [];
+    const homeroomClassNames = [];
     if (idCb) {
       const classes = await tuafQueries.getHomeroomClasses(pool, idCb);
-      homeroomClassNames = classes.map(c => c.className).filter(Boolean);
+      for (const c of classes) {
+        if (c.className) {
+          homeroomClassNames.push(c.className);
+          homeroomClassNames.push(c.className.replace(/\s+/g, ''));
+        }
+        if (c.classCode) {
+          homeroomClassNames.push(c.classCode);
+          homeroomClassNames.push(c.classCode.replace(/\s+/g, ''));
+        }
+      }
     }
 
     const whereConditions = [];
@@ -395,7 +461,7 @@ router.get('/homeroom/alerts', authMiddleware, async (req, res) => {
       whereConditions.push({ tuafLecturerId: String(idCb) });
     }
     if (homeroomClassNames.length > 0) {
-      whereConditions.push({ homeroomClass: { [Op.in]: homeroomClassNames } });
+      whereConditions.push({ homeroomClass: { [Op.in]: [...new Set(homeroomClassNames)] } });
     }
 
     const where = whereConditions.length > 0 ? { [Op.or]: whereConditions } : {};
@@ -408,11 +474,31 @@ router.get('/homeroom/alerts', authMiddleware, async (req, res) => {
 
     const unreadCount = alerts.filter(a => !a.isRead).length;
 
+    const formattedAlerts = alerts.map(a => {
+      const plain = a.toJSON ? a.toJSON() : a;
+      let students = [];
+      try {
+        students = typeof plain.studentDetails === 'string'
+          ? JSON.parse(plain.studentDetails)
+          : (plain.studentDetails || []);
+      } catch (e) {
+        students = [];
+      }
+
+      return {
+        ...plain,
+        lecturerName: plain.courseTeacherName || plain.lecturerName || '',
+        className: plain.homeroomClass || plain.className || '',
+        abnormalStudents: students,
+        studentDetails: plain.studentDetails
+      };
+    });
+
     res.json({
       success: true,
       unreadCount,
       totalAlerts: alerts.length,
-      data: alerts
+      data: formattedAlerts
     });
   } catch (error) {
     console.error('❌ [API /lecturer/homeroom/alerts] Lỗi:', error.message);

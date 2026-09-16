@@ -12,6 +12,7 @@ router.put('/configs', (req, res) => adminController.updateConfigs(req, res));
 
 // 2. Kiểm thử kết nối tức thời (Live Test Connection)
 router.post('/test-connection', (req, res) => adminController.testConnection(req, res));
+router.post('/email/test', (req, res) => adminController.testSendEmail(req, res));
 
 // 3. Giám sát hệ thống & Sức khỏe (Health & Stats)
 router.get('/health', (req, res) => adminController.getHealth(req, res));

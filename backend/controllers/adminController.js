@@ -235,6 +235,32 @@ class AdminController {
         });
       }
 
+      // 5. Test Email Gateway (SMTP & Test Email Send)
+      if (target === 'email') {
+        const { sendTestEmail } = require('../services/emailReportService');
+
+        const customConfig = (overrides.SMTP_HOST || overrides.SMTP_USER || overrides.SMTP_PASS) ? {
+          host: overrides.SMTP_HOST,
+          port: overrides.SMTP_PORT,
+          user: overrides.SMTP_USER,
+          pass: overrides.SMTP_PASS,
+          fromName: overrides.SMTP_FROM_NAME
+        } : null;
+
+        const targetEmail = overrides.TEST_RECIPIENT_EMAIL || overrides.to;
+
+        const result = await sendTestEmail({ to: targetEmail, customConfig });
+        const latencyMs = Date.now() - startTime;
+
+        return res.json({
+          success: result.success,
+          target: 'email',
+          latencyMs,
+          message: result.message,
+          details: result.details || null
+        });
+      }
+
       return res.status(400).json({ success: false, message: 'Mục kiểm thử không hợp lệ' });
     } catch (err) {
       const latencyMs = Date.now() - startTime;
@@ -243,6 +269,32 @@ class AdminController {
         target,
         latencyMs,
         message: `❌ Lỗi kết nối (${latencyMs}ms): ${err.message}`
+      });
+    }
+  }
+
+  /**
+   * [POST] /api/admin/email/test — Gửi email kiểm thử trực tiếp
+   */
+  async testSendEmail(req, res) {
+    const startTime = Date.now();
+    try {
+      const { to, host, port, user, pass, fromName } = req.body;
+      const { sendTestEmail } = require('../services/emailReportService');
+
+      const customConfig = (host || user || pass) ? { host, port, user, pass, fromName } : null;
+      const result = await sendTestEmail({ to, customConfig });
+      const latencyMs = Date.now() - startTime;
+
+      return res.json({
+        ...result,
+        latencyMs
+      });
+    } catch (err) {
+      return res.status(500).json({
+        success: false,
+        message: `Lỗi gửi mail: ${err.message}`,
+        latencyMs: Date.now() - startTime
       });
     }
   }

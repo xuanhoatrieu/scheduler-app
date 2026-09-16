@@ -4,18 +4,20 @@ const Attendance = require('../models/Attendance');
 const Schedule = require('../models/Schedule');
 const User = require('../models/User');
 const SystemConfig = require('../models/SystemConfig');
+const configService = require('./configService');
 
 /**
  * Tạo transporter gửi mail qua Gmail / Google Workspace SMTP
+ * Hỗ trợ nạp cấu hình động từ SystemConfig (Admin Dashboard) hoặc customConfig
  */
-function createTransporter() {
-  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
-  const port = parseInt(process.env.SMTP_PORT || '465');
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
+function createTransporter(customConfig = null) {
+  const host = customConfig?.host || configService.get('SMTP_HOST') || process.env.SMTP_HOST || 'smtp.gmail.com';
+  const port = parseInt(customConfig?.port || configService.get('SMTP_PORT') || process.env.SMTP_PORT || '465', 10);
+  const user = customConfig?.user || configService.get('SMTP_USER') || process.env.SMTP_USER;
+  const pass = customConfig?.pass || configService.get('SMTP_PASS') || process.env.SMTP_PASS;
 
   if (!user || !pass) {
-    console.warn('⚠️ [EmailService] Chưa cấu hình SMTP_USER hoặc SMTP_PASS trong .env!');
+    console.warn('⚠️ [EmailService] Chưa cấu hình SMTP_USER hoặc SMTP_PASS trong Cấu hình hệ thống / .env!');
     return null;
   }
 
@@ -23,16 +25,32 @@ function createTransporter() {
     host,
     port,
     secure: port === 465,
-    auth: { user, pass }
+    auth: { user, pass },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000
   });
 }
 
 /**
  * Lấy danh sách email nhận báo cáo của Lãnh đạo
+ * Ưu tiên nạp từ SystemConfig (Admin Dashboard)
  */
 async function getReportRecipients() {
+  // 1. Đọc từ configService trong bộ nhớ
+  const memoryEmails = configService.get('INSPECTOR_REPORT_EMAILS') || configService.get('inspector_report_emails');
+  if (memoryEmails) {
+    const list = memoryEmails.split(',').map(e => e.trim()).filter(Boolean);
+    if (list.length > 0) return list;
+  }
+
+  // 2. Tra cứu trực tiếp từ bảng SystemConfig
   try {
-    const config = await SystemConfig.findOne({ where: { key: 'inspector_report_emails' } });
+    const config = await SystemConfig.findOne({
+      where: {
+        key: { [Op.in]: ['INSPECTOR_REPORT_EMAILS', 'inspector_report_emails'] }
+      }
+    });
     if (config && config.value) {
       const emails = config.value.split(',').map(e => e.trim()).filter(Boolean);
       if (emails.length > 0) return emails;
@@ -41,11 +59,13 @@ async function getReportRecipients() {
     // ignore
   }
 
+  // 3. Fallback process.env
   if (process.env.INSPECTOR_REPORT_EMAILS) {
     return process.env.INSPECTOR_REPORT_EMAILS.split(',').map(e => e.trim()).filter(Boolean);
   }
 
-  return [process.env.SMTP_USER || 'admin@tuaf.edu.vn'];
+  const sender = configService.get('SMTP_USER') || process.env.SMTP_USER;
+  return [sender || 'admin@tuaf.edu.vn'];
 }
 
 /**
@@ -126,11 +146,15 @@ function buildHtmlReport({ title, dateRangeText, summary, violations }) {
         <div class="kpi-lbl">Muộn / Về sớm</div>
       </div>
       <div class="kpi-cell">
+        <div class="kpi-val" style="color: #c62828;">${summary.absent || 0}</div>
+        <div class="kpi-lbl">Vắng / Bỏ tiết</div>
+      </div>
+      <div class="kpi-cell">
         <div class="kpi-val" style="color: #0277bd;">${summary.rescheduledPermitted || 0}</div>
         <div class="kpi-lbl">Đổi giờ có phép</div>
       </div>
       <div class="kpi-cell">
-        <div class="kpi-val" style="color: #c62828;">${summary.rescheduledUnpermitted || 0}</div>
+        <div class="kpi-val" style="color: #880e4f;">${summary.rescheduledUnpermitted || 0}</div>
         <div class="kpi-lbl">Tự ý đổi giờ</div>
       </div>
     </div>
@@ -174,8 +198,41 @@ function buildHtmlReport({ title, dateRangeText, summary, violations }) {
  */
 async function sendInspectorReportEmail({ from, to, periodType = 'daily', customRecipients = null }) {
   try {
-    const startDate = from || new Date().toISOString().split('T')[0];
-    const endDate = to || startDate;
+    const vnTime = new Date(Date.now() + 7 * 3600 * 1000);
+    const year = vnTime.getUTCFullYear();
+    const month = vnTime.getUTCMonth();
+    const day = vnTime.getUTCDate();
+    const today = new Date(year, month, day);
+
+    let startDate = from;
+    let endDate = to;
+
+    if (!startDate || !endDate) {
+      if (periodType === 'week' || periodType === 'weekly') {
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - today.getDay() + 1);
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+        startDate = startOfWeek.toISOString().split('T')[0];
+        endDate = endOfWeek.toISOString().split('T')[0];
+      } else if (periodType === 'month' || periodType === 'monthly') {
+        startDate = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+        endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
+      } else if (periodType === 'semester') {
+        const currentYear = today.getFullYear();
+        const currentMonth = today.getMonth();
+        if (currentMonth < 6) {
+          startDate = `${currentYear - 1}-09-01`;
+          endDate = `${currentYear}-01-31`;
+        } else {
+          startDate = `${currentYear}-02-01`;
+          endDate = `${currentYear}-06-30`;
+        }
+      } else {
+        startDate = today.toISOString().split('T')[0];
+        endDate = startDate;
+      }
+    }
 
     console.log(`📧 [EmailService] Bắt đầu tổng hợp báo cáo thanh tra (${startDate} -> ${endDate}, loại: ${periodType})...`);
 
@@ -236,8 +293,9 @@ async function sendInspectorReportEmail({ from, to, periodType = 'daily', custom
       } else if (r.status === 'absent') {
         absent++;
         isViolation = true;
-        statusText = 'Vắng mặt';
+        statusText = 'Vắng / Bỏ tiết';
         statusColor = '#c62828';
+        permissionBadge = '<span style="color: #c62828; font-weight: bold;">✘ Bỏ tiết</span>';
       } else if (r.status === 'rescheduled') {
         if (r.hasPermission === true) {
           rescheduledPermitted++;
@@ -286,8 +344,9 @@ async function sendInspectorReportEmail({ from, to, periodType = 'daily', custom
 
     // 4. Tạo nội dung Email
     let periodTitle = 'BÁO CÁO NGÀY';
-    if (periodType === 'weekly') periodTitle = 'BÁO CÁO TUẦN';
-    if (periodType === 'monthly') periodTitle = 'BÁO CÁO THÁNG';
+    if (periodType === 'weekly' || periodType === 'week') periodTitle = 'BÁO CÁO TUẦN';
+    if (periodType === 'monthly' || periodType === 'month') periodTitle = 'BÁO CÁO THÁNG';
+    if (periodType === 'semester') periodTitle = 'BÁO CÁO HỌC KỲ';
 
     const dateRangeText = startDate === endDate ? `Ngày ${startDate}` : `Từ ${startDate} đến ${endDate}`;
     const subject = `[TUAF Thanh Tra] ${periodTitle} - ${dateRangeText}`;
@@ -312,8 +371,11 @@ async function sendInspectorReportEmail({ from, to, periodType = 'daily', custom
       };
     }
 
+    const senderUser = configService.get('SMTP_USER') || process.env.SMTP_USER;
+    const fromName = configService.get('SMTP_FROM_NAME') || 'Thanh Tra Đào Tạo TUAF';
+
     const info = await transporter.sendMail({
-      from: `"Thanh Tra Đào Tạo TUAF" <${process.env.SMTP_USER}>`,
+      from: `"${fromName}" <${senderUser}>`,
       to: recipients.join(', '),
       subject,
       html
@@ -334,8 +396,134 @@ async function sendInspectorReportEmail({ from, to, periodType = 'daily', custom
   }
 }
 
+/**
+ * Gửi email kiểm thử trực tiếp từ Admin Dashboard
+ * @param {Object} params - { to, customConfig: { host, port, user, pass, fromName } }
+ */
+async function sendTestEmail({ to = null, customConfig = null } = {}) {
+  try {
+    const sender = customConfig?.user || configService.get('SMTP_USER') || process.env.SMTP_USER;
+    const fromName = customConfig?.fromName || configService.get('SMTP_FROM_NAME') || 'Thanh Tra Đào Tạo TUAF';
+    const recipient = to || (await getReportRecipients())[0] || sender;
+
+    if (!recipient) {
+      return {
+        success: false,
+        message: 'Chưa có địa chỉ email người nhận thử nghiệm (Vui lòng điền email nhận hoặc cấu hình danh sách nhận)!'
+      };
+    }
+
+    const transporter = createTransporter(customConfig);
+    if (!transporter) {
+      return {
+        success: false,
+        message: 'Chưa cấu hình thông tin SMTP (Tài khoản SMTP_USER hoặc Mật khẩu ứng dụng SMTP_PASS còn trống)!'
+      };
+    }
+
+    // 1. Kiểm tra xác thực máy chủ SMTP
+    await transporter.verify();
+
+    // 2. Soạn nội dung email thử nghiệm
+    const timeStr = new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+    const host = customConfig?.host || configService.get('SMTP_HOST') || process.env.SMTP_HOST || 'smtp.gmail.com';
+    const port = customConfig?.port || configService.get('SMTP_PORT') || process.env.SMTP_PORT || '465';
+
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f4f6f8; margin: 0; padding: 20px; }
+    .card { max-width: 600px; margin: 0 auto; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+    .header { background: linear-gradient(135deg, #1b5e20, #2e7d32); color: #fff; padding: 24px; text-align: center; }
+    .header h2 { margin: 0; font-size: 20px; text-transform: uppercase; }
+    .header p { margin: 4px 0 0 0; opacity: 0.9; font-size: 13px; }
+    .body { padding: 24px; color: #333; line-height: 1.6; }
+    .success-badge { display: inline-block; background: #e8f5e9; color: #2e7d32; padding: 6px 14px; border-radius: 20px; font-weight: bold; font-size: 14px; margin-bottom: 12px; }
+    .info-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+    .info-table td { padding: 8px 10px; border-bottom: 1px solid #eee; }
+    .info-table td.label { width: 140px; color: #666; font-weight: 600; }
+    .footer { background: #f8f9fa; padding: 14px 20px; text-align: center; font-size: 12px; color: #777; border-top: 1px solid #e9ecef; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <h2>Trường Đại học Nông Lâm Thái Nguyên</h2>
+      <p>Hệ Thống Giám Sát Lịch Học & Quản Lý Thanh Tra Giảng Dạy</p>
+    </div>
+    <div class="body">
+      <div class="success-badge">✔ KIỂM THỬ KẾT NỐI EMAIL THÀNH CÔNG</div>
+      <p>Kính gửi Quý Thầy/Cô,</p>
+      <p>Thư này được gửi từ <strong>Admin Dashboard TUAF Schedule</strong> nhằm kiểm tra kết nối dịch vụ gửi thư tự động qua Google Workspace / SMTP.</p>
+      
+      <table class="info-table">
+        <tr>
+          <td class="label">Thời gian gửi:</td>
+          <td><strong>${timeStr}</strong></td>
+        </tr>
+        <tr>
+          <td class="label">Máy chủ SMTP:</td>
+          <td><code>${host}:${port}</code></td>
+        </tr>
+        <tr>
+          <td class="label">Tài khoản gửi:</td>
+          <td><code>${sender}</code></td>
+        </tr>
+        <tr>
+          <td class="label">Hộp thư nhận:</td>
+          <td><strong style="color: #1b5e20;">${recipient}</strong></td>
+        </tr>
+        <tr>
+          <td class="label">Trạng thái:</td>
+          <td><span style="color: #2e7d32; font-weight: bold;">Hoạt động bình thường (Ready)</span></td>
+        </tr>
+      </table>
+
+      <p style="color: #555; font-size: 13px;">Hệ thống đã sẵn sàng gửi các bản tin Báo cáo Thanh tra giảng dạy định kỳ (18:00 hàng ngày, sáng Thứ Hai hàng tuần và ngày đầu tháng) đến Lãnh đạo Nhà trường.</p>
+    </div>
+    <div class="footer">
+      Bản tin thử nghiệm tự động từ TUAF Schedule Admin System • Vui lòng không trả lời thư này.
+    </div>
+  </div>
+</body>
+</html>
+    `;
+
+    const info = await transporter.sendMail({
+      from: `"${fromName}" <${sender}>`,
+      to: recipient,
+      subject: `[TUAF Schedule] Kiểm thử kết nối Email Gateway thành công - ${timeStr}`,
+      html
+    });
+
+    console.log(`✅ [EmailService] Đã gửi email thử nghiệm thành công tới: ${recipient} (Message ID: ${info.messageId})`);
+
+    return {
+      success: true,
+      message: `✅ Đã gửi email thử nghiệm thành công tới ${recipient}!`,
+      details: {
+        recipient,
+        sender,
+        host: `${host}:${port}`,
+        messageId: info.messageId
+      }
+    };
+  } catch (error) {
+    console.error('❌ [EmailService] Lỗi khi gửi email kiểm thử:', error.message);
+    return {
+      success: false,
+      message: `Lỗi kết nối SMTP: ${error.message}`
+    };
+  }
+}
+
 module.exports = {
   sendInspectorReportEmail,
+  sendTestEmail,
   getReportRecipients,
   createTransporter
 };
+
