@@ -634,6 +634,230 @@ class AdminController {
       return res.status(500).json({ success: false, message: err.message });
     }
   }
+
+  // ═══════════════════════════════════════════════════════════════
+  // QUẢN LÝ TÀI KHOẢN THANH TRA (INSPECTOR ACCOUNTS MANAGEMENT)
+  // ═══════════════════════════════════════════════════════════════
+
+  /**
+   * [GET] /api/admin/inspectors — Lấy danh sách toàn bộ tài khoản thanh tra
+   */
+  async getInspectors(req, res) {
+    try {
+      const inspectors = await User.findAll({
+        where: { role: 'inspector' },
+        attributes: ['id', 'username', 'fullName', 'department', 'className', 'tuafStudentId', 'lastSyncedAt', 'createdAt'],
+        order: [['createdAt', 'DESC']]
+      });
+
+      return res.json({
+        success: true,
+        data: inspectors
+      });
+    } catch (err) {
+      console.error('❌ [AdminController] getInspectors error:', err);
+      return res.status(500).json({ success: false, message: err.message });
+    }
+  }
+
+  /**
+   * [POST] /api/admin/inspectors — Thêm mới tài khoản thanh tra
+   */
+  async createInspector(req, res) {
+    try {
+      const { encrypt } = require('../utils/security');
+      const { username, password, fullName, department } = req.body;
+
+      if (!username || !password) {
+        return res.status(400).json({ success: false, message: 'Tên đăng nhập và Mật khẩu không được để trống!' });
+      }
+
+      const trimmedUsername = username.trim();
+      const existing = await User.findOne({
+        where: { username: trimmedUsername, role: 'inspector' }
+      });
+
+      if (existing) {
+        return res.status(400).json({
+          success: false,
+          message: `Tài khoản thanh tra "${trimmedUsername}" đã tồn tại trong hệ thống!`
+        });
+      }
+
+      // Check if user exists in TUAF SQL Server to attach tuafStudentId if any
+      let tuafId = null;
+      try {
+        const pool = await namvietConnector.getPool();
+        const gv = await tuafQueries.findLecturerId(pool, trimmedUsername);
+        if (gv) {
+          tuafId = gv.ID_cb;
+        }
+      } catch (_) {}
+
+      const newInspector = await User.create({
+        username: trimmedUsername,
+        encryptedPassword: encrypt(password),
+        role: 'inspector',
+        fullName: (fullName && fullName.trim()) || trimmedUsername,
+        department: (department && department.trim()) || 'Ban Thanh tra',
+        className: '',
+        tuafStudentId: tuafId
+      });
+
+      return res.json({
+        success: true,
+        message: `✅ Đã tạo tài khoản thanh tra "${trimmedUsername}" thành công!`,
+        data: {
+          id: newInspector.id,
+          username: newInspector.username,
+          fullName: newInspector.fullName,
+          department: newInspector.department,
+          createdAt: newInspector.createdAt
+        }
+      });
+    } catch (err) {
+      console.error('❌ [AdminController] createInspector error:', err);
+      return res.status(500).json({ success: false, message: err.message });
+    }
+  }
+
+  /**
+   * [PUT] /api/admin/inspectors/:id — Cập nhật thông tin tài khoản thanh tra
+   */
+  async updateInspector(req, res) {
+    try {
+      const { id } = req.params;
+      const { fullName, department } = req.body;
+
+      const inspector = await User.findOne({ where: { id, role: 'inspector' } });
+      if (!inspector) {
+        return res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản thanh tra!' });
+      }
+
+      if (fullName !== undefined) inspector.fullName = fullName.trim();
+      if (department !== undefined) inspector.department = department.trim();
+
+      await inspector.save();
+
+      return res.json({
+        success: true,
+        message: '✅ Cập nhật thông tin thanh tra thành công!',
+        data: {
+          id: inspector.id,
+          username: inspector.username,
+          fullName: inspector.fullName,
+          department: inspector.department
+        }
+      });
+    } catch (err) {
+      console.error('❌ [AdminController] updateInspector error:', err);
+      return res.status(500).json({ success: false, message: err.message });
+    }
+  }
+
+  /**
+   * [PUT] /api/admin/inspectors/:id/password — Đổi mật khẩu tài khoản thanh tra
+   */
+  async changeInspectorPassword(req, res) {
+    try {
+      const { encrypt } = require('../utils/security');
+      const { id } = req.params;
+      const { newPassword } = req.body;
+
+      if (!newPassword || newPassword.length < 4) {
+        return res.status(400).json({ success: false, message: 'Mật khẩu mới phải có ít nhất 4 ký tự!' });
+      }
+
+      const inspector = await User.findOne({ where: { id, role: 'inspector' } });
+      if (!inspector) {
+        return res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản thanh tra!' });
+      }
+
+      inspector.encryptedPassword = encrypt(newPassword);
+      await inspector.save();
+
+      return res.json({
+        success: true,
+        message: `✅ Đã đổi mật khẩu cho tài khoản "${inspector.username}" thành công!`
+      });
+    } catch (err) {
+      console.error('❌ [AdminController] changeInspectorPassword error:', err);
+      return res.status(500).json({ success: false, message: err.message });
+    }
+  }
+
+  /**
+   * [DELETE] /api/admin/inspectors/:id — Xóa tài khoản thanh tra
+   */
+  async deleteInspector(req, res) {
+    try {
+      const { id } = req.params;
+      const inspector = await User.findOne({ where: { id, role: 'inspector' } });
+      if (!inspector) {
+        return res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản thanh tra!' });
+      }
+
+      const deletedUsername = inspector.username;
+      await inspector.destroy();
+
+      return res.json({
+        success: true,
+        message: `✅ Đã xóa tài khoản thanh tra "${deletedUsername}" thành công!`
+      });
+    } catch (err) {
+      console.error('❌ [AdminController] deleteInspector error:', err);
+      return res.status(500).json({ success: false, message: err.message });
+    }
+  }
+
+  /**
+   * [GET] /api/admin/inspectors/lookup — Tra cứu thông tin cán bộ từ SQL Server TUAF
+   */
+  async lookupTuafStaff(req, res) {
+    try {
+      const { username } = req.query;
+      if (!username) {
+        return res.status(400).json({ success: false, message: 'Vui lòng cung cấp username để tra cứu' });
+      }
+
+      const pool = await namvietConnector.getPool();
+      const hrRes = await pool.request()
+        .input('username', username.trim())
+        .query(`
+          SELECT TOP 1 cb.ID_cb, cb.Ma_cb, cb.Ho_ten, cb.Email, cb.Dien_thoai, dv.Ten_dv
+          FROM HR_LyLich cb
+          LEFT JOIN dmDonViQuanLy dv ON cb.ID_dv = dv.ID_dv
+          WHERE cb.Ma_cb = @username OR cb.Email = @username
+        `);
+
+      const staff = hrRes.recordset[0] || null;
+      if (!staff) {
+        return res.json({
+          success: false,
+          found: false,
+          message: `Không tìm thấy cán bộ "${username}" trong cơ sở dữ liệu TUAF`
+        });
+      }
+
+      const staffData = {
+        username: staff.Ma_cb || username,
+        fullName: staff.Ho_ten,
+        department: staff.Ten_dv || 'Cán bộ TUAF',
+        email: staff.Email || '',
+        lecturerId: staff.ID_cb
+      };
+
+      return res.json({
+        success: true,
+        found: true,
+        data: staffData,
+        staff: staffData
+      });
+    } catch (err) {
+      console.error('❌ [AdminController] lookupTuafStaff error:', err);
+      return res.status(500).json({ success: false, message: err.message });
+    }
+  }
 }
 
 function formatUptime(seconds) {

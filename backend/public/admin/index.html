@@ -1182,6 +1182,11 @@ label {
           <span>Tra cứu & Force Sync</span>
         </button>
 
+        <button class="nav-item" data-tab="tab-inspectors">
+          <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path></svg>
+          <span>Quản lý Thanh tra</span>
+        </button>
+
         <button class="nav-item" data-tab="tab-curriculum">
           <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
           <span>Khung CTĐT & Đối soát</span>
@@ -1835,6 +1840,62 @@ label {
         </div>
       </section>
 
+      <!-- TAB 7: QUẢN LÝ TÀI KHOẢN THANH TRA -->
+      <section id="tab-inspectors" class="tab-pane">
+        <div class="card glass-card">
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <div class="card-title">
+              <span class="icon">📋</span>
+              <div>
+                <h3 style="margin: 0; font-size: 16px;">Danh Sách Tài Khoản Thanh Tra Đào Tạo</h3>
+                <p style="margin: 2px 0 0; font-size: 12px; color: var(--text-muted);">
+                  Quản trị tài khoản được quyền thực hiện điểm danh và giám sát giảng dạy trên Mobile App
+                </p>
+              </div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button type="button" id="btn-refresh-inspectors" class="btn btn-secondary btn-sm">
+                🔄 Làm mới
+              </button>
+              <button type="button" id="btn-open-create-inspector" class="btn btn-primary btn-sm">
+                + Thêm Thanh Tra Mới
+              </button>
+            </div>
+          </div>
+          <div class="card-body">
+            <!-- Search & Filter Bar -->
+            <div class="search-user-bar" style="margin-bottom: 16px; display: flex; gap: 12px; align-items: center;">
+              <input type="text" id="input-search-inspector" class="form-control" placeholder="Tìm kiếm nhanh theo username, họ tên cán bộ hoặc đơn vị..." style="flex: 1;">
+              <span class="badge badge-primary" id="badge-inspector-count" style="padding: 8px 12px; font-size: 12px; white-space: nowrap;">0 tài khoản</span>
+            </div>
+
+            <!-- Table Container -->
+            <div class="table-responsive" style="overflow-x: auto;">
+              <table class="data-table" id="table-inspectors" style="width: 100%; border-collapse: collapse;">
+                <thead>
+                  <tr style="background: rgba(255,255,255,0.03); text-align: left;">
+                    <th style="width: 50px; text-align: center; padding: 10px;">STT</th>
+                    <th style="padding: 10px; width: 160px;">Tài khoản (Username)</th>
+                    <th style="padding: 10px;">Họ và tên</th>
+                    <th style="padding: 10px;">Đơn vị / Phòng ban</th>
+                    <th style="padding: 10px; width: 140px; text-align: center;">Loại tài khoản</th>
+                    <th style="padding: 10px; width: 170px;">Đăng nhập gần nhất</th>
+                    <th style="width: 200px; text-align: center; padding: 10px;">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-inspectors">
+                  <tr>
+                    <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 32px;">
+                      ⏳ Đang tải danh sách tài khoản thanh tra...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- TAB 5: LIVE LOGS -->
       <section id="tab-logs" class="tab-pane">
         <div class="card glass-card">
@@ -1875,6 +1936,109 @@ label {
     </div>
   </div>
 
+  <!-- Modal 1: Thêm mới Thanh tra viên -->
+  <div id="modal-create-inspector" class="modal-overlay">
+    <div class="modal-card glass-card" style="max-width: 560px;">
+      <div class="modal-header">
+        <h3 id="modal-create-title">➕ Thêm Tài Khoản Thanh Tra Mới</h3>
+        <button class="modal-close" data-close="modal-create-inspector">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="form-create-inspector" onsubmit="return false;">
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label" style="font-size: 13px; font-weight: 600; margin-bottom: 6px; display: block;">Tên đăng nhập (Username / Mã cán bộ) <span style="color: var(--danger);">*</span></label>
+            <div style="display: flex; gap: 8px;">
+              <input type="text" id="inp-create-username" class="form-control code-font" placeholder="VD: thanhtra01 hoặc mã cán bộ..." style="flex: 1;" required>
+              <button type="button" id="btn-lookup-staff" class="btn btn-secondary btn-sm" title="Tra cứu cán bộ từ SQL Server TUAF" style="white-space: nowrap;">
+                🔍 Tra cứu TUAF
+              </button>
+            </div>
+            <p class="form-hint" id="hint-lookup-result" style="margin-top: 6px; font-size: 12px; color: var(--text-muted);">
+              Mẹo: Nhập mã cán bộ trường (VD: xuanhoatrieu) và bấm "Tra cứu TUAF" để tự động điền họ tên & đơn vị.
+            </p>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label" style="font-size: 13px; font-weight: 600; margin-bottom: 6px; display: block;">Mật khẩu khởi tạo <span style="color: var(--danger);">*</span></label>
+            <div class="input-password-wrap" style="position: relative;">
+              <input type="password" id="inp-create-password" class="form-control" placeholder="Tối thiểu 4 ký tự..." required style="padding-right: 40px;">
+              <button type="button" class="btn-toggle-mask" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-muted);">👁️</button>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label" style="font-size: 13px; font-weight: 600; margin-bottom: 6px; display: block;">Họ và tên thanh tra viên</label>
+            <input type="text" id="inp-create-fullname" class="form-control" placeholder="VD: Nguyễn Văn A...">
+          </div>
+
+          <div class="form-group" style="margin-bottom: 8px;">
+            <label class="form-label" style="font-size: 13px; font-weight: 600; margin-bottom: 6px; display: block;">Đơn vị / Phòng ban công tác</label>
+            <input type="text" id="inp-create-department" class="form-control" value="Phòng Quản lý Chất lượng" placeholder="VD: Phòng QLCL, Ban Thanh tra...">
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 8px;">
+        <button type="button" class="btn btn-secondary" data-close="modal-create-inspector">Hủy</button>
+        <button type="button" id="btn-submit-create-inspector" class="btn btn-primary">Lưu & Kích Hoạt</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 2: Đổi Mật Khẩu Thanh tra -->
+  <div id="modal-password-inspector" class="modal-overlay">
+    <div class="modal-card glass-card" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3>🔑 Đổi Mật Khẩu Thanh Tra</h3>
+        <button class="modal-close" data-close="modal-password-inspector">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 13px;">
+          Tài khoản: <strong id="pwd-modal-username" class="code-font" style="color: var(--primary);">--</strong>
+          (<span id="pwd-modal-fullname">--</span>)
+        </p>
+        <div class="form-group">
+          <label class="form-label" style="font-size: 13px; font-weight: 600; margin-bottom: 6px; display: block;">Mật khẩu mới <span style="color: var(--danger);">*</span></label>
+          <div class="input-password-wrap" style="position: relative;">
+            <input type="password" id="inp-new-password" class="form-control" placeholder="Nhập mật khẩu mới (tối thiểu 4 ký tự)..." required style="padding-right: 40px;">
+            <button type="button" class="btn-toggle-mask" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-muted);">👁️</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 8px;">
+        <button type="button" class="btn btn-secondary" data-close="modal-password-inspector">Hủy</button>
+        <button type="button" id="btn-submit-change-password" class="btn btn-primary">Cập Nhật Mật Khẩu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 3: Sửa Thông Tin Thanh tra -->
+  <div id="modal-edit-inspector" class="modal-overlay">
+    <div class="modal-card glass-card" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3>✏️ Chỉnh Sửa Thông Tin Thanh Tra</h3>
+        <button class="modal-close" data-close="modal-edit-inspector">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label class="form-label" style="font-size: 13px; font-weight: 600; margin-bottom: 6px; display: block;">Tài khoản (Username)</label>
+          <input type="text" id="inp-edit-username" class="form-control code-font" disabled style="opacity: 0.7;">
+        </div>
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label class="form-label" style="font-size: 13px; font-weight: 600; margin-bottom: 6px; display: block;">Họ và tên</label>
+          <input type="text" id="inp-edit-fullname" class="form-control" placeholder="Họ và tên...">
+        </div>
+        <div class="form-group" style="margin-bottom: 8px;">
+          <label class="form-label" style="font-size: 13px; font-weight: 600; margin-bottom: 6px; display: block;">Đơn vị / Phòng ban</label>
+          <input type="text" id="inp-edit-department" class="form-control" placeholder="Phòng ban...">
+        </div>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 8px;">
+        <button type="button" class="btn btn-secondary" data-close="modal-edit-inspector">Hủy</button>
+        <button type="button" id="btn-submit-edit-inspector" class="btn btn-primary">Lưu Thay Đổi</button>
+      </div>
+    </div>
+  </div>
+
   <script>
 /**
  * TUAF SCHEDULER — ADMIN DASHBOARD JAVASCRIPT LOGIC
@@ -1889,6 +2053,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initCronJob();
   initModalAndToasts();
   initCurriculumTab();
+  initInspectorsTab();
 
   // Tải dữ liệu và kiểm tra trạng thái tất cả các node ngay khi mở trang
   loadConfigs();
@@ -1924,6 +2089,10 @@ function initTabs() {
       title: '👥 Tra Cứu Người Dùng & Đồng Bộ Tức Thì',
       desc: 'Tìm kiếm dữ liệu cache của sinh viên/giảng viên và kích hoạt Force Sync thời gian thực.'
     },
+    'tab-inspectors': {
+      title: '📋 Quản Lý Tài Khoản Thanh Tra Đào Tạo',
+      desc: 'Tạo mới, đổi mật khẩu, phân quyền và quản trị danh sách thanh tra viên sử dụng ứng dụng.'
+    },
     'tab-cron': {
       title: '⏱️ Lịch Trình Quét Đồng Bộ (Cron Job)',
       desc: 'Quản lý tác vụ ngầm quét dữ liệu định kỳ lúc 3:00 sáng hàng ngày.'
@@ -1956,6 +2125,8 @@ function initTabs() {
       if (target === 'tab-health') {
         loadHealthData();
         checkAllNodes();
+      } else if (target === 'tab-inspectors') {
+        loadInspectors();
       }
     });
   });
@@ -2441,6 +2612,10 @@ function initCronJob() {
 function initModalAndToasts() {
   document.querySelectorAll('.modal-close').forEach(btn => {
     btn.addEventListener('click', () => {
+      const parentModal = btn.closest('.modal-overlay');
+      if (parentModal) {
+        parentModal.classList.remove('active');
+      }
       document.getElementById('modal-test-result')?.classList.remove('active');
     });
   });
@@ -3232,6 +3407,415 @@ function renderSemestersSection(filteredCourses) {
     semCard.appendChild(tableWrapper);
     container.appendChild(semCard);
   });
+}
+
+/* ── 8. Quản Lý Tài Khoản Thanh Tra Đào Tạo ── */
+let currentInspectors = [];
+let editingInspectorId = null;
+
+function initInspectorsTab() {
+  const btnRefresh = document.getElementById('btn-refresh-inspectors');
+  const btnOpenCreate = document.getElementById('btn-open-create-inspector');
+  const inputSearch = document.getElementById('input-search-inspector');
+  const btnLookupStaff = document.getElementById('btn-lookup-staff');
+  const btnSubmitCreate = document.getElementById('btn-submit-create-inspector');
+  const btnSubmitPassword = document.getElementById('btn-submit-change-password');
+  const btnSubmitEdit = document.getElementById('btn-submit-edit-inspector');
+
+  // Generic modal close handler for data-close attribute
+  document.querySelectorAll('[data-close]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      const modalId = el.getAttribute('data-close');
+      if (modalId) {
+        closeModal(modalId);
+      }
+    });
+  });
+
+  // Toggle password visibility buttons
+  document.querySelectorAll('.btn-toggle-mask').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const input = btn.previousElementSibling;
+      if (input && input.tagName === 'INPUT') {
+        if (input.type === 'password') {
+          input.type = 'text';
+          btn.textContent = '🙈';
+        } else {
+          input.type = 'password';
+          btn.textContent = '👁️';
+        }
+      }
+    });
+  });
+
+  // Refresh
+  btnRefresh?.addEventListener('click', () => {
+    loadInspectors();
+  });
+
+  // Search
+  inputSearch?.addEventListener('input', () => {
+    renderInspectorsTable(inputSearch.value.trim().toLowerCase());
+  });
+
+  // Open Create Inspector Modal
+  btnOpenCreate?.addEventListener('click', () => {
+    document.getElementById('inp-create-username').value = '';
+    document.getElementById('inp-create-password').value = '';
+    document.getElementById('inp-create-fullname').value = '';
+    document.getElementById('inp-create-department').value = 'Phòng Quản lý Chất lượng';
+    const hint = document.getElementById('hint-lookup-result');
+    if (hint) {
+      hint.style.color = 'var(--text-muted)';
+      hint.textContent = 'Mẹo: Nhập mã cán bộ trường (VD: xuanhoatrieu) và bấm "Tra cứu TUAF" để tự động điền họ tên & đơn vị.';
+    }
+    openModal('modal-create-inspector');
+  });
+
+  // Tra cứu cán bộ từ TUAF
+  btnLookupStaff?.addEventListener('click', async () => {
+    const usernameInput = document.getElementById('inp-create-username');
+    const username = usernameInput ? usernameInput.value.trim() : '';
+    const hint = document.getElementById('hint-lookup-result');
+
+    if (!username) {
+      showToast('warning', 'Vui lòng nhập Username / Mã cán bộ để tra cứu!');
+      usernameInput?.focus();
+      return;
+    }
+
+    btnLookupStaff.disabled = true;
+    btnLookupStaff.textContent = '⏳ Đang tra...';
+
+    try {
+      const res = await fetch(`/api/admin/inspectors/lookup?username=${encodeURIComponent(username)}`);
+      const data = await res.json();
+
+      if (data.success && data.found) {
+        if (data.staff.fullName) {
+          document.getElementById('inp-create-fullname').value = data.staff.fullName;
+        }
+        if (data.staff.department) {
+          document.getElementById('inp-create-department').value = data.staff.department;
+        }
+        if (hint) {
+          hint.style.color = '#34d399';
+          hint.textContent = `✓ Tìm thấy cán bộ TUAF: ${data.staff.fullName} (${data.staff.department || 'Bộ môn/Khoa'})`;
+        }
+        showToast('success', `Đã tìm thấy thông tin cán bộ: ${data.staff.fullName}`);
+      } else {
+        if (hint) {
+          hint.style.color = '#f59e0b';
+          hint.textContent = `ℹ Không tìm thấy mã "${username}" trong CSDL TUAF. Bạn có thể tự điền họ tên & đơn vị bên dưới.`;
+        }
+        showToast('info', 'Không tìm thấy trong DB trường, bạn có thể tự nhập họ tên.');
+      }
+    } catch (err) {
+      if (hint) {
+        hint.style.color = '#ef4444';
+        hint.textContent = `Lỗi tra cứu: ${err.message}`;
+      }
+      showToast('error', `Lỗi kết nối tra cứu: ${err.message}`);
+    } finally {
+      btnLookupStaff.disabled = false;
+      btnLookupStaff.textContent = '🔍 Tra cứu TUAF';
+    }
+  });
+
+  // Submit Create Inspector
+  btnSubmitCreate?.addEventListener('click', async () => {
+    const username = document.getElementById('inp-create-username')?.value.trim();
+    const password = document.getElementById('inp-create-password')?.value.trim();
+    const fullName = document.getElementById('inp-create-fullname')?.value.trim();
+    const department = document.getElementById('inp-create-department')?.value.trim();
+
+    if (!username) {
+      showToast('warning', 'Vui lòng nhập Tên đăng nhập (Username)!');
+      return;
+    }
+    if (!password || password.length < 4) {
+      showToast('warning', 'Mật khẩu phải có ít nhất 4 ký tự!');
+      return;
+    }
+
+    btnSubmitCreate.disabled = true;
+    btnSubmitCreate.textContent = 'Đang lưu...';
+
+    try {
+      const res = await fetch('/api/admin/inspectors', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password, fullName, department })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        showToast('success', data.message || 'Thêm tài khoản thanh tra thành công!');
+        closeModal('modal-create-inspector');
+        loadInspectors();
+      } else {
+        showToast('error', data.message || 'Không thể tạo tài khoản');
+      }
+    } catch (err) {
+      showToast('error', 'Lỗi kết nối: ' + err.message);
+    } finally {
+      btnSubmitCreate.disabled = false;
+      btnSubmitCreate.textContent = 'Lưu & Kích Hoạt';
+    }
+  });
+
+  // Submit Change Password
+  btnSubmitPassword?.addEventListener('click', async () => {
+    if (!editingInspectorId) return;
+    const newPassword = document.getElementById('inp-new-password')?.value.trim();
+
+    if (!newPassword || newPassword.length < 4) {
+      showToast('warning', 'Mật khẩu mới phải có tối thiểu 4 ký tự!');
+      return;
+    }
+
+    btnSubmitPassword.disabled = true;
+    btnSubmitPassword.textContent = 'Đang cập nhật...';
+
+    try {
+      const res = await fetch(`/api/admin/inspectors/${editingInspectorId}/password`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newPassword })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        showToast('success', data.message || 'Đổi mật khẩu thành công!');
+        closeModal('modal-password-inspector');
+      } else {
+        showToast('error', data.message || 'Không thể đổi mật khẩu');
+      }
+    } catch (err) {
+      showToast('error', 'Lỗi: ' + err.message);
+    } finally {
+      btnSubmitPassword.disabled = false;
+      btnSubmitPassword.textContent = 'Cập Nhật Mật Khẩu';
+    }
+  });
+
+  // Submit Edit Inspector
+  btnSubmitEdit?.addEventListener('click', async () => {
+    if (!editingInspectorId) return;
+    const fullName = document.getElementById('inp-edit-fullname')?.value.trim();
+    const department = document.getElementById('inp-edit-department')?.value.trim();
+
+    btnSubmitEdit.disabled = true;
+    btnSubmitEdit.textContent = 'Đang lưu...';
+
+    try {
+      const res = await fetch(`/api/admin/inspectors/${editingInspectorId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fullName, department })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        showToast('success', data.message || 'Cập nhật thông tin thành công!');
+        closeModal('modal-edit-inspector');
+        loadInspectors();
+      } else {
+        showToast('error', data.message || 'Lỗi cập nhật');
+      }
+    } catch (err) {
+      showToast('error', 'Lỗi: ' + err.message);
+    } finally {
+      btnSubmitEdit.disabled = false;
+      btnSubmitEdit.textContent = 'Lưu Thay Đổi';
+    }
+  });
+}
+
+async function loadInspectors() {
+  const tbody = document.getElementById('tbody-inspectors');
+  if (tbody) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 32px;">
+          ⏳ Đang tải danh sách tài khoản thanh tra...
+        </td>
+      </tr>
+    `;
+  }
+
+  try {
+    const res = await fetch('/api/admin/inspectors');
+    const data = await res.json();
+
+    if (data.success && Array.isArray(data.data)) {
+      currentInspectors = data.data;
+      const searchVal = document.getElementById('input-search-inspector')?.value.trim().toLowerCase() || '';
+      renderInspectorsTable(searchVal);
+    } else {
+      currentInspectors = [];
+      if (tbody) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" style="text-align: center; color: #ef4444; padding: 24px;">
+              ❌ Lỗi tải dữ liệu: ${data.message || 'Không rõ nguyên nhân'}
+            </td>
+          </tr>
+        `;
+      }
+    }
+  } catch (err) {
+    if (tbody) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="7" style="text-align: center; color: #ef4444; padding: 24px;">
+            ❌ Lỗi kết nối API: ${err.message}
+          </td>
+        </tr>
+      `;
+    }
+  }
+}
+
+function renderInspectorsTable(filterText = '') {
+  const tbody = document.getElementById('tbody-inspectors');
+  const countBadge = document.getElementById('badge-inspector-count');
+  if (!tbody) return;
+
+  const filtered = currentInspectors.filter(item => {
+    if (!filterText) return true;
+    const u = (item.username || '').toLowerCase();
+    const fn = (item.fullName || '').toLowerCase();
+    const d = (item.department || '').toLowerCase();
+    return u.includes(filterText) || fn.includes(filterText) || d.includes(filterText);
+  });
+
+  if (countBadge) {
+    countBadge.textContent = `${filtered.length} tài khoản`;
+  }
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 32px;">
+          ${currentInspectors.length === 0 
+            ? 'Chưa có tài khoản thanh tra nào. Hãy bấm <strong>"+ Thêm Thanh Tra Mới"</strong> để cấp tài khoản.' 
+            : 'Không tìm thấy tài khoản thanh tra phù hợp với từ khóa.'}
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  let html = '';
+  filtered.forEach((item, index) => {
+    const lastLogin = item.lastSyncedAt 
+      ? new Date(item.lastSyncedAt).toLocaleString('vi-VN') 
+      : (item.updatedAt ? new Date(item.updatedAt).toLocaleString('vi-VN') : 'Chưa đăng nhập');
+
+    html += `
+      <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); transition: background 0.15s ease;">
+        <td style="text-align: center; padding: 10px; color: var(--text-muted); font-size: 12px;">${index + 1}</td>
+        <td style="padding: 10px;">
+          <code style="font-family: var(--font-mono); color: #38bdf8; font-weight: 600; font-size: 13px;">${escapeHtml(item.username)}</code>
+        </td>
+        <td style="padding: 10px;">
+          <strong style="color: #fff; font-size: 13px;">${escapeHtml(item.fullName || '--')}</strong>
+        </td>
+        <td style="padding: 10px; color: var(--text-secondary); font-size: 13px;">
+          ${escapeHtml(item.department || 'Phòng Quản lý Chất lượng')}
+        </td>
+        <td style="padding: 10px; text-align: center;">
+          <span class="badge badge-warning" style="font-size: 11px; padding: 3px 8px; border-radius: 4px; background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3);">
+            📋 Thanh Tra
+          </span>
+        </td>
+        <td style="padding: 10px; color: var(--text-muted); font-size: 12px;">
+          ${lastLogin}
+        </td>
+        <td style="padding: 10px; text-align: center;">
+          <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;">
+            <button type="button" class="btn btn-secondary btn-sm" style="padding: 3px 8px; font-size: 11px;"
+              onclick="window.openPasswordModal('${item.id || item._id}', '${escapeHtml(item.username)}', '${escapeHtml(item.fullName || '')}')" title="Đổi mật khẩu">
+              🔑 MK
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" style="padding: 3px 8px; font-size: 11px;"
+              onclick="window.openEditModal('${item.id || item._id}', '${escapeHtml(item.username)}', '${escapeHtml(item.fullName || '')}', '${escapeHtml(item.department || '')}')" title="Sửa thông tin">
+              ✏️ Sửa
+            </button>
+            <button type="button" class="btn btn-danger btn-sm" style="padding: 3px 8px; font-size: 11px; background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171;"
+              onclick="window.confirmDeleteInspector('${item.id || item._id}', '${escapeHtml(item.username)}')" title="Xóa tài khoản">
+              🗑️ Xóa
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  });
+
+  tbody.innerHTML = html;
+}
+
+window.openPasswordModal = function(id, username, fullName) {
+  editingInspectorId = id;
+  const unameEl = document.getElementById('pwd-modal-username');
+  const fnameEl = document.getElementById('pwd-modal-fullname');
+  const inputPwd = document.getElementById('inp-new-password');
+
+  if (unameEl) unameEl.textContent = username;
+  if (fnameEl) fnameEl.textContent = fullName || '--';
+  if (inputPwd) inputPwd.value = '';
+
+  openModal('modal-password-inspector');
+  inputPwd?.focus();
+};
+
+window.openEditModal = function(id, username, fullName, department) {
+  editingInspectorId = id;
+  const unameEl = document.getElementById('inp-edit-username');
+  const fnameEl = document.getElementById('inp-edit-fullname');
+  const deptEl = document.getElementById('inp-edit-department');
+
+  if (unameEl) unameEl.value = username;
+  if (fnameEl) fnameEl.value = fullName || '';
+  if (deptEl) deptEl.value = department || '';
+
+  openModal('modal-edit-inspector');
+  fnameEl?.focus();
+};
+
+window.confirmDeleteInspector = async function(id, username) {
+  if (!confirm(`Bạn có chắc chắn muốn xóa tài khoản thanh tra "${username}" khỏi hệ thống?\nTài khoản này sẽ không thể đăng nhập vào ứng dụng di động nữa.`)) {
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/admin/inspectors/${id}`, {
+      method: 'DELETE'
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      showToast('success', data.message || 'Đã xóa tài khoản thanh tra');
+      loadInspectors();
+    } else {
+      showToast('error', data.message || 'Không thể xóa tài khoản');
+    }
+  } catch (err) {
+    showToast('error', 'Lỗi: ' + err.message);
+  }
+};
+
+function openModal(modalId) {
+  const m = document.getElementById(modalId);
+  if (m) m.classList.add('active');
+}
+
+function closeModal(modalId) {
+  const m = document.getElementById(modalId);
+  if (m) m.classList.remove('active');
 }
 </script>
 </body>

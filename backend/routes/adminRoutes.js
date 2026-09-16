@@ -28,4 +28,12 @@ router.post('/curriculum/compare', (req, res) => adminController.compareCurricul
 router.post('/curriculum/save', (req, res) => adminController.saveMasterCurriculum(req, res));
 router.get('/curriculum/master', (req, res) => adminController.getMasterCurriculum(req, res));
 
+// 6. Quản lý tài khoản Thanh tra (Inspector Account Management)
+router.get('/inspectors', (req, res) => adminController.getInspectors(req, res));
+router.post('/inspectors', (req, res) => adminController.createInspector(req, res));
+router.put('/inspectors/:id', (req, res) => adminController.updateInspector(req, res));
+router.put('/inspectors/:id/password', (req, res) => adminController.changeInspectorPassword(req, res));
+router.delete('/inspectors/:id', (req, res) => adminController.deleteInspector(req, res));
+router.get('/inspectors/lookup', (req, res) => adminController.lookupTuafStaff(req, res));
+
 module.exports = router;
