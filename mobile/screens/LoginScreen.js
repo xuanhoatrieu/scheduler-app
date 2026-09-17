@@ -4,14 +4,15 @@ import {
   ActivityIndicator,
   Image,
   KeyboardAvoidingView,
+  Linking,
   Platform,
-  SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { login } from '../services/api';
 import { Colors } from '../theme/colors';
@@ -241,6 +242,17 @@ export default function LoginScreen({ onLoginSuccess }) {
               Dữ liệu được mã hóa khi truyền tải (HTTPS) & đồng bộ tự động hàng ngày
             </Text>
           </View>
+
+          {/* Legal Links for App Store Compliance */}
+          <View style={styles.legalLinksRow}>
+            <TouchableOpacity onPress={() => Linking.openURL('https://scheduler.tuaf.edu.vn/terms')}>
+              <Text style={styles.legalLinkText}>Điều khoản sử dụng</Text>
+            </TouchableOpacity>
+            <Text style={styles.legalLinkDivider}>•</Text>
+            <TouchableOpacity onPress={() => Linking.openURL('https://scheduler.tuaf.edu.vn/privacy')}>
+              <Text style={styles.legalLinkText}>Chính sách quyền riêng tư</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -431,5 +443,22 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     textAlign: 'center',
     lineHeight: 14,
+  },
+  legalLinksRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 14,
+    gap: 8,
+  },
+  legalLinkText: {
+    fontSize: 11,
+    color: Colors.primary,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+  },
+  legalLinkDivider: {
+    fontSize: 11,
+    color: Colors.textMuted,
   },
 });

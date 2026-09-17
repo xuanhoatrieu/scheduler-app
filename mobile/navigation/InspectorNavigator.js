@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
 import React from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ProfileScreen from '../screens/ProfileScreen';
 import AttendanceScreen from '../screens/inspector/AttendanceScreen';
 import InspectorDashboardScreen from '../screens/inspector/InspectorDashboardScreen';
@@ -17,6 +18,10 @@ const TAB_ICONS = {
 };
 
 export default function InspectorNavigator({ user, onLogout, onSwitchRole }) {
+  const insets = useSafeAreaInsets();
+  const bottomPadding = Math.max(insets.bottom, Platform.OS === 'ios' ? 20 : 8);
+  const tabHeight = 56 + bottomPadding;
+
   return (
     <NavigationContainer>
       <Tab.Navigator
@@ -35,7 +40,13 @@ export default function InspectorNavigator({ user, onLogout, onSwitchRole }) {
           },
           tabBarActiveTintColor: Colors.tabBarActive,
           tabBarInactiveTintColor: Colors.tabBarInactive,
-          tabBarStyle: styles.tabBar,
+          tabBarStyle: [
+            styles.tabBar,
+            {
+              height: tabHeight,
+              paddingBottom: bottomPadding,
+            },
+          ],
           tabBarLabelStyle: styles.tabBarLabel,
           tabBarItemStyle: styles.tabBarItem,
         })}
@@ -70,9 +81,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.tabBarBg,
     borderTopColor: Colors.borderLight,
     borderTopWidth: 1,
-    height: Platform.OS === 'ios' ? 88 : 65,
     paddingTop: 6,
-    paddingBottom: Platform.OS === 'ios' ? 28 : 10,
     elevation: 8,
     shadowColor: Colors.shadowColor,
     shadowOffset: { width: 0, height: -2 },

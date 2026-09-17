@@ -347,44 +347,208 @@ router.get('/finance', authMiddleware, async (req, res) => {
 });
 /**
  * @route   GET /api/grades/all
- * @desc    Lấy bảng điểm TẤT CẢ các kỳ, nhóm theo semester + schoolYear
+ * @desc    Lấy bảng điểm TẤT CẢ các kỳ, nhóm theo semester + schoolYear kèm thống kê tín chỉ & tiến độ tốt nghiệp
  * @access  Private (JWT)
  */
 router.get('/grades/all', authMiddleware, async (req, res) => {
   try {
-    const grades = await Grade.findAll({
+    const dataSource = process.env.DATA_SOURCE || 'database';
+    let pool = null;
+
+    if (dataSource === 'database') {
+      try {
+        const namvietConnector = require('../services/namvietConnector');
+        pool = await namvietConnector.getPool();
+      } catch (e) {
+        console.warn('⚠️ [API /grades/all] Không thể kết nối SQL Server TUAF:', e.message);
+      }
+    }
+
+    // 1. Kiểm tra xem dữ liệu trong PG cache đã có credits chưa, nếu chưa có thì tự động đồng bộ lại từ TUAF
+    let grades = await Grade.findAll({
       where: { userId: req.user.id },
       order: [['schoolYear', 'ASC'], ['semester', 'ASC'], ['courseName', 'ASC']]
     });
 
-    // Nhóm theo semester + schoolYear
-    const grouped = {};
+    const needsSync = grades.length === 0 || grades.some(g => g.credits == null || g.credits === 0);
+    if (needsSync && pool && req.user.tuafStudentId) {
+      try {
+        const tuafQueries = require('../services/tuafQueries');
+        const rawAllGrades = await tuafQueries.getAllStudentGrades(pool, req.user.tuafStudentId);
+        if (rawAllGrades && rawAllGrades.length > 0) {
+          const DatabaseStrategy = require('../strategies/DatabaseStrategy');
+          const strategy = new DatabaseStrategy();
+          const gradesByKey = {};
+          for (const r of rawAllGrades) {
+            const semKey = `HocKy${r.Hoc_ky}`;
+            const yrKey = r.Nam_hoc;
+            const key = `${semKey}|${yrKey}`;
+            if (!gradesByKey[key]) gradesByKey[key] = [];
+            gradesByKey[key].push(r);
+          }
+
+          for (const [key, rawList] of Object.entries(gradesByKey)) {
+            const [sem, yr] = key.split('|');
+            await Grade.destroy({ where: { userId: req.user.id, semester: sem, schoolYear: yr } });
+            const transformed = strategy._transformGrades(rawList);
+            await Grade.bulkCreate(transformed.map(g => ({
+              ...g, semester: sem, schoolYear: yr, userId: req.user.id
+            })));
+          }
+
+          grades = await Grade.findAll({
+            where: { userId: req.user.id },
+            order: [['schoolYear', 'ASC'], ['semester', 'ASC'], ['courseName', 'ASC']]
+          });
+        }
+      } catch (syncErr) {
+        console.warn('⚠️ [API /grades/all] Tự động đồng bộ điểm thất bại:', syncErr.message);
+      }
+    }
+
+    // 2. Lấy tổng số tín chỉ yêu cầu của CTĐT
+    let totalRequiredCredits = 0;
+    if (pool && req.user.tuafStudentId) {
+      try {
+        const tuafQueries = require('../services/tuafQueries');
+        const ctdtSummary = await tuafQueries.getStudentCurriculumSummary(pool, req.user.tuafStudentId);
+        if (ctdtSummary && ctdtSummary.totalCredits) {
+          totalRequiredCredits = Number(ctdtSummary.totalCredits);
+        }
+      } catch (ctErr) {
+        console.warn('⚠️ [API /grades/all] Không thể lấy CTĐT summary:', ctErr.message);
+      }
+    }
+
+    // Fallback: nếu chưa lấy được từ SQL Server, lấy từ model Curriculum
+    if (!totalRequiredCredits || totalRequiredCredits === 0) {
+      try {
+        const Curriculum = require('../models/Curriculum');
+        const cCredits = await Curriculum.sum('credits', { where: { userId: req.user.id } });
+        if (cCredits && cCredits > 0) {
+          totalRequiredCredits = cCredits;
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+    // Mặc định chuẩn đại học nếu không có thông tin
+    if (!totalRequiredCredits || totalRequiredCredits === 0) {
+      totalRequiredCredits = 150;
+    }
+
+    // 3. Gom nhóm theo semester + schoolYear theo thứ tự thời gian
+    const groupsMap = new Map();
     for (const g of grades) {
-      const key = `${g.semester}|${g.schoolYear}`;
-      if (!grouped[key]) {
-        grouped[key] = {
+      const key = `${g.schoolYear}|${g.semester}`;
+      if (!groupsMap.has(key)) {
+        groupsMap.set(key, {
           semester: g.semester,
           schoolYear: g.schoolYear,
           courses: []
-        };
+        });
       }
-      grouped[key].courses.push(g);
+      groupsMap.get(key).courses.push(g);
     }
 
-    // Tính GPA tích lũy từ tất cả các môn có điểm hệ 4
-    const allGradesWithGrade4 = grades.filter(g => g.totalGrade4 !== null && g.totalGrade4 !== undefined);
-    const totalCredits = allGradesWithGrade4.length; // mỗi môn tạm tính 1 đơn vị
-    const cumulativeGPA = allGradesWithGrade4.length > 0
-      ? (allGradesWithGrade4.reduce((sum, g) => sum + g.totalGrade4, 0) / allGradesWithGrade4.length).toFixed(2)
+    // Chuyển sang array và sắp xếp thứ tự học kỳ (VD: 2024-2025 HocKy1 -> 2024-2025 HocKy2)
+    const semesterGroups = Array.from(groupsMap.values()).sort((a, b) => {
+      if (a.schoolYear !== b.schoolYear) return a.schoolYear.localeCompare(b.schoolYear);
+      return a.semester.localeCompare(b.semester);
+    });
+
+    // 4. Tính toán chi tiết cho từng kỳ và tích lũy
+    let cumulativeCreditsStudied = 0;
+    let cumulativeCreditsAccumulated = 0;
+    let cumulativeWeightedScore4 = 0;
+    let cumulativeWeightedScore10 = 0;
+    let cumulativeCreditsForGpa = 0;
+
+    const enrichedGroups = semesterGroups.map(group => {
+      let semCreditsStudied = 0;
+      let semCreditsAccumulated = 0;
+      let semWeightedScore4 = 0;
+      let semWeightedScore10 = 0;
+      let semCreditsForGpa = 0;
+      let failedCoursesCount = 0;
+
+      for (const c of group.courses) {
+        const cr = Number(c.credits) || 0;
+        const g4 = c.totalGrade4 != null ? Number(c.totalGrade4) : null;
+        const g10 = c.totalGrade10 != null ? Number(c.totalGrade10) : null;
+        const isPassed = c.letterGrade && c.letterGrade !== 'F' && (g4 === null || g4 > 0);
+
+        semCreditsStudied += cr;
+        if (isPassed) {
+          semCreditsAccumulated += cr;
+        } else if (c.letterGrade === 'F') {
+          failedCoursesCount++;
+        }
+
+        if (g4 !== null && cr > 0) {
+          semWeightedScore4 += g4 * cr;
+          semWeightedScore10 += (g10 !== null ? g10 : 0) * cr;
+          semCreditsForGpa += cr;
+        }
+      }
+
+      // Cập nhật lũy kế toàn khóa đến kỳ này
+      cumulativeCreditsStudied += semCreditsStudied;
+      cumulativeCreditsAccumulated += semCreditsAccumulated;
+      cumulativeWeightedScore4 += semWeightedScore4;
+      cumulativeWeightedScore10 += semWeightedScore10;
+      cumulativeCreditsForGpa += semCreditsForGpa;
+
+      const semGpa = semCreditsForGpa > 0 ? parseFloat((semWeightedScore4 / semCreditsForGpa).toFixed(2)) : null;
+      const semGpa10 = semCreditsForGpa > 0 ? parseFloat((semWeightedScore10 / semCreditsForGpa).toFixed(2)) : null;
+      const cumGpa = cumulativeCreditsForGpa > 0 ? parseFloat((cumulativeWeightedScore4 / cumulativeCreditsForGpa).toFixed(2)) : null;
+      const cumGpa10 = cumulativeCreditsForGpa > 0 ? parseFloat((cumulativeWeightedScore10 / cumulativeCreditsForGpa).toFixed(2)) : null;
+
+      return {
+        semester: group.semester,
+        schoolYear: group.schoolYear,
+        totalCourses: group.courses.length,
+        failedCoursesCount,
+        creditsStudied: semCreditsStudied,
+        creditsAccumulated: semCreditsAccumulated,
+        failedCredits: semCreditsStudied - semCreditsAccumulated,
+        semesterGPA: semGpa,
+        semesterGPA10: semGpa10,
+        cumulativeGPA: cumGpa,
+        cumulativeGPA10: cumGpa10,
+        cumulativeCreditsStudied,
+        cumulativeCreditsAccumulated,
+        courses: group.courses
+      };
+    });
+
+    // 5. Thống kê toàn khóa
+    const totalCourses = grades.length;
+    const totalSemesters = enrichedGroups.length;
+    const finalCumulativeGPA = cumulativeCreditsForGpa > 0
+      ? parseFloat((cumulativeWeightedScore4 / cumulativeCreditsForGpa).toFixed(2))
       : null;
+    const finalCumulativeGPA10 = cumulativeCreditsForGpa > 0
+      ? parseFloat((cumulativeWeightedScore10 / cumulativeCreditsForGpa).toFixed(2))
+      : null;
+
+    const graduationProgress = totalRequiredCredits > 0
+      ? parseFloat(Math.min(100, (cumulativeCreditsAccumulated / totalRequiredCredits) * 100).toFixed(1))
+      : 0;
 
     res.json({
       success: true,
-      data: Object.values(grouped),
+      data: enrichedGroups,
       summary: {
-        totalCourses: grades.length,
-        totalSemesters: Object.keys(grouped).length,
-        cumulativeGPA: cumulativeGPA ? parseFloat(cumulativeGPA) : null
+        totalCourses,
+        totalSemesters,
+        creditsStudied: cumulativeCreditsStudied,
+        creditsAccumulated: cumulativeCreditsAccumulated,
+        failedCredits: cumulativeCreditsStudied - cumulativeCreditsAccumulated,
+        cumulativeGPA: finalCumulativeGPA,
+        cumulativeGPA10: finalCumulativeGPA10,
+        totalRequiredCredits,
+        graduationProgress
       },
       lastSyncedAt: req.user.lastSyncedAt
     });

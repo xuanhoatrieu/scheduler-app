@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getClassStudents, getSessionAttendance, submitSessionAttendance } from '../../services/api';
 import { Colors } from '../../theme/colors';
 
@@ -24,6 +25,7 @@ const STATUS_CONFIG = {
 };
 
 export default function StudentAttendanceScreen({ route, navigation, schedule, targetDate, onClose }) {
+  const insets = useSafeAreaInsets();
   // Can be opened as a modal or navigation screen
   const currentSchedule = schedule || route?.params?.schedule;
   const sessionDate = targetDate || route?.params?.date || new Date().toISOString().split('T')[0];
@@ -234,7 +236,7 @@ export default function StudentAttendanceScreen({ route, navigation, schedule, t
           <FlatList
             data={filteredStudents}
             keyExtractor={item => item.studentCode}
-            contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100 }}
+            contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 110 + insets.bottom }}
             renderItem={({ item, index }) => {
               const hasNote = Boolean(item.note);
               const isNoteOpen = activeNoteIdx === item.studentCode;
@@ -258,45 +260,45 @@ export default function StudentAttendanceScreen({ route, navigation, schedule, t
                       <Ionicons
                         name={hasNote ? 'chatbubble' : 'chatbubble-outline'}
                         size={16}
-                        color={hasNote ? '#1b5e20' : Colors.textMuted}
+                        color={hasNote ? Colors.primary : Colors.textMuted}
                       />
                     </TouchableOpacity>
                   </View>
 
-                  {/* STATUS BUTTONS CHIP GROUP */}
+                  {/* ATTENDANCE STATUS CHIPS */}
                   <View style={styles.statusChipsRow}>
-                    {['present', 'absent', 'excused', 'late'].map(st => {
-                      const cfg = STATUS_CONFIG[st];
-                      const isSelected = item.status === st;
-
+                    {Object.entries(STATUS_CONFIG).map(([stKey, conf]) => {
+                      const isSelected = item.status === stKey;
                       return (
                         <TouchableOpacity
-                          key={st}
+                          key={stKey}
                           style={[
                             styles.statusChipBtn,
+                            { borderColor: conf.border },
                             isSelected
-                              ? { backgroundColor: cfg.color, borderColor: cfg.color }
-                              : { backgroundColor: '#f5f5f5', borderColor: '#e0e0e0' }
+                              ? { backgroundColor: conf.bg, borderColor: conf.color }
+                              : { backgroundColor: '#fafafa' }
                           ]}
-                          onPress={() => setStudentStatus(item.studentCode, st)}
+                          onPress={() => setStudentStatus(item.studentCode, stKey)}
+                          activeOpacity={0.7}
                         >
                           <Text
                             style={[
                               styles.statusChipText,
-                              { color: isSelected ? '#ffffff' : '#555555' }
+                              { color: isSelected ? conf.color : Colors.textMuted }
                             ]}
                           >
-                            {cfg.label}
+                            {conf.label}
                           </Text>
                         </TouchableOpacity>
                       );
                     })}
                   </View>
 
-                  {/* EXPANDABLE NOTE INPUT */}
+                  {/* NOTE INPUT */}
                   {(isNoteOpen || hasNote) && (
                     <View style={styles.noteWrap}>
-                      <Ionicons name="create-outline" size={14} color={Colors.textMuted} />
+                      <Ionicons name="pencil-outline" size={14} color={Colors.textMuted} />
                       <TextInput
                         style={styles.noteInput}
                         placeholder="Ghi chú (VD: Muộn 15p, có giấy xin phép)..."
@@ -313,7 +315,7 @@ export default function StudentAttendanceScreen({ route, navigation, schedule, t
         )}
 
         {/* BOTTOM SAVE BAR */}
-        <View style={styles.bottomBar}>
+        <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 12) + 8 }]}>
           <TouchableOpacity
             style={[styles.saveBtn, submitting && { opacity: 0.7 }]}
             onPress={handleSave}

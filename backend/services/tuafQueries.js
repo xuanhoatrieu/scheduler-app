@@ -276,8 +276,8 @@ async function getStudentExams(pool, idSv, hocKy, namHoc) {
 async function getStudentGrades(pool, idSv, hocKy, namHoc) {
   const result = await safeQuery(pool,
     `SELECT
-      mh.Ky_hieu AS courseCode, mh.Ten_mon AS courseName,
-      dt.Diem_thi, dt.TBCMH, dt.Diem_chu,
+      mh.Ky_hieu AS courseCode, mh.Ten_mon AS courseName, mh.So_hoc_trinh AS credits,
+      dt.Diem_thi, dt.TBCMH, dt.Diem_chu, dt.Diem_so AS grade4,
       dt.Lan_hoc, dt.Lan_thi,
       d.Hoc_ky, d.Nam_hoc
     FROM MARK_Diem_TC d
@@ -302,8 +302,8 @@ async function getStudentGrades(pool, idSv, hocKy, namHoc) {
 async function getAllStudentGrades(pool, idSv) {
   const result = await safeQuery(pool,
     `SELECT
-      mh.Ky_hieu AS courseCode, mh.Ten_mon AS courseName,
-      dt.Diem_thi, dt.TBCMH, dt.Diem_chu,
+      mh.Ky_hieu AS courseCode, mh.Ten_mon AS courseName, mh.So_hoc_trinh AS credits,
+      dt.Diem_thi, dt.TBCMH, dt.Diem_chu, dt.Diem_so AS grade4,
       dt.Lan_hoc, dt.Lan_thi,
       d.Hoc_ky, d.Nam_hoc
     FROM MARK_Diem_TC d
@@ -1138,8 +1138,8 @@ async function getStudentGradesWithSurvey(pool, idSv, hocKy, namHoc) {
   const gradesResult = await safeQuery(pool,
     `SELECT
       d.ID_mon,
-      mh.Ky_hieu AS courseCode, mh.Ten_mon AS courseName,
-      dt.Diem_thi, dt.TBCMH, dt.Diem_chu,
+      mh.Ky_hieu AS courseCode, mh.Ten_mon AS courseName, mh.So_hoc_trinh AS credits,
+      dt.Diem_thi, dt.TBCMH, dt.Diem_chu, dt.Diem_so AS grade4,
       dt.Lan_hoc, dt.Lan_thi,
       d.Hoc_ky, d.Nam_hoc
     FROM MARK_Diem_TC d
@@ -1163,7 +1163,11 @@ async function getStudentGradesWithSurvey(pool, idSv, hocKy, namHoc) {
   if (!surveyDot) {
     return {
       grades: gradesResult.recordset.map(g => ({
-        ...g, surveyCompleted: true, ID_mon: undefined
+        ...g,
+        credits: g.credits != null ? Number(g.credits) : 0,
+        grade4: g.grade4 != null ? Number(g.grade4) : null,
+        surveyCompleted: true,
+        ID_mon: undefined
       })),
       surveyActive: false,
       surveyInfo: null,
@@ -1187,9 +1191,11 @@ async function getStudentGradesWithSurvey(pool, idSv, hocKy, namHoc) {
     return {
       courseCode: g.courseCode,
       courseName: g.courseName,
+      credits: g.credits != null ? Number(g.credits) : 0,
       Diem_thi: canView ? g.Diem_thi : null,
       TBCMH: canView ? g.TBCMH : null,
       Diem_chu: canView ? g.Diem_chu : null,
+      grade4: canView ? (g.grade4 != null ? Number(g.grade4) : null) : null,
       Lan_hoc: g.Lan_hoc,
       Lan_thi: g.Lan_thi,
       Hoc_ky: g.Hoc_ky,
@@ -1331,6 +1337,33 @@ async function getInspectorClassesByDate(pool, dateStr, thuSql) {
   }
 }
 
+/**
+ * Lấy tóm tắt CTĐT của SV (Tổng số tín chỉ yêu cầu tốt nghiệp, số kỳ)
+ */
+async function getStudentCurriculumSummary(pool, idSv) {
+  try {
+    const result = await safeQuery(pool,
+      `SELECT TOP 1 
+         ct.ID_dt,
+         ct.So_hoc_trinh AS totalCredits,
+         ct.So_ky_hoc AS totalSemesters,
+         cn.Ma_chuyen_nganh AS majorCode,
+         cn.Chuyen_nganh AS majorName
+       FROM STU_DanhSach ds
+       JOIN STU_Lop l ON ds.ID_lop = l.ID_lop
+       JOIN PLAN_ChuongTrinhDaoTao ct ON ct.ID_dt = COALESCE(NULLIF(ds.ID_dt_sv, 0), l.ID_dt)
+       LEFT JOIN dmChuyenNganh cn ON ct.ID_chuyen_nganh = cn.ID_chuyen_nganh
+       WHERE ds.ID_sv = @idSv`,
+      [{ name: 'idSv', type: sql.NVarChar(100), value: String(idSv) }],
+      { username: 'student-curriculum-summary' }
+    );
+    return result.recordset[0] || null;
+  } catch (e) {
+    console.error('❌ [tuafQueries] getStudentCurriculumSummary error:', e.message);
+    return null;
+  }
+}
+
 module.exports = {
   findStudentId,
   getStudentInfo,
@@ -1349,6 +1382,7 @@ module.exports = {
   getSchoolNews,
   getStudentDRL,
   getStudentCurriculum,
+  getStudentCurriculumSummary,
   getLecturerSchedule,
   getStudentSurveyedCourses,
   getExemptCourseIds,
@@ -1367,3 +1401,4 @@ module.exports = {
   getHomeroomStudentsFinance,
   getInspectorClassesByDate
 };
+

@@ -50,10 +50,20 @@ export default function GradesScreen({ user }) {
     setExpandedSemesters(prev => ({ ...prev, [idx]: !prev[idx] }));
   };
 
-  // GPA Circular Progress (simplified SVG-free version)
-  const GPACard = ({ gpa, totalCourses, totalSemesters }) => {
-    const gpaPercent = gpa ? (gpa / 4) * 100 : 0;
-    const gpaLabel = gpa ? gpa.toFixed(2) : '--';
+  // GPA Card với 4 chỉ số thống kê & Thanh tiến độ tốt nghiệp
+  const GPACard = ({
+    gpa,
+    gpa10,
+    totalCourses,
+    totalSemesters,
+    creditsStudied,
+    creditsAccumulated,
+    failedCredits,
+    totalRequiredCredits,
+    graduationProgress
+  }) => {
+    const gpaLabel = gpa ? Number(gpa).toFixed(2) : '--';
+    const gpa10Label = gpa10 ? Number(gpa10).toFixed(2) : '--';
 
     let gpaStatus = { text: 'Chưa có dữ liệu', color: Colors.textMuted };
     if (gpa >= 3.6) gpaStatus = { text: 'Xuất sắc', color: Colors.gradeA };
@@ -61,30 +71,108 @@ export default function GradesScreen({ user }) {
     else if (gpa >= 2.5) gpaStatus = { text: 'Khá', color: Colors.gradeB };
     else if (gpa >= 2.0) gpaStatus = { text: 'Trung bình', color: Colors.gradeC };
     else if (gpa >= 1.0) gpaStatus = { text: 'Yếu', color: Colors.gradeD };
-    else if (gpa !== null) gpaStatus = { text: 'Kém', color: Colors.gradeF };
+    else if (gpa !== null && gpa !== undefined) gpaStatus = { text: 'Kém', color: Colors.gradeF };
+
+    const progressVal = Number(graduationProgress) || 0;
 
     return (
       <View style={styles.gpaCard}>
-        {/* GPA Circle */}
-        <View style={styles.gpaCircleWrap}>
-          <View style={[styles.gpaCircleOuter, { borderColor: gpaStatus.color + '30' }]}>
-            <View style={[styles.gpaCircleInner, { borderColor: gpaStatus.color }]}>
-              <Text style={[styles.gpaValue, { color: gpaStatus.color }]}>{gpaLabel}</Text>
-              <Text style={styles.gpaScale}>/4.0</Text>
+        {/* Top Section: CPA Circle + 4 Stats Grid */}
+        <View style={styles.gpaTopRow}>
+          {/* CPA Circle */}
+          <View style={styles.gpaCircleWrap}>
+            <View style={[styles.gpaCircleOuter, { borderColor: gpaStatus.color + '30' }]}>
+              <View style={[styles.gpaCircleInner, { borderColor: gpaStatus.color }]}>
+                <Text style={[styles.gpaValue, { color: gpaStatus.color }]}>{gpaLabel}</Text>
+                <Text style={styles.gpaScale}>/4.0</Text>
+              </View>
+            </View>
+            <Text style={[styles.gpaStatusText, { color: gpaStatus.color }]}>{gpaStatus.text}</Text>
+            <Text style={styles.gpa10SubText}>Hệ 10: {gpa10Label}</Text>
+          </View>
+
+          {/* Stats 2x2 Grid */}
+          <View style={styles.gpaStatsGrid}>
+            <View style={styles.statGridRow}>
+              <View style={styles.gpaStatItem}>
+                <View style={styles.statIconBadge}>
+                  <Ionicons name="book-outline" size={13} color={Colors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.gpaStatValue}>{totalCourses || 0}</Text>
+                  <Text style={styles.gpaStatLabel} numberOfLines={1}>Số môn học</Text>
+                </View>
+              </View>
+
+              <View style={styles.gpaStatItem}>
+                <View style={[styles.statIconBadge, { backgroundColor: Colors.accentBlue + '15' }]}>
+                  <Ionicons name="calendar-outline" size={13} color={Colors.accentBlue} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.gpaStatValue}>{totalSemesters || 0}</Text>
+                  <Text style={styles.gpaStatLabel} numberOfLines={1}>Số học kỳ</Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.statGridRow}>
+              <View style={styles.gpaStatItem}>
+                <View style={[styles.statIconBadge, { backgroundColor: Colors.accentOrange + '15' }]}>
+                  <Ionicons name="layers-outline" size={13} color={Colors.accentOrange} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.gpaStatValue}>{creditsStudied || 0}</Text>
+                  <Text style={styles.gpaStatLabel} numberOfLines={1}>TC đã học</Text>
+                </View>
+              </View>
+
+              <View style={styles.gpaStatItem}>
+                <View style={[styles.statIconBadge, { backgroundColor: Colors.success + '15' }]}>
+                  <Ionicons name="checkmark-circle-outline" size={13} color={Colors.success} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.gpaStatValue, { color: Colors.success }]}>{creditsAccumulated || 0}</Text>
+                  <Text style={styles.gpaStatLabel} numberOfLines={1}>TC tích lũy</Text>
+                </View>
+              </View>
             </View>
           </View>
-          <Text style={[styles.gpaStatusText, { color: gpaStatus.color }]}>{gpaStatus.text}</Text>
         </View>
 
-        {/* Stats */}
-        <View style={styles.gpaStats}>
-          <View style={styles.gpaStat}>
-            <Text style={styles.gpaStatValue}>{totalCourses || 0}</Text>
-            <Text style={styles.gpaStatLabel}>Số môn</Text>
+        {/* Divider */}
+        <View style={styles.gpaCardDivider} />
+
+        {/* Graduation Progress Section */}
+        <View style={styles.progressSection}>
+          <View style={styles.progressHeader}>
+            <View style={styles.progressHeaderLeft}>
+              <Ionicons name="school" size={16} color={Colors.primary} />
+              <Text style={styles.progressTitle}>Tiến độ tốt nghiệp</Text>
+            </View>
+            <View style={styles.progressPercentBadge}>
+              <Text style={styles.progressPercentText}>{progressVal.toFixed(1)}%</Text>
+            </View>
           </View>
-          <View style={styles.gpaStat}>
-            <Text style={styles.gpaStatValue}>{totalSemesters || 0}</Text>
-            <Text style={styles.gpaStatLabel}>Học kỳ</Text>
+
+          {/* Progress Bar */}
+          <View style={styles.progressBarTrack}>
+            <View
+              style={[
+                styles.progressBarFill,
+                { width: `${Math.min(100, Math.max(0, progressVal))}%` }
+              ]}
+            />
+          </View>
+
+          <View style={styles.progressFooter}>
+            <Text style={styles.progressFooterText}>
+              Đã tích lũy <Text style={{ fontWeight: '700', color: Colors.textPrimary }}>{creditsAccumulated || 0}</Text> / {totalRequiredCredits || 150} tín chỉ
+            </Text>
+            {failedCredits > 0 && (
+              <Text style={styles.progressFailedText}>
+                (Trừ {failedCredits} TC môn F)
+              </Text>
+            )}
           </View>
         </View>
       </View>
@@ -94,7 +182,7 @@ export default function GradesScreen({ user }) {
   // Hiển thị tên kỳ dễ đọc
   const formatSemesterName = (semester, schoolYear) => {
     const semNum = semester?.replace('HocKy', '') || '?';
-    return `Học kỳ ${semNum} — ${schoolYear || ''}`;
+    return `Học kỳ ${semNum} (${schoolYear || ''})`;
   };
 
   if (loading) {
@@ -168,8 +256,14 @@ export default function GradesScreen({ user }) {
         {/* GPA Summary Card */}
         <GPACard
           gpa={summary?.cumulativeGPA}
+          gpa10={summary?.cumulativeGPA10}
           totalCourses={summary?.totalCourses}
           totalSemesters={summary?.totalSemesters}
+          creditsStudied={summary?.creditsStudied}
+          creditsAccumulated={summary?.creditsAccumulated}
+          failedCredits={summary?.failedCredits}
+          totalRequiredCredits={summary?.totalRequiredCredits}
+          graduationProgress={summary?.graduationProgress}
         />
 
         {/* Filter Bar */}
@@ -234,42 +328,106 @@ export default function GradesScreen({ user }) {
 
           return filteredGroups.map((group, idx) => {
             const isExpanded = expandedSemesters[idx] !== false;
-            const semGpa = group.courses.filter(c => c.totalGrade4 != null);
-            const semAvg = semGpa.length > 0
-              ? (semGpa.reduce((s, c) => s + c.totalGrade4, 0) / semGpa.length).toFixed(2)
-              : null;
+            const semCourses = group.courses || [];
+            
+            // Tính số TC nếu backend chưa enrich
+            const studiedCredits = group.creditsStudied != null
+              ? group.creditsStudied
+              : semCourses.reduce((sum, c) => sum + (Number(c.credits) || 0), 0);
+              
+            const accumulatedCredits = group.creditsAccumulated != null
+              ? group.creditsAccumulated
+              : semCourses.filter(c => c.letterGrade !== 'F' && c.totalGrade4 > 0).reduce((sum, c) => sum + (Number(c.credits) || 0), 0);
+              
+            const failedCreds = group.failedCredits != null ? group.failedCredits : (studiedCredits - accumulatedCredits);
+
+            // Điểm GPA HK
+            const semGpaDisplay = group.semesterGPA != null ? group.semesterGPA.toFixed(2) : null;
+            const cumGpaDisplay = group.cumulativeGPA != null ? group.cumulativeGPA.toFixed(2) : null;
 
             return (
               <View key={idx} style={styles.semesterGroup}>
                 <TouchableOpacity style={styles.semesterHeader} onPress={() => toggleSemester(idx)} activeOpacity={0.7}>
                   <View style={styles.semesterHeaderLeft}>
                     <Ionicons name={isExpanded ? 'chevron-down' : 'chevron-forward'} size={18} color={Colors.primary} />
-                    <Text style={styles.semesterName}>{formatSemesterName(group.semester, group.schoolYear)}</Text>
+                    <View style={{ marginLeft: 8, flex: 1 }}>
+                      <Text style={styles.semesterName}>{formatSemesterName(group.semester, group.schoolYear)}</Text>
+                      <Text style={styles.semesterSubDesc}>
+                        {semCourses.length} môn • {studiedCredits} TC {failedCreds > 0 ? `(TL: ${accumulatedCredits} TC)` : ''}
+                      </Text>
+                    </View>
                   </View>
                   <View style={styles.semesterHeaderRight}>
-                    {semAvg && (
-                      <View style={[styles.semGpaBadge, { backgroundColor: getGradeColor(semAvg >= 3.2 ? 'A' : semAvg >= 2.5 ? 'B' : 'C') + '15' }]}>
-                        <Text style={[styles.semGpaText, { color: getGradeColor(semAvg >= 3.2 ? 'A' : semAvg >= 2.5 ? 'B' : 'C') }]}>
-                          GPA: {semAvg}
+                    {semGpaDisplay && (
+                      <View style={[styles.semGpaBadge, { backgroundColor: getGradeColor(Number(semGpaDisplay) >= 3.2 ? 'A' : Number(semGpaDisplay) >= 2.5 ? 'B' : 'C') + '15' }]}>
+                        <Text style={[styles.semGpaText, { color: getGradeColor(Number(semGpaDisplay) >= 3.2 ? 'A' : Number(semGpaDisplay) >= 2.5 ? 'B' : 'C') }]}>
+                          GPA: {semGpaDisplay}
                         </Text>
                       </View>
                     )}
-                    <Text style={styles.semesterCount}>{group.courses.length} môn</Text>
                   </View>
                 </TouchableOpacity>
 
-                {isExpanded && group.courses.map((course, cIdx) => {
+                {/* Semester Summary Strip (khi mở rộng) */}
+                {isExpanded && (
+                  <View style={styles.semSummaryStrip}>
+                    <View style={styles.semSummaryCol}>
+                      <Text style={styles.semSummaryVal}>{studiedCredits} TC</Text>
+                      <Text style={styles.semSummaryLbl}>Đã học</Text>
+                    </View>
+                    <View style={styles.semSummaryDivider} />
+                    <View style={styles.semSummaryCol}>
+                      <Text style={[styles.semSummaryVal, { color: Colors.success }]}>{accumulatedCredits} TC</Text>
+                      <Text style={styles.semSummaryLbl}>Tích lũy</Text>
+                    </View>
+                    <View style={styles.semSummaryDivider} />
+                    <View style={styles.semSummaryCol}>
+                      <Text style={[styles.semSummaryVal, { color: Colors.primary }]}>{semGpaDisplay || '--'}</Text>
+                      <Text style={styles.semSummaryLbl}>GPA HK</Text>
+                    </View>
+                    <View style={styles.semSummaryDivider} />
+                    <View style={styles.semSummaryCol}>
+                      <Text style={[styles.semSummaryVal, { color: Colors.accentPurple }]}>{cumGpaDisplay || '--'}</Text>
+                      <Text style={styles.semSummaryLbl}>CPA lũy kế</Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* Danh sách các môn học trong kỳ */}
+                {isExpanded && semCourses.map((course, cIdx) => {
                   const gradeColor = getGradeColor(course.letterGrade);
+                  const isFailed = course.letterGrade === 'F';
+
                   return (
-                    <View key={cIdx} style={styles.gradeCard}>
+                    <View key={cIdx} style={[styles.gradeCard, isFailed && styles.gradeCardFailed]}>
                       <View style={styles.gradeCardHeader}>
-                        <Text style={styles.gradeCourseName} numberOfLines={2}>{course.courseName}</Text>
+                        <View style={{ flex: 1, marginRight: 8 }}>
+                          <Text style={styles.gradeCourseName} numberOfLines={2}>{course.courseName}</Text>
+                          <View style={styles.courseMetaRow}>
+                            {course.courseCode ? (
+                              <Text style={styles.courseCodeText}>{course.courseCode}</Text>
+                            ) : null}
+                            <View style={styles.creditsPill}>
+                              <Text style={styles.creditsPillText}>{course.credits || 0} tín chỉ</Text>
+                            </View>
+                          </View>
+                        </View>
                         <View style={[styles.letterBadge, { backgroundColor: gradeColor + '15' }]}>
                           <Text style={[styles.letterText, { color: gradeColor }]}>
                             {course.letterGrade || '-'}
                           </Text>
                         </View>
                       </View>
+
+                      {/* Cảnh báo môn F */}
+                      {isFailed && (
+                        <View style={styles.failedNotice}>
+                          <Ionicons name="alert-circle-outline" size={13} color={Colors.gradeF} />
+                          <Text style={styles.failedNoticeText}>
+                            Môn học chưa đạt (F) — Không được tính vào tín chỉ tích lũy
+                          </Text>
+                        </View>
+                      )}
 
                       <View style={styles.gradeGrid}>
                         <View style={styles.gradeCol}>
@@ -292,6 +450,13 @@ export default function GradesScreen({ user }) {
                             {course.totalGrade10 ?? '-'}
                           </Text>
                           <Text style={[styles.gradeColLbl, { color: gradeColor, fontWeight: '600' }]}>TK10</Text>
+                        </View>
+                        <View style={styles.gradeColDivider} />
+                        <View style={styles.gradeCol}>
+                          <Text style={[styles.gradeColVal, { color: gradeColor, fontWeight: '800' }]}>
+                            {course.totalGrade4 != null ? Number(course.totalGrade4).toFixed(1) : '-'}
+                          </Text>
+                          <Text style={[styles.gradeColLbl, { color: gradeColor, fontWeight: '600' }]}>TK4</Text>
                         </View>
                       </View>
                     </View>
@@ -344,30 +509,66 @@ const styles = StyleSheet.create({
   segmentTextActive: { color: Colors.textOnPrimary },
   // GPA Card
   gpaCard: {
-    backgroundColor: Colors.surface, margin: 16, borderRadius: 20, padding: 24,
+    backgroundColor: Colors.surface, margin: 16, borderRadius: 20, padding: 18,
     elevation: 4, shadowColor: Colors.shadowColor, shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.08, shadowRadius: 12,
+  },
+  gpaTopRow: {
     flexDirection: 'row', alignItems: 'center',
   },
-  gpaCircleWrap: { alignItems: 'center', marginRight: 24 },
+  gpaCircleWrap: { alignItems: 'center', marginRight: 16 },
   gpaCircleOuter: {
-    width: 100, height: 100, borderRadius: 50, borderWidth: 6,
+    width: 90, height: 90, borderRadius: 45, borderWidth: 5,
     alignItems: 'center', justifyContent: 'center',
   },
   gpaCircleInner: {
-    width: 80, height: 80, borderRadius: 40, borderWidth: 3,
+    width: 72, height: 72, borderRadius: 36, borderWidth: 2.5,
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: Colors.surfaceElevated,
   },
-  gpaValue: { fontSize: 22, fontWeight: '900' },
+  gpaValue: { fontSize: 20, fontWeight: '900' },
   gpaScale: { fontSize: 10, color: Colors.textMuted, marginTop: -2 },
-  gpaStatusText: { fontSize: 12, fontWeight: '700', marginTop: 8 },
-  gpaStats: { flex: 1, gap: 12 },
-  gpaStat: {
-    backgroundColor: Colors.background, borderRadius: 12, padding: 12,
+  gpaStatusText: { fontSize: 12, fontWeight: '700', marginTop: 6 },
+  gpa10SubText: { fontSize: 10, color: Colors.textSecondary, marginTop: 2, fontWeight: '600' },
+  
+  // Stats 2x2 Grid
+  gpaStatsGrid: { flex: 1, gap: 8 },
+  statGridRow: { flexDirection: 'row', gap: 8 },
+  gpaStatItem: {
+    flex: 1, backgroundColor: Colors.background, borderRadius: 12, padding: 8,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
   },
-  gpaStatValue: { fontSize: 20, fontWeight: '800', color: Colors.textPrimary },
-  gpaStatLabel: { fontSize: 11, color: Colors.textMuted, marginTop: 2 },
+  statIconBadge: {
+    width: 26, height: 26, borderRadius: 8, backgroundColor: Colors.primary + '15',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  gpaStatValue: { fontSize: 14, fontWeight: '800', color: Colors.textPrimary },
+  gpaStatLabel: { fontSize: 10, color: Colors.textMuted, marginTop: 1 },
+
+  // GPA Card Divider & Graduation Progress
+  gpaCardDivider: { height: 1, backgroundColor: Colors.borderLight, marginVertical: 14 },
+  progressSection: { width: '100%' },
+  progressHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8,
+  },
+  progressHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  progressTitle: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
+  progressPercentBadge: {
+    backgroundColor: Colors.primary + '15', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10,
+  },
+  progressPercentText: { fontSize: 12, fontWeight: '800', color: Colors.primary },
+  progressBarTrack: {
+    height: 8, borderRadius: 4, backgroundColor: Colors.borderLight, overflow: 'hidden', marginBottom: 6,
+  },
+  progressBarFill: {
+    height: '100%', borderRadius: 4, backgroundColor: Colors.primary,
+  },
+  progressFooter: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap',
+  },
+  progressFooterText: { fontSize: 11, color: Colors.textSecondary },
+  progressFailedText: { fontSize: 11, color: Colors.gradeF, fontWeight: '600' },
+
   // Semester Group
   semesterGroup: { marginTop: 4 },
   semesterHeader: {
@@ -376,27 +577,53 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: Colors.borderLight,
   },
   semesterHeaderLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  semesterName: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary, marginLeft: 8 },
+  semesterName: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
+  semesterSubDesc: { fontSize: 11, color: Colors.textMuted, marginTop: 2 },
   semesterHeaderRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   semGpaBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
   semGpaText: { fontSize: 11, fontWeight: '700' },
-  semesterCount: { fontSize: 11, color: Colors.textMuted },
+  
+  // Semester Summary Strip
+  semSummaryStrip: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surfaceElevated,
+    marginHorizontal: 16, marginTop: 6, marginBottom: 4, borderRadius: 10,
+    paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: Colors.borderLight,
+  },
+  semSummaryCol: { flex: 1, alignItems: 'center' },
+  semSummaryVal: { fontSize: 12, fontWeight: '700', color: Colors.textPrimary },
+  semSummaryLbl: { fontSize: 10, color: Colors.textMuted, marginTop: 1 },
+  semSummaryDivider: { width: 1, height: 20, backgroundColor: Colors.borderLight },
+
   // Grade Card
   gradeCard: {
-    backgroundColor: Colors.surface, marginHorizontal: 16, marginVertical: 5,
+    backgroundColor: Colors.surface, marginHorizontal: 16, marginVertical: 4,
     borderRadius: 14, padding: 14, borderWidth: 1, borderColor: Colors.borderLight,
   },
-  gradeCardHeader: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10,
+  gradeCardFailed: {
+    borderColor: Colors.gradeF + '40', backgroundColor: '#FFFDFD',
   },
-  gradeCourseName: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary, flex: 1, marginRight: 10, lineHeight: 19 },
+  gradeCardHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8,
+  },
+  gradeCourseName: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary, lineHeight: 19 },
+  courseMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  courseCodeText: { fontSize: 11, color: Colors.textMuted, fontWeight: '500' },
+  creditsPill: { backgroundColor: Colors.primaryBg, paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: 6 },
+  creditsPillText: { fontSize: 10, fontWeight: '700', color: Colors.primary },
   letterBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, minWidth: 36, alignItems: 'center' },
   letterText: { fontSize: 13, fontWeight: '800' },
+  failedNotice: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: Colors.gradeF + '10', paddingHorizontal: 8, paddingVertical: 4,
+    borderRadius: 6, marginBottom: 8,
+  },
+  failedNoticeText: { fontSize: 10, color: Colors.gradeF, fontWeight: '600', flex: 1 },
   gradeGrid: { flexDirection: 'row', alignItems: 'center' },
   gradeCol: { flex: 1, alignItems: 'center' },
-  gradeColVal: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary },
+  gradeColVal: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
   gradeColLbl: { fontSize: 10, color: Colors.textMuted, marginTop: 2 },
-  gradeColDivider: { width: 1, height: 28, backgroundColor: Colors.borderLight },
+  gradeColDivider: { width: 1, height: 24, backgroundColor: Colors.borderLight },
+
   // Filter Section
   filterSection: {
     marginHorizontal: 16, marginBottom: 12, padding: 10,
@@ -414,6 +641,7 @@ const styles = StyleSheet.create({
   },
   filterChipText: { fontSize: 11, fontWeight: '700', color: Colors.textSecondary },
   filterChipTextActive: { color: Colors.textOnPrimary },
+  
   // Empty
   emptyWrap: { alignItems: 'center', paddingTop: 60, paddingBottom: 40 },
   emptyText: { fontSize: 14, color: Colors.textMuted, marginTop: 12 },

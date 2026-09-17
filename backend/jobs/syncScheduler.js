@@ -153,14 +153,19 @@ const runDatabaseBulkSync = async () => {
         await Grade.bulkCreate(userGrades.map(r => {
           const totalGrade10 = r.TBCMH != null ? Math.round(r.TBCMH * 100) / 100 : null;
           const converted = strategy._convertGrade ? strategy._convertGrade(totalGrade10) : { totalGrade4: null, letterGrade: null };
+          const grade4Raw = r.grade4 != null ? Number(r.grade4) : (r.Diem_so != null ? Number(r.Diem_so) : null);
+          const totalGrade4 = grade4Raw !== null ? grade4Raw : converted.totalGrade4;
+          const credits = r.credits != null ? Number(r.credits) : (r.So_hoc_trinh != null ? Number(r.So_hoc_trinh) : 0);
+
           return {
             courseName: r.courseName || '',
             courseCode: r.courseCode || '',
+            credits,
             processGrade: null,
             midtermGrade: null,
             finalGrade: r.Diem_thi != null ? Math.round(r.Diem_thi * 100) / 100 : null,
             totalGrade10,
-            totalGrade4: converted.totalGrade4,
+            totalGrade4,
             letterGrade: r.Diem_chu || converted.letterGrade,
             retakeCount: r.Lan_hoc || 1,
             examAttempt: r.Lan_thi || 1,

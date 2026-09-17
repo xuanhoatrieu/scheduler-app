@@ -324,15 +324,19 @@ class DatabaseStrategy extends ScheduleStrategy {
 
   _transformGrades(rawRows) {
     return rawRows.map(r => {
-      // Query mới trả về: Diem_thi (điểm thi), TBCMH (điểm tổng kết), Diem_chu
+      // Query trả về: Diem_thi, TBCMH, Diem_chu, Diem_so / grade4, credits / So_hoc_trinh
       const totalGrade10 = r.TBCMH != null ? Math.round(r.TBCMH * 100) / 100 : null;
-      const { totalGrade4, letterGrade } = r.Diem_chu
-        ? { totalGrade4: this._convertGrade(totalGrade10).totalGrade4, letterGrade: r.Diem_chu }
-        : this._convertGrade(totalGrade10);
+      const converted = this._convertGrade(totalGrade10);
+      
+      const grade4Raw = r.grade4 != null ? Number(r.grade4) : (r.Diem_so != null ? Number(r.Diem_so) : null);
+      const totalGrade4 = grade4Raw !== null ? grade4Raw : converted.totalGrade4;
+      const letterGrade = r.Diem_chu ? r.Diem_chu.trim() : converted.letterGrade;
+      const credits = r.credits != null ? Number(r.credits) : (r.So_hoc_trinh != null ? Number(r.So_hoc_trinh) : 0);
 
       return {
         courseName: r.courseName || '',
         courseCode: r.courseCode || '',
+        credits,
         processGrade: null, // Thành phần chi tiết cần query MARK_DiemThanhPhan_TC riêng
         midtermGrade: null,
         finalGrade: r.Diem_thi != null ? Math.round(r.Diem_thi * 100) / 100 : null,

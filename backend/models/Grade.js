@@ -50,6 +50,11 @@ const Grade = sequelize.define('Grade', {
     allowNull: true,
     defaultValue: ''
   },
+  credits: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    defaultValue: 0
+  },
   retakeCount: {
     type: DataTypes.INTEGER,
     allowNull: true,

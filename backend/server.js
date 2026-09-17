@@ -101,6 +101,14 @@ app.get('/admin', adminLocalGuard, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin', 'index.html'));
 });
 
+// Privacy Policy & Terms of Service (Public for App Store Connect Compliance)
+app.get('/privacy', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'privacy.html'));
+});
+app.get('/terms', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'terms.html'));
+});
+
 // Admin API Routes (Protected with Local Guard)
 app.use('/api/admin', adminRoutes);
 

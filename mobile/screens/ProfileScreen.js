@@ -3,13 +3,14 @@ import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  SafeAreaView,
+  Linking,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { syncHistory } from '../services/api';
 import { Colors } from '../theme/colors';
 
@@ -28,12 +29,19 @@ export default function ProfileScreen({ user, onLogout, onSwitchRole }) {
           message: `Đồng bộ thành công! ${res.gradesCount || 0} môn điểm, ${res.financeCount || 0} kỳ học phí.`
         });
       } else {
-        setSyncResult({ type: 'error', message: res.message || 'Đồng bộ thất bại!' });
+        setSyncResult({
+          type: 'error',
+          message: res.message || 'Đồng bộ thất bại. Vui lòng thử lại!'
+        });
       }
-    } catch (err) {
-      setSyncResult({ type: 'error', message: 'Lỗi kết nối máy chủ!' });
+    } catch (e) {
+      setSyncResult({
+        type: 'error',
+        message: 'Lỗi kết nối máy chủ khi đồng bộ lịch sử.'
+      });
+    } finally {
+      setSyncing(false);
     }
-    setSyncing(false);
   };
 
   const confirmLogout = () => {
@@ -47,6 +55,41 @@ export default function ProfileScreen({ user, onLogout, onSwitchRole }) {
     );
   };
 
+  const handleAccountDeletion = () => {
+    Alert.alert(
+      'Quản Lý Tài Khoản & Dữ Liệu',
+      '• Xóa dữ liệu ứng dụng: Xóa toàn bộ phiên đăng nhập, mật khẩu đã mã hóa, lịch học và điểm thi lưu trên thiết bị này.\n\n• Xóa tài khoản vĩnh viễn: Tài khoản của bạn liên kết trực tiếp với Cổng thông tin đào tạo TUAF. Để yêu cầu xóa bản ghi hồ sơ sinh viên/giảng viên khỏi hệ thống, vui lòng liên hệ Phòng Đào tạo (phongdaotao@tuaf.edu.vn).',
+      [
+        { text: 'Đóng', style: 'cancel' },
+        {
+          text: 'Gửi Email Hỗ Trợ Xóa',
+          onPress: () => {
+            Linking.openURL(
+              `mailto:phongdaotao@tuaf.edu.vn?subject=Yeu cau xoa tai khoan TUAF&body=Kính gửi Phòng Đào tạo, tôi muốn yêu cầu hỗ trợ đóng tài khoản và xóa thông tin đào tạo liên kết với mã: ${user?.username || ''}`
+            );
+          },
+        },
+        {
+          text: 'Xóa Dữ Liệu & Đăng Xuất',
+          style: 'destructive',
+          onPress: onLogout,
+        },
+      ]
+    );
+  };
+
+  const openPrivacyPolicy = () => {
+    Linking.openURL('https://scheduler.tuaf.edu.vn/privacy').catch(() => {
+      Alert.alert('Chính sách quyền riêng tư', 'Vui lòng truy cập: https://scheduler.tuaf.edu.vn/privacy');
+    });
+  };
+
+  const openTerms = () => {
+    Linking.openURL('https://scheduler.tuaf.edu.vn/terms').catch(() => {
+      Alert.alert('Điều khoản dịch vụ', 'Vui lòng truy cập: https://scheduler.tuaf.edu.vn/terms');
+    });
+  };
+
   const formatDateTime = (dateStr) => {
     if (!dateStr) return 'Chưa đồng bộ';
     const d = new Date(dateStr);
@@ -54,7 +97,7 @@ export default function ProfileScreen({ user, onLogout, onSwitchRole }) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Hồ Sơ</Text>
       </View>
@@ -241,14 +284,14 @@ export default function ProfileScreen({ user, onLogout, onSwitchRole }) {
           </View>
         )}
 
-        {/* App Info */}
+        {/* App Info & Legal */}
         <View style={styles.actionSection}>
-          <Text style={styles.sectionTitle}>ỨNG DỤNG</Text>
+          <Text style={styles.sectionTitle}>ỨNG DỤNG & PHÁP LÝ</Text>
 
           <View style={styles.infoCard}>
             <View style={styles.infoCardRow}>
               <Text style={styles.infoCardLabel}>Phiên bản</Text>
-              <Text style={styles.infoCardValue}>2.0.0</Text>
+              <Text style={styles.infoCardValue}>2.0.0 (Build 1)</Text>
             </View>
             <View style={styles.infoCardDivider} />
             <View style={styles.infoCardRow}>
@@ -258,10 +301,37 @@ export default function ProfileScreen({ user, onLogout, onSwitchRole }) {
             <View style={styles.infoCardDivider} />
             <View style={styles.infoCardRow}>
               <Text style={styles.infoCardLabel}>Bảo mật</Text>
-              <Text style={styles.infoCardValue}>AES-256 End-to-End</Text>
+              <Text style={styles.infoCardValue}>AES-256 / HTTPS</Text>
             </View>
+            <View style={styles.infoCardDivider} />
+            
+            {/* Privacy Policy Link */}
+            <TouchableOpacity style={styles.infoCardActionRow} onPress={openPrivacyPolicy} activeOpacity={0.7}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Ionicons name="shield-checkmark-outline" size={18} color={Colors.primary} />
+                <Text style={styles.infoCardActionText}>Chính sách quyền riêng tư</Text>
+              </View>
+              <Ionicons name="open-outline" size={16} color={Colors.textMuted} />
+            </TouchableOpacity>
+
+            <View style={styles.infoCardDivider} />
+
+            {/* Terms of Service Link */}
+            <TouchableOpacity style={styles.infoCardActionRow} onPress={openTerms} activeOpacity={0.7}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Ionicons name="document-text-outline" size={18} color={Colors.primary} />
+                <Text style={styles.infoCardActionText}>Điều khoản dịch vụ</Text>
+              </View>
+              <Ionicons name="open-outline" size={16} color={Colors.textMuted} />
+            </TouchableOpacity>
           </View>
         </View>
+
+        {/* Account Deletion (Apple Guideline 5.1.1(v) Compliance) */}
+        <TouchableOpacity style={styles.deleteAccountBtn} onPress={handleAccountDeletion} activeOpacity={0.8}>
+          <Ionicons name="trash-outline" size={18} color="#dc2626" />
+          <Text style={styles.deleteAccountText}>Xóa Tài Khoản & Dữ Liệu</Text>
+        </TouchableOpacity>
 
         {/* Logout */}
         <TouchableOpacity style={styles.logoutBtn} onPress={confirmLogout} activeOpacity={0.8}>
@@ -344,10 +414,22 @@ const styles = StyleSheet.create({
   infoCardLabel: { fontSize: 13, color: Colors.textSecondary },
   infoCardValue: { fontSize: 13, fontWeight: '600', color: Colors.textPrimary },
   infoCardDivider: { height: 1, backgroundColor: Colors.borderLight, marginHorizontal: 14 },
+  infoCardActionRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14,
+  },
+  infoCardActionText: { fontSize: 13, fontWeight: '600', color: Colors.textPrimary },
+  // Delete Account (Apple Guideline 5.1.1(v))
+  deleteAccountBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    marginHorizontal: 16, marginTop: 18, paddingVertical: 12,
+    backgroundColor: '#fee2e240', borderRadius: 14, borderWidth: 1, borderColor: '#fca5a5',
+    gap: 6,
+  },
+  deleteAccountText: { fontSize: 13, fontWeight: '700', color: '#b91c1c' },
   // Logout
   logoutBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    marginHorizontal: 16, marginTop: 24, paddingVertical: 14,
+    marginHorizontal: 16, marginTop: 12, paddingVertical: 14,
     backgroundColor: Colors.danger + '10', borderRadius: 14, borderWidth: 1, borderColor: Colors.danger + '20',
     gap: 8,
   },

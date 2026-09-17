@@ -153,7 +153,9 @@ const parseGrades = (html) => {
         const stt = $(cells[0]).text().trim();
         if (isNaN(stt) || !stt) return;
 
+        const courseCode = $(cells[1]).text().trim().replace(/\s+/g, ' ');
         const courseName = $(cells[2]).text().trim().replace(/\s+/g, ' ');
+        const credits = parseInt($(cells[3]).text().trim(), 10) || 0;
         
         // Parse điểm thành phần (CC và GK) từ chuỗi ví dụ "CC : 9  - GK : 6.5"
         const processText = $(cells[4]).text().trim();
@@ -172,7 +174,9 @@ const parseGrades = (html) => {
         const letterGrade = $(cells[8]).text().trim().toUpperCase();
 
         gradeList.push({
+          courseCode,
           courseName,
+          credits,
           processGrade: isNaN(processGrade) ? null : processGrade,
           midtermGrade: isNaN(midtermGrade) ? null : midtermGrade,
           finalGrade: isNaN(finalGrade) ? null : finalGrade,

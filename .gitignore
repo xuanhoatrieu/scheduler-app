@@ -18,6 +18,7 @@ dist/
 build/
 *.apk
 *.aab
+*.xlsx
 
 # IDE files
 .idea/

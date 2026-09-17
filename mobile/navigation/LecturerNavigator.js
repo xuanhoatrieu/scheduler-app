@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
 import React from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import ClassListScreen from '../screens/lecturer/ClassListScreen';
@@ -21,6 +22,10 @@ const TAB_ICONS = {
 };
 
 export default function LecturerNavigator({ user, onLogout, onSwitchRole }) {
+  const insets = useSafeAreaInsets();
+  const bottomPadding = Math.max(insets.bottom, Platform.OS === 'ios' ? 20 : 8);
+  const tabHeight = 56 + bottomPadding;
+
   return (
     <NavigationContainer>
       <Tab.Navigator
@@ -39,7 +44,13 @@ export default function LecturerNavigator({ user, onLogout, onSwitchRole }) {
           },
           tabBarActiveTintColor: Colors.tabBarActive,
           tabBarInactiveTintColor: Colors.tabBarInactive,
-          tabBarStyle: styles.tabBar,
+          tabBarStyle: [
+            styles.tabBar,
+            {
+              height: tabHeight,
+              paddingBottom: bottomPadding,
+            },
+          ],
           tabBarLabelStyle: styles.tabBarLabel,
           tabBarItemStyle: styles.tabBarItem,
         })}
@@ -87,9 +98,6 @@ const styles = StyleSheet.create({
     shadowColor: Colors.shadowColor,
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.08,
-    shadowRadius: 12,
-    height: Platform.OS === 'ios' ? 88 : 64,
-    paddingBottom: Platform.OS === 'ios' ? 28 : 8,
     paddingTop: 8,
   },
   tabBarLabel: {

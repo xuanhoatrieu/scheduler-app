@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AppNavigator from './navigation/AppNavigator';
 import InspectorNavigator from './navigation/InspectorNavigator';
 import LecturerNavigator from './navigation/LecturerNavigator';
@@ -89,7 +90,7 @@ export default function App() {
   }
 
   return (
-    <>
+    <SafeAreaProvider>
       <StatusBar style="dark" />
       {user ? (
         user.role === 'inspector' || user.role === 'admin' ? (
@@ -102,7 +103,7 @@ export default function App() {
       ) : (
         <LoginScreen onLoginSuccess={handleLoginSuccess} />
       )}
-    </>
+    </SafeAreaProvider>
   );
 }
 
