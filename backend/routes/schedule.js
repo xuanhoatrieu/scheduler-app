@@ -21,32 +21,14 @@ const normalizeTerm = (semQuery, yearQuery) => {
 };
 
 /**
- * Hàm trợ giúp để kích hoạt ép buộc đồng bộ (Force Sync) dữ liệu thời gian thực
+ * Hàm trợ giúp để kích hoạt ép buộc đồng bộ (Force Sync) dữ liệu thời gian thực từ SQL Server TUAF
  */
 const handleForceSync = async (user, req) => {
   const { semester, startYear } = normalizeTerm(req.query.semester, req.query.schoolYear);
-  const dataSource = process.env.DATA_SOURCE || 'database';
-  
-  console.log(`🔄 [API Sync] Đang kích hoạt ép buộc đồng bộ cho ${user.username} (role: ${user.role}, mode: ${dataSource})...`);
+  console.log(`🔄 [API Sync Database] Đang đồng bộ trực tiếp từ SQL Server TUAF cho ${user.username} (role: ${user.role})...`);
   const decryptedPassword = decrypt(user.encryptedPassword);
-
-  // Giảng viên LUÔN đồng bộ trực tiếp từ SQL Server Database, không crawl web
-  if (user.role === 'lecturer') {
-    const databaseStrategy = strategyManager.getDatabaseStrategy();
-    return await databaseStrategy.getSchedule(user, decryptedPassword, { semester, schoolYear: String(startYear) });
-  }
-
-  const strategy = strategyManager.getStrategy();
-  try {
-    return await strategy.getSchedule(user, decryptedPassword, { semester, schoolYear: String(startYear) });
-  } catch (err) {
-    if (dataSource === 'database') {
-      console.warn(`⚠️ [API Sync] Database lỗi, fallback crawler: ${err.message}`);
-      const crawler = strategyManager.getCrawlerStrategy();
-      return await crawler.getSchedule(user, decryptedPassword, { semester, schoolYear: String(startYear) });
-    }
-    throw err;
-  }
+  const databaseStrategy = strategyManager.getDatabaseStrategy();
+  return await databaseStrategy.getSchedule(user, decryptedPassword, { semester, schoolYear: String(startYear) });
 };
 
 /**
@@ -177,7 +159,7 @@ router.get('/schedule', authMiddleware, async (req, res) => {
     }
 
     // 2. Lấy dữ liệu đã cache từ PostgreSQL
-    const schedules = await Schedule.findAll({
+    let schedules = await Schedule.findAll({
       where: {
         userId: req.user.id,
         semester: formattedSemester,
@@ -185,6 +167,23 @@ router.get('/schedule', authMiddleware, async (req, res) => {
       },
       order: [['dayOfWeek', 'ASC'], ['studyTime', 'ASC']]
     });
+
+    // 3. Nếu cache trống và không phải forceSync, tự động nạp từ SQL Server lần đầu
+    if (schedules.length === 0 && req.query.forceSync !== 'true') {
+      try {
+        await handleForceSync(req.user, req);
+        schedules = await Schedule.findAll({
+          where: {
+            userId: req.user.id,
+            semester: formattedSemester,
+            schoolYear: formattedSchoolYear
+          },
+          order: [['dayOfWeek', 'ASC'], ['studyTime', 'ASC']]
+        });
+      } catch (e) {
+        console.warn('⚠️ Tự động nạp TKB SQL Server:', e.message);
+      }
+    }
 
     res.json({
       success: true,
@@ -214,7 +213,7 @@ router.get('/exams', authMiddleware, async (req, res) => {
       await handleForceSync(req.user, req);
     }
 
-    const exams = await Exam.findAll({
+    let exams = await Exam.findAll({
       where: {
         userId: req.user.id,
         semester: formattedSemester,
@@ -222,6 +221,22 @@ router.get('/exams', authMiddleware, async (req, res) => {
       },
       order: [['examDate', 'ASC']]
     });
+
+    if (exams.length === 0 && req.query.forceSync !== 'true') {
+      try {
+        await handleForceSync(req.user, req);
+        exams = await Exam.findAll({
+          where: {
+            userId: req.user.id,
+            semester: formattedSemester,
+            schoolYear: formattedSchoolYear
+          },
+          order: [['examDate', 'ASC']]
+        });
+      } catch (e) {
+        console.warn('⚠️ Tự động nạp Lịch thi SQL Server:', e.message);
+      }
+    }
 
     res.json({
       success: true,
@@ -409,16 +424,12 @@ async function ensureStudentGrades(user, pool, forceSync = false) {
  */
 router.get('/grades/all', authMiddleware, async (req, res) => {
   try {
-    const dataSource = process.env.DATA_SOURCE || 'database';
     let pool = null;
-
-    if (dataSource === 'database') {
-      try {
-        const namvietConnector = require('../services/namvietConnector');
-        pool = await namvietConnector.getPool();
-      } catch (e) {
-        console.warn('⚠️ [API /grades/all] Không thể kết nối SQL Server TUAF:', e.message);
-      }
+    try {
+      const namvietConnector = require('../services/namvietConnector');
+      pool = await namvietConnector.getPool();
+    } catch (e) {
+      console.warn('⚠️ [API /grades/all] Không thể kết nối SQL Server TUAF:', e.message);
     }
 
     // 1. Đảm bảo dữ liệu bảng điểm trong PG cache đã được làm sạch và có số tín chỉ chuẩn
@@ -587,10 +598,25 @@ router.get('/grades/all', authMiddleware, async (req, res) => {
  */
 router.get('/finance/all', authMiddleware, async (req, res) => {
   try {
-    const finances = await Finance.findAll({
+    let finances = await Finance.findAll({
       where: { userId: req.user.id },
       order: [['schoolYear', 'ASC'], ['semester', 'ASC']]
     });
+
+    if ((finances.length === 0 || req.query.force === 'true') && req.user.role === 'student') {
+      try {
+        const { decrypt } = require('../utils/security');
+        const decryptedPassword = decrypt(req.user.encryptedPassword);
+        const strategy = strategyManager.getDatabaseStrategy();
+        await strategy.syncHistory(req.user, decryptedPassword);
+        finances = await Finance.findAll({
+          where: { userId: req.user.id },
+          order: [['schoolYear', 'ASC'], ['semester', 'ASC']]
+        });
+      } catch (fErr) {
+        console.warn('⚠️ [API /finance/all] Tự động đồng bộ tài chính SQL Server:', fErr.message);
+      }
+    }
 
     // Chuẩn hóa tính toán công nợ và miễn giảm theo thực tế
     const processedFinances = finances.map(f => {
@@ -659,20 +685,13 @@ router.post('/sync-history', authMiddleware, async (req, res) => {
   try {
     const { decrypt } = require('../utils/security');
     const decryptedPassword = decrypt(req.user.encryptedPassword);
-    const strategy = strategyManager.getStrategy();
+    const strategy = strategyManager.getDatabaseStrategy();
 
-    let result;
-    try {
-      result = await strategy.syncHistory(req.user, decryptedPassword);
-    } catch (stratErr) {
-      console.warn('⚠️ [Strategy] Lỗi syncHistory, tự động fallback sang CrawlerStrategy:', stratErr.message);
-      const crawlerStrategy = strategyManager.getCrawlerStrategy();
-      result = await crawlerStrategy.syncHistory(req.user, decryptedPassword);
-    }
+    const result = await strategy.syncHistory(req.user, decryptedPassword);
 
     res.json({
       success: true,
-      message: `Đồng bộ lịch sử hoàn tất!`,
+      message: `Đồng bộ lịch sử SQL Server hoàn tất!`,
       ...result
     });
   } catch (error) {
@@ -688,16 +707,12 @@ router.post('/sync-history', authMiddleware, async (req, res) => {
  */
 router.get('/curriculum', authMiddleware, async (req, res) => {
   try {
-    const dataSource = process.env.DATA_SOURCE || 'database';
     let pool = null;
-
-    if (dataSource === 'database') {
-      try {
-        const namvietConnector = require('../services/namvietConnector');
-        pool = await namvietConnector.getPool();
-      } catch (e) {
-        console.warn('⚠️ [API /curriculum] Không thể kết nối SQL Server TUAF:', e.message);
-      }
+    try {
+      const namvietConnector = require('../services/namvietConnector');
+      pool = await namvietConnector.getPool();
+    } catch (e) {
+      console.warn('⚠️ [API /curriculum] Không thể kết nối SQL Server TUAF:', e.message);
     }
 
     // Đảm bảo dữ liệu bảng điểm trong PG cache đã được làm sạch và có số tín chỉ chuẩn
@@ -705,6 +720,30 @@ router.get('/curriculum', authMiddleware, async (req, res) => {
 
     const Curriculum = require('../models/Curriculum');
     const MasterCurriculum = require('../models/MasterCurriculum');
+
+    // Đồng bộ lại Curriculum từ SQL Server nếu force=true hoặc chưa có dữ liệu trong cache
+    const currCount = await Curriculum.count({ where: { userId: req.user.id } });
+    if ((req.query.force === 'true' || currCount === 0) && pool && req.user.tuafStudentId) {
+      try {
+        const tuafQueries = require('../services/tuafQueries');
+        const dbCurriculum = await tuafQueries.getStudentCurriculum(pool, req.user.tuafStudentId);
+        if (dbCurriculum && dbCurriculum.length > 0) {
+          await Curriculum.destroy({ where: { userId: req.user.id } });
+          await Curriculum.bulkCreate(dbCurriculum.map(r => ({
+            courseName: r.courseName,
+            courseCode: r.courseCode || '',
+            credits: r.credits || 0,
+            courseType: r.isElective ? 'Tự chọn' : 'Bắt buộc',
+            semester: r.semester || 1,
+            knowledgeBlock: r.knowledgeBlock || 'Kiến thức giáo dục chuyên nghiệp',
+            status: 'Chưa học',
+            userId: req.user.id
+          })));
+        }
+      } catch (cErr) {
+        console.warn('⚠️ [API /curriculum] Lỗi đồng bộ CTĐT SQL Server:', cErr.message);
+      }
+    }
 
     // 1. Lấy khung chuẩn MasterCurriculum (cho ngành của SV, mặc định '7480201' - 'K56')
     const masterList = await MasterCurriculum.findAll({

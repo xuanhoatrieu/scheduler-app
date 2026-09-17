@@ -180,37 +180,13 @@ router.post('/login', async (req, res) => {
       }
     }
 
-    // ─── Bước 2: LẤY DATA — Giảng viên LUÔN dùng DatabaseStrategy (SQL Server) ───
-    let result;
-
-    if (role === 'lecturer') {
-      console.log(`📡 [Auth] Lấy dữ liệu giảng dạy trực tiếp từ Database Server cho GV ${user.username}...`);
-      const databaseStrategy = strategyManager.getDatabaseStrategy();
-      result = await databaseStrategy.getSchedule(user, password, {
-        semester: '1',
-        schoolYear: '2026'
-      });
-    } else {
-      const strategy = strategyManager.getStrategy();
-      try {
-        result = await strategy.getSchedule(user, password, {
-          semester: '1',
-          schoolYear: '2026'
-        });
-      } catch (primaryErr) {
-        // Nếu strategy chính là database và lỗi → fallback sang crawler cho sinh viên
-        if (dataSource === 'database') {
-          console.warn(`⚠️ [Auth] DatabaseStrategy lỗi: ${primaryErr.message}. Fallback sang Crawler...`);
-          const crawlerStrategy = strategyManager.getCrawlerStrategy();
-          result = await crawlerStrategy.getSchedule(user, password, {
-            semester: '1',
-            schoolYear: '2026'
-          });
-        } else {
-          throw primaryErr;
-        }
-      }
-    }
+    // ─── Bước 2: LẤY DATA — Cả Giảng viên & Sinh viên LUÔN dùng DatabaseStrategy (SQL Server TUAF) ───
+    console.log(`📡 [Auth] Lấy dữ liệu trực tiếp từ Database Server cho ${user.username} (role: ${role})...`);
+    const databaseStrategy = strategyManager.getDatabaseStrategy();
+    const result = await databaseStrategy.getSchedule(user, password, {
+      semester: '1',
+      schoolYear: '2026'
+    });
 
     const token = jwt.sign(
       { id: user.id, username: user.username, role: user.role },

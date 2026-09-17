@@ -1,35 +1,26 @@
-const CrawlerStrategy = require('./CrawlerStrategy');
 const DatabaseStrategy = require('./DatabaseStrategy');
 
 /**
  * StrategyManager quản lý và cung cấp Chiến lược lấy dữ liệu thời gian thực
  * 
  * Chế độ:
- *   - 'database' (mặc định): Đọc SQL Server TUAF → cache PostgreSQL
- *   - 'crawler': Cào portal trường → cache PostgreSQL (fallback)
+ *   - 'database' (duy nhất): Đọc SQL Server TUAF → cache PostgreSQL
+ *   - Crawler web đã được tắt hoàn toàn theo yêu cầu hệ thống
  */
 class StrategyManager {
   constructor() {
     this.strategies = {
-      crawler: new CrawlerStrategy(),
-      database: new DatabaseStrategy()
+      database: new DatabaseStrategy(),
+      crawler: new DatabaseStrategy() // Đã vô hiệu hóa crawler web
     };
   }
 
   /**
-   * Lấy chiến lược hoạt động dựa trên biến môi trường DATA_SOURCE
-   * @returns {ScheduleStrategy} Đối tượng chiến lược cụ thể
+   * Lấy chiến lược hoạt động — LUÔN dùng DatabaseStrategy (đọc SQL Server TUAF)
+   * @returns {DatabaseStrategy}
    */
   getStrategy() {
-    const mode = process.env.DATA_SOURCE || 'database';
-    const strategy = this.strategies[mode.toLowerCase()];
-    
-    if (!strategy) {
-      console.warn(`⚠️ Chế độ DATA_SOURCE="${mode}" không được hỗ trợ. Chuyển sang mặc định "database".`);
-      return this.strategies.database;
-    }
-    
-    return strategy;
+    return this.strategies.database;
   }
 
   /**
@@ -41,13 +32,15 @@ class StrategyManager {
   }
 
   /**
-   * Lấy CrawlerStrategy cho fallback khi DatabaseStrategy lỗi
-   * @returns {CrawlerStrategy}
+   * getCrawlerStrategy — Phương án crawler web đã tắt, luôn chuyển tiếp sang DatabaseStrategy
+   * @returns {DatabaseStrategy}
    */
   getCrawlerStrategy() {
-    return this.strategies.crawler;
+    console.warn('⚠️ [StrategyManager] Phương án crawler web đã tắt hoàn toàn. Đang sử dụng DatabaseStrategy.');
+    return this.strategies.database;
   }
 }
 
 // Singleton pattern
 module.exports = new StrategyManager();
+

@@ -14,29 +14,12 @@ const strategyManager = require('../strategies/StrategyManager');
  * Crawler mode:  Cào portal từng user (giữ nguyên logic cũ)
  */
 const runDailySync = async () => {
-  console.log('⏰ [Cron Job] Bắt đầu đồng bộ dữ liệu tự động...');
-  const dataSource = process.env.DATA_SOURCE || 'database';
-
+  console.log('⏰ [Cron Job] Bắt đầu đồng bộ dữ liệu tự động từ Database SQL Server...');
   try {
-    if (dataSource === 'database') {
-      await runDatabaseBulkSync();
-    } else {
-      await runCrawlerSync();
-    }
-    console.log('⏰ [Cron Job] Đồng bộ dữ liệu hoàn thành!');
+    await runDatabaseBulkSync();
+    console.log('⏰ [Cron Job] Đồng bộ dữ liệu SQL Server hoàn thành!');
   } catch (error) {
-    console.error('⏰ [Cron Job] Lỗi nghiêm trọng:', error.message);
-    
-    // Nếu database mode lỗi → fallback sang crawler
-    if (dataSource === 'database') {
-      console.warn('⏰ [Cron Job] Database sync lỗi → thử fallback crawler...');
-      try {
-        await runCrawlerSync();
-        console.log('⏰ [Cron Job] Fallback crawler hoàn thành!');
-      } catch (fallbackErr) {
-        console.error('⏰ [Cron Job] Fallback crawler cũng lỗi:', fallbackErr.message);
-      }
-    }
+    console.error('⏰ [Cron Job] Lỗi đồng bộ dữ liệu:', error.message);
   }
 };
 
@@ -214,30 +197,6 @@ const runDatabaseBulkSync = async () => {
 
 /**
  * Crawler Sync — Giữ nguyên logic cũ, dùng làm fallback
- */
-const runCrawlerSync = async () => {
-  console.log('⏰ [Cron Crawler] Đồng bộ bằng Crawler...');
-  const users = await User.findAll();
-  const crawlerStrategy = strategyManager.getCrawlerStrategy();
-
-  for (const user of users) {
-    try {
-      console.log(`⏰ [Cron Crawler] Đang đồng bộ ${user.username}...`);
-      const decryptedPassword = decrypt(user.encryptedPassword);
-      await crawlerStrategy.getSchedule(user, decryptedPassword, {
-        semester: '1',
-        schoolYear: '2026'
-      });
-      console.log(`⏰ [Cron Crawler] Thành công cho ${user.username}!`);
-      
-      // Throttle: chờ 500ms giữa mỗi user để giảm tải portal
-      await new Promise(r => setTimeout(r, 500));
-    } catch (userError) {
-      console.error(`⏰ [Cron Crawler] Lỗi ${user.username}:`, userError.message);
-    }
-  }
-};
-
 /**
  * Khởi tạo dịch vụ Cron
  */
@@ -248,7 +207,7 @@ const initCronJob = () => {
     runDailySync();
   });
   
-  console.log(`📅 [Cron Service] Đã thiết lập lịch đồng bộ: "${cronSchedule}" (mode: ${process.env.DATA_SOURCE || 'database'})`);
+  console.log(`📅 [Cron Service] Đã thiết lập lịch đồng bộ SQL Server: "${cronSchedule}"`);
 };
 
 module.exports = {
