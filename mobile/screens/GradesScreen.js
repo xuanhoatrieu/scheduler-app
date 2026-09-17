@@ -24,8 +24,8 @@ export default function GradesScreen({ user }) {
   const [selectedYearFilter, setSelectedYearFilter] = useState('ALL');
   const [selectedSemFilter, setSelectedSemFilter] = useState('ALL');
 
-  const loadData = async () => {
-    const res = await getGradesAll();
+  const loadData = async (force = false) => {
+    const res = await getGradesAll(force);
     if (res.success) {
       setSemesterGroups(res.data || []);
       setSummary(res.summary || null);
@@ -42,7 +42,7 @@ export default function GradesScreen({ user }) {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadData();
+    await loadData(true);
     setRefreshing(false);
   }, []);
 

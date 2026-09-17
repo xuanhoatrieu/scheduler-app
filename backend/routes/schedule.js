@@ -346,6 +346,63 @@ router.get('/finance', authMiddleware, async (req, res) => {
   }
 });
 /**
+ * Helper: Đảm bảo sinh viên đã được đồng bộ bảng điểm chuẩn từ SQL Server TUAF
+ * Tự động tìm ID_sv nếu chưa có, xóa sạch các môn ma/kỳ ma của crawler cũ
+ */
+async function ensureStudentGrades(user, pool, forceSync = false) {
+  if (!pool || user.role !== 'student') return;
+  try {
+    const tuafQueries = require('../services/tuafQueries');
+    let studentId = user.tuafStudentId;
+    if (!studentId) {
+      const sv = await tuafQueries.findStudentId(pool, user.username);
+      if (sv && sv.ID_sv) {
+        studentId = sv.ID_sv;
+        await user.update({ tuafStudentId: studentId });
+        user.tuafStudentId = studentId;
+      }
+    }
+    if (!studentId) return;
+
+    const grades = await Grade.findAll({ where: { userId: user.id } });
+    // Cần đồng bộ nếu: forceSync = true, chưa có điểm, có điểm credits == 0 / null, hoặc số môn > 50 (dấu hiệu duplicate do crawler)
+    const needsSync = forceSync || grades.length === 0 || grades.length > 50 || grades.some(g => g.credits == null || g.credits === 0);
+
+    if (needsSync) {
+      console.log(`🔄 [ensureStudentGrades] Đang đồng bộ lại điểm chuẩn từ SQL Server cho SV ${user.username}...`);
+      const rawAllGrades = await tuafQueries.getAllStudentGrades(pool, studentId);
+      if (rawAllGrades && rawAllGrades.length > 0) {
+        const DatabaseStrategy = require('../strategies/DatabaseStrategy');
+        const strategy = new DatabaseStrategy();
+
+        // Xóa TOÀN BỘ điểm cũ của user để triệt tiêu sạch các môn ma và học kỳ ma do crawler cũ tạo ra
+        await Grade.destroy({ where: { userId: user.id } });
+
+        const gradesByKey = {};
+        for (const r of rawAllGrades) {
+          const semKey = `HocKy${r.Hoc_ky}`;
+          const yrKey = r.Nam_hoc;
+          const key = `${semKey}|${yrKey}`;
+          if (!gradesByKey[key]) gradesByKey[key] = [];
+          gradesByKey[key].push(r);
+        }
+
+        for (const [key, rawList] of Object.entries(gradesByKey)) {
+          const [sem, yr] = key.split('|');
+          const transformed = strategy._transformGrades(rawList);
+          await Grade.bulkCreate(transformed.map(g => ({
+            ...g, semester: sem, schoolYear: yr, userId: user.id
+          })));
+        }
+        console.log(`✅ [ensureStudentGrades] Đã đồng bộ thành công ${rawAllGrades.length} môn chuẩn cho ${user.username}!`);
+      }
+    }
+  } catch (err) {
+    console.warn('⚠️ [ensureStudentGrades] Lỗi đồng bộ điểm:', err.message);
+  }
+}
+
+/**
  * @route   GET /api/grades/all
  * @desc    Lấy bảng điểm TẤT CẢ các kỳ, nhóm theo semester + schoolYear kèm thống kê tín chỉ & tiến độ tốt nghiệp
  * @access  Private (JWT)
@@ -364,77 +421,42 @@ router.get('/grades/all', authMiddleware, async (req, res) => {
       }
     }
 
-    // 1. Kiểm tra xem dữ liệu trong PG cache đã có credits chưa, nếu chưa có thì tự động đồng bộ lại từ TUAF
+    // 1. Đảm bảo dữ liệu bảng điểm trong PG cache đã được làm sạch và có số tín chỉ chuẩn
+    await ensureStudentGrades(req.user, pool, req.query.force === 'true');
+
     let grades = await Grade.findAll({
       where: { userId: req.user.id },
       order: [['schoolYear', 'ASC'], ['semester', 'ASC'], ['courseName', 'ASC']]
     });
 
-    const needsSync = grades.length === 0 || grades.some(g => g.credits == null || g.credits === 0);
-    if (needsSync && pool && req.user.tuafStudentId) {
-      try {
-        const tuafQueries = require('../services/tuafQueries');
-        const rawAllGrades = await tuafQueries.getAllStudentGrades(pool, req.user.tuafStudentId);
-        if (rawAllGrades && rawAllGrades.length > 0) {
-          const DatabaseStrategy = require('../strategies/DatabaseStrategy');
-          const strategy = new DatabaseStrategy();
-          const gradesByKey = {};
-          for (const r of rawAllGrades) {
-            const semKey = `HocKy${r.Hoc_ky}`;
-            const yrKey = r.Nam_hoc;
-            const key = `${semKey}|${yrKey}`;
-            if (!gradesByKey[key]) gradesByKey[key] = [];
-            gradesByKey[key].push(r);
-          }
-
-          for (const [key, rawList] of Object.entries(gradesByKey)) {
-            const [sem, yr] = key.split('|');
-            await Grade.destroy({ where: { userId: req.user.id, semester: sem, schoolYear: yr } });
-            const transformed = strategy._transformGrades(rawList);
-            await Grade.bulkCreate(transformed.map(g => ({
-              ...g, semester: sem, schoolYear: yr, userId: req.user.id
-            })));
-          }
-
-          grades = await Grade.findAll({
-            where: { userId: req.user.id },
-            order: [['schoolYear', 'ASC'], ['semester', 'ASC'], ['courseName', 'ASC']]
-          });
-        }
-      } catch (syncErr) {
-        console.warn('⚠️ [API /grades/all] Tự động đồng bộ điểm thất bại:', syncErr.message);
-      }
-    }
-
     // 2. Lấy tổng số tín chỉ yêu cầu của CTĐT
     let totalRequiredCredits = 0;
-    if (pool && req.user.tuafStudentId) {
-      try {
-        const tuafQueries = require('../services/tuafQueries');
-        const ctdtSummary = await tuafQueries.getStudentCurriculumSummary(pool, req.user.tuafStudentId);
-        if (ctdtSummary && ctdtSummary.totalCredits) {
-          totalRequiredCredits = Number(ctdtSummary.totalCredits);
+    try {
+      const Curriculum = require('../models/Curriculum');
+      const cCredits = await Curriculum.sum('credits', { where: { userId: req.user.id } });
+      if (cCredits && cCredits > 0) {
+        totalRequiredCredits = cCredits;
+      }
+    } catch (e) {}
+
+    if (!totalRequiredCredits || totalRequiredCredits === 0) {
+      if (pool && req.user.tuafStudentId) {
+        try {
+          const tuafQueries = require('../services/tuafQueries');
+          const ctdtSummary = await tuafQueries.getStudentCurriculumSummary(pool, req.user.tuafStudentId);
+          // Ghi chú: So_hoc_trinh đôi khi lưu theo ĐVHT (VD 190 ĐVHT ~ 150 TC), chỉ dùng nếu <= 165
+          if (ctdtSummary && ctdtSummary.totalCredits && ctdtSummary.totalCredits <= 165) {
+            totalRequiredCredits = Number(ctdtSummary.totalCredits);
+          }
+        } catch (ctErr) {
+          console.warn('⚠️ [API /grades/all] Không thể lấy CTĐT summary:', ctErr.message);
         }
-      } catch (ctErr) {
-        console.warn('⚠️ [API /grades/all] Không thể lấy CTĐT summary:', ctErr.message);
       }
     }
 
-    // Fallback: nếu chưa lấy được từ SQL Server, lấy từ model Curriculum
-    if (!totalRequiredCredits || totalRequiredCredits === 0) {
-      try {
-        const Curriculum = require('../models/Curriculum');
-        const cCredits = await Curriculum.sum('credits', { where: { userId: req.user.id } });
-        if (cCredits && cCredits > 0) {
-          totalRequiredCredits = cCredits;
-        }
-      } catch (e) {
-        // ignore
-      }
-    }
     // Mặc định chuẩn đại học nếu không có thông tin
     if (!totalRequiredCredits || totalRequiredCredits === 0) {
-      totalRequiredCredits = 150;
+      totalRequiredCredits = 154;
     }
 
     // 3. Gom nhóm theo semester + schoolYear theo thứ tự thời gian
@@ -666,6 +688,21 @@ router.post('/sync-history', authMiddleware, async (req, res) => {
  */
 router.get('/curriculum', authMiddleware, async (req, res) => {
   try {
+    const dataSource = process.env.DATA_SOURCE || 'database';
+    let pool = null;
+
+    if (dataSource === 'database') {
+      try {
+        const namvietConnector = require('../services/namvietConnector');
+        pool = await namvietConnector.getPool();
+      } catch (e) {
+        console.warn('⚠️ [API /curriculum] Không thể kết nối SQL Server TUAF:', e.message);
+      }
+    }
+
+    // Đảm bảo dữ liệu bảng điểm trong PG cache đã được làm sạch và có số tín chỉ chuẩn
+    await ensureStudentGrades(req.user, pool, req.query.force === 'true');
+
     const Curriculum = require('../models/Curriculum');
     const MasterCurriculum = require('../models/MasterCurriculum');
 
@@ -869,16 +906,22 @@ router.get('/curriculum', authMiddleware, async (req, res) => {
     });
 
     // 7. Bổ sung các môn sinh viên đã học nhưng không có trong Khung chuẩn (ví dụ NN702008, môn tự chọn khác)
+    const addedUnmatchedCodes = new Set();
     for (const g of grades) {
       if (!matchedGrades.has(g.id)) {
         const code = (g.courseCode || '').toUpperCase().trim();
+        if (code && addedUnmatchedCodes.has(code)) continue;
+        if (code) addedUnmatchedCodes.add(code);
+
         const isPE = code.startsWith('CB701') || peKeywords.some(k => (g.courseName || '').toLowerCase().includes(k));
         const status = g.letterGrade === 'F' ? 'failed' : (g.letterGrade ? 'passed' : 'studying');
+        const credits = g.credits != null && g.credits > 0 ? Number(g.credits) : 2;
+
         mergedList.push({
           courseName: g.courseName,
           courseNameEn: '',
           courseCode: g.courseCode || '',
-          credits: 2,
+          credits,
           theoryHours: 0,
           practiceHours: 0,
           courseType: isPE ? 'Điều kiện' : 'Tự chọn / Bổ sung',
@@ -970,15 +1013,26 @@ router.get('/curriculum', authMiddleware, async (req, res) => {
       bySemester.push(otherGroup);
     }
 
-    // 10. Thống kê tiến độ tốt nghiệp chuẩn (153 TC)
-    const totalGraduationCredits = 153;
+    // 10. Thống kê tiến độ tốt nghiệp chuẩn
+    let totalGraduationCredits = 154;
+    if (rawCurriculum.length > 0) {
+      const cCredits = rawCurriculum.reduce((sum, c) => sum + (c.credits || 0), 0);
+      if (cCredits > 0) totalGraduationCredits = cCredits;
+    } else if (masterList.length > 0) {
+      const nonConditionCredits = masterList.filter(c => !c.isCondition).reduce((sum, c) => sum + (c.credits || 0), 0);
+      totalGraduationCredits = nonConditionCredits > 154 ? 150 : nonConditionCredits;
+    }
+
     const passedCredits = mergedList
       .filter(c => !c.isCondition && c.status === 'passed')
       .reduce((sum, c) => sum + (c.credits || 0), 0);
 
+    const conditionCreditsTarget = 3;
+    const effectiveTotalCredits = totalGraduationCredits > 150 ? totalGraduationCredits - conditionCreditsTarget : totalGraduationCredits;
+
     const failedCount = mergedList.filter(c => c.status === 'failed').length;
     const studyingCount = mergedList.filter(c => c.status === 'studying').length;
-    const progressPercent = Math.min(100, Math.round((passedCredits / totalGraduationCredits) * 100));
+    const progressPercent = Math.min(100, Math.round((passedCredits / effectiveTotalCredits) * 100));
 
     res.json({
       success: true,
@@ -988,7 +1042,7 @@ router.get('/curriculum', authMiddleware, async (req, res) => {
       graduationRequirements,
       summary: {
         totalCourses: mergedList.length,
-        totalCredits: totalGraduationCredits,
+        totalCredits: effectiveTotalCredits,
         passedCredits,
         failedCount,
         studyingCount,

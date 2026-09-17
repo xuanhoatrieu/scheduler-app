@@ -194,9 +194,9 @@ export const getFinance = async (forceSync = false) => {
 /**
  * Lấy bảng điểm TẤT CẢ các kỳ, bao gồm GPA tích lũy
  */
-export const getGradesAll = async () => {
+export const getGradesAll = async (forceSync = false) => {
   try {
-    const response = await api.get('/grades/all');
+    const response = await api.get(`/grades/all${forceSync ? '?force=true' : ''}`);
     const { data, summary } = response.data;
     await AsyncStorage.setItem('cached_grades_all', JSON.stringify({ data, summary }));
     return { success: true, data, summary, source: 'network' };
@@ -275,9 +275,9 @@ export const syncHistory = async () => {
 /**
  * Lấy Khung Chương trình Đào tạo, merge với bảng điểm (status cho từng môn)
  */
-export const getCurriculum = async () => {
+export const getCurriculum = async (forceSync = false) => {
   try {
-    const response = await api.get('/curriculum');
+    const response = await api.get(`/curriculum${forceSync ? '?force=true' : ''}`);
     const { data, summary, source, graduationRequirements, byBlock, bySemester } = response.data;
     await AsyncStorage.setItem('cached_curriculum', JSON.stringify({ data, summary, source, graduationRequirements, byBlock, bySemester }));
     return { success: true, data, summary, graduationRequirements, byBlock, bySemester, source, networkSource: 'network' };

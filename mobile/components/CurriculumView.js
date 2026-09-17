@@ -50,8 +50,8 @@ export default function CurriculumView({ user }) {
   const [refreshing, setRefreshing] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState({});
 
-  const loadData = async () => {
-    const res = await getCurriculum();
+  const loadData = async (force = false) => {
+    const res = await getCurriculum(force);
     if (res.success) {
       setData(res.data || []);
       setSummary(res.summary || null);
@@ -86,7 +86,7 @@ export default function CurriculumView({ user }) {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadData();
+    await loadData(true);
     setRefreshing(false);
   }, [viewMode]);
 

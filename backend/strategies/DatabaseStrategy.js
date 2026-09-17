@@ -177,23 +177,27 @@ class DatabaseStrategy extends ScheduleStrategy {
     }
 
     // Nhóm điểm theo kỳ và cache
-    const gradesByKey = {};
-    for (const r of rawAllGrades) {
-      const semester = `HocKy${r.Hoc_ky}`;
-      const schoolYear = r.Nam_hoc;
-      const key = `${semester}|${schoolYear}`;
-      if (!gradesByKey[key]) gradesByKey[key] = [];
-      gradesByKey[key].push(r);
-    }
+    if (rawAllGrades && rawAllGrades.length > 0) {
+      // Xóa TOÀN BỘ điểm cũ của user để loại bỏ triệt để các kỳ ma và môn ma do crawler cũ tạo ra
+      await Grade.destroy({ where: { userId: user.id } });
 
-    for (const [key, grades] of Object.entries(gradesByKey)) {
-      const [semester, schoolYear] = key.split('|');
-      await Grade.destroy({ where: { userId: user.id, semester, schoolYear } });
-      if (grades.length > 0) {
-        const transformed = this._transformGrades(grades);
-        await Grade.bulkCreate(transformed.map(g => ({
-          ...g, semester, schoolYear, userId: user.id
-        })));
+      const gradesByKey = {};
+      for (const r of rawAllGrades) {
+        const semester = `HocKy${r.Hoc_ky}`;
+        const schoolYear = r.Nam_hoc;
+        const key = `${semester}|${schoolYear}`;
+        if (!gradesByKey[key]) gradesByKey[key] = [];
+        gradesByKey[key].push(r);
+      }
+
+      for (const [key, grades] of Object.entries(gradesByKey)) {
+        const [semester, schoolYear] = key.split('|');
+        if (grades.length > 0) {
+          const transformed = this._transformGrades(grades);
+          await Grade.bulkCreate(transformed.map(g => ({
+            ...g, semester, schoolYear, userId: user.id
+          })));
+        }
       }
     }
 
