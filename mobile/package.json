@@ -1,6 +1,6 @@
 {
   "name": "tuaf-schedule-mobile",
-  "version": "1.0.3",
+  "version": "1.0.21",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
