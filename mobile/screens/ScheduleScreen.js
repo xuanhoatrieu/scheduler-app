@@ -25,23 +25,92 @@ const DAY_SHORT = {
 };
 
 /**
- * Parse "dd/MM/yyyy- dd/MM/yyyy" → { start: Date, end: Date }
+ * Parse các định dạng ngày học của TUAF:
+ * - "17/08 - 27/09" (chuẩn phân kỳ TUAF không có năm)
+ * - "03/11/2025 - 14/12/2025" (đầy đủ ngày tháng năm)
+ * - "2026-09-01 -> 2026-12-31" hoặc "2026-09-01 đến 2026-12-30" (dải ngày ISO)
+ * - "2026-09-17" hoặc "17/09/2026" (ngày đơn)
+ * → { start: Date, end: Date }
  */
-const parseStudyTime = (studyTime) => {
-  if (!studyTime) return null;
-  const parts = studyTime.split('-').map(s => s.trim());
-  if (parts.length < 2) return null;
+const parseStudyTime = (studyTime, schoolYear) => {
+  if (!studyTime || typeof studyTime !== 'string') return null;
+  const trimmed = studyTime.trim();
+  if (!trimmed) return null;
 
-  const parseDate = (str) => {
-    const m = str.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-    if (!m) return null;
-    return new Date(parseInt(m[3]), parseInt(m[2]) - 1, parseInt(m[1]));
+  let baseYear = 2026;
+  if (schoolYear) {
+    const rawY = String(schoolYear).replace('_', '-');
+    baseYear = parseInt(rawY.split('-')[0]) || new Date().getFullYear();
+  } else {
+    baseYear = new Date().getFullYear();
+  }
+
+  const parseSingleDate = (str, isEnd = false, startParsed = null) => {
+    if (!str) return null;
+    const s = str.trim();
+
+    // 1. ISO format: YYYY-MM-DD
+    const mIso = s.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (mIso) {
+      return new Date(parseInt(mIso[1]), parseInt(mIso[2]) - 1, parseInt(mIso[3]));
+    }
+
+    // 2. dd/MM/yyyy
+    const mFull = s.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (mFull) {
+      return new Date(parseInt(mFull[3]), parseInt(mFull[2]) - 1, parseInt(mFull[1]));
+    }
+
+    // 3. dd/MM (tự suy ra năm học dựa vào học kỳ TUAF: tháng >= 8 thuộc baseYear, tháng < 8 thuộc baseYear + 1)
+    const mShort = s.match(/(\d{1,2})\/(\d{1,2})/);
+    if (mShort) {
+      const day = parseInt(mShort[1]);
+      const month = parseInt(mShort[2]);
+      let year = baseYear;
+      if (!isEnd) {
+        year = month >= 8 ? baseYear : baseYear + 1;
+      } else {
+        if (startParsed) {
+          const startMonth = startParsed.getMonth() + 1;
+          const startYear = startParsed.getFullYear();
+          year = month < startMonth ? startYear + 1 : startYear;
+        } else {
+          year = month >= 8 ? baseYear : baseYear + 1;
+        }
+      }
+      return new Date(year, month - 1, day);
+    }
+
+    return null;
   };
 
-  const start = parseDate(parts[0]);
-  const end = parseDate(parts[1]);
-  if (!start || !end) return null;
-  return { start, end };
+  let rawParts = [];
+  if (trimmed.includes('->')) {
+    rawParts = trimmed.split('->');
+  } else if (trimmed.includes('đến')) {
+    rawParts = trimmed.split('đến');
+  } else if (trimmed.includes(' to ')) {
+    rawParts = trimmed.split(' to ');
+  } else if (trimmed.includes(' - ')) {
+    rawParts = trimmed.split(' - ');
+  } else if (/^\d{1,2}\/\d{1,2}\s*-\s*\d{1,2}\/\d{1,2}/.test(trimmed)) {
+    rawParts = trimmed.split('-');
+  } else if (/^\d{1,2}\/\d{1,2}\/\d{4}\s*-\s*\d{1,2}\/\d{1,2}\/\d{4}/.test(trimmed)) {
+    rawParts = trimmed.split('-');
+  }
+
+  if (rawParts.length >= 2) {
+    const start = parseSingleDate(rawParts[0], false, null);
+    const end = parseSingleDate(rawParts[1], true, start);
+    if (start && end) return { start, end };
+  }
+
+  const single = parseSingleDate(trimmed, false, null);
+  if (single) {
+    return { start: single, end: single };
+  }
+
+  return null;
 };
 
 /**
@@ -50,9 +119,9 @@ const parseStudyTime = (studyTime) => {
  * - 'upcoming': Chưa bắt đầu (today < start)
  * - 'past': Đã kết thúc (today > end)
  */
-const getPeriodStatus = (studyTime) => {
-  const range = parseStudyTime(studyTime);
-  if (!range) return 'unknown';
+const getPeriodStatus = (studyTime, schoolYear) => {
+  const range = parseStudyTime(studyTime, schoolYear);
+  if (!range) return 'active'; // Fallback an toàn: nếu không có ngày thì coi là active để không làm mất môn học
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   if (today < range.start) return 'upcoming';
@@ -63,8 +132,8 @@ const getPeriodStatus = (studyTime) => {
 /**
  * Tính số ngày còn lại đến khi bắt đầu (dành cho môn sắp học)
  */
-const getDaysUntil = (studyTime) => {
-  const range = parseStudyTime(studyTime);
+const getDaysUntil = (studyTime, schoolYear) => {
+  const range = parseStudyTime(studyTime, schoolYear);
   if (!range) return null;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -74,17 +143,17 @@ const getDaysUntil = (studyTime) => {
 };
 
 /**
- * Format date range ngắn gọn: "02/03 → 12/04"
+ * Format date range ngắn gọn: "17/08 → 27/09"
  */
-const formatDateRange = (studyTime) => {
+const formatDateRange = (studyTime, schoolYear) => {
   if (!studyTime) return '';
-  const parts = studyTime.split('-').map(s => s.trim());
-  if (parts.length < 2) return studyTime;
-  const short = (str) => {
-    const m = str.match(/(\d{1,2})\/(\d{1,2})/);
-    return m ? `${m[1]}/${m[2]}` : str;
-  };
-  return `${short(parts[0])} → ${short(parts[1])}`;
+  const parsed = parseStudyTime(studyTime, schoolYear);
+  if (!parsed) return studyTime;
+  const pad = n => String(n).padStart(2, '0');
+  const dStart = `${pad(parsed.start.getDate())}/${pad(parsed.start.getMonth() + 1)}`;
+  const dEnd = `${pad(parsed.end.getDate())}/${pad(parsed.end.getMonth() + 1)}`;
+  if (dStart === dEnd) return dStart;
+  return `${dStart} → ${dEnd}`;
 };
 
 /**
@@ -268,7 +337,7 @@ export default function ScheduleScreen({ user }) {
     const list = [];
     for (const item of scheduleData) {
       if (parseInt(item.dayOfWeek) === todayTuafDay) {
-        const st = getPeriodStatus(item.studyTime);
+        const st = getPeriodStatus(item.studyTime, currentSem?.schoolYear);
         if (st === 'active') {
           list.push(item);
         }
@@ -281,12 +350,12 @@ export default function ScheduleScreen({ user }) {
       return pA - pB;
     });
     return list;
-  }, [scheduleData, todayTuafDay]);
+  }, [scheduleData, todayTuafDay, currentSem?.schoolYear]);
 
   // Buổi học tiếp theo gần nhất trong tuần nếu hôm nay không có lớp
   const nextSession = useMemo(() => {
     if (todaySessions.length > 0) return null;
-    const activeItems = scheduleData.filter(s => getPeriodStatus(s.studyTime) === 'active');
+    const activeItems = scheduleData.filter(s => getPeriodStatus(s.studyTime, currentSem?.schoolYear) === 'active');
     if (activeItems.length === 0) return null;
     const sorted = [...activeItems].sort((a, b) => {
       let diffA = parseInt(a.dayOfWeek) - todayTuafDay;
@@ -296,7 +365,7 @@ export default function ScheduleScreen({ user }) {
       return diffA - diffB;
     });
     return sorted[0] || null;
-  }, [scheduleData, todaySessions, todayTuafDay]);
+  }, [scheduleData, todaySessions, todayTuafDay, currentSem?.schoolYear]);
 
   // ─── THỐNG KÊ SỐ LƯỢNG MÔN THEO TRẠNG THÁI CHO FILTER TABS ───
   const filterCounts = useMemo(() => {
@@ -308,7 +377,7 @@ export default function ScheduleScreen({ user }) {
     for (const item of scheduleData) {
       const cName = item.courseName;
       allCourseSet.add(cName);
-      const st = getPeriodStatus(item.studyTime);
+      const st = getPeriodStatus(item.studyTime, currentSem?.schoolYear);
       if (st === 'active') activeCourseSet.add(cName);
       else if (st === 'upcoming') upcomingCourseSet.add(cName);
       else if (st === 'past') pastCourseSet.add(cName);
@@ -320,7 +389,7 @@ export default function ScheduleScreen({ user }) {
       past: pastCourseSet.size,
       all: allCourseSet.size
     };
-  }, [scheduleData]);
+  }, [scheduleData, currentSem?.schoolYear]);
 
   // Tự động chuyển tab thông minh: Nếu kỳ này không có môn đang học (kỳ cũ) -> chuyển sang 'all'
   useEffect(() => {
@@ -374,9 +443,9 @@ export default function ScheduleScreen({ user }) {
 
         let periods = Object.entries(byPeriod).map(([studyTime, items]) => ({
           studyTime,
-          status: getPeriodStatus(studyTime),
-          dateRange: formatDateRange(studyTime),
-          daysUntil: getDaysUntil(studyTime),
+          status: getPeriodStatus(studyTime, currentSem?.schoolYear),
+          dateRange: formatDateRange(studyTime, currentSem?.schoolYear),
+          daysUntil: getDaysUntil(studyTime, currentSem?.schoolYear),
           items,
         }));
 
@@ -405,7 +474,7 @@ export default function ScheduleScreen({ user }) {
     }
 
     return result;
-  }, [scheduleData, statusFilter]);
+  }, [scheduleData, statusFilter, currentSem?.schoolYear]);
 
   if (loading) {
     return (
