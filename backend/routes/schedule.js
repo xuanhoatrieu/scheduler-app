@@ -380,8 +380,10 @@ async function ensureStudentGrades(user, pool, forceSync = false) {
     if (!studentId) return;
 
     const grades = await Grade.findAll({ where: { userId: user.id } });
-    // Cần đồng bộ nếu: forceSync = true, chưa có điểm, có điểm credits == 0 / null, hoặc số môn > 50 (dấu hiệu duplicate do crawler)
-    const needsSync = forceSync || grades.length === 0 || grades.length > 50 || grades.some(g => g.credits == null || g.credits === 0);
+    // Cần đồng bộ nếu: forceSync = true, chưa có điểm, có điểm credits == 0 / null, số môn > 50, hoặc chưa có điểm CC / GK
+    const needsSync = forceSync || grades.length === 0 || grades.length > 50 
+      || grades.some(g => g.credits == null || g.credits === 0)
+      || (grades.length > 0 && grades.some(g => g.processGrade == null && g.midtermGrade == null && g.finalGrade != null));
 
     if (needsSync) {
       console.log(`🔄 [ensureStudentGrades] Đang đồng bộ lại điểm chuẩn từ SQL Server cho SV ${user.username}...`);

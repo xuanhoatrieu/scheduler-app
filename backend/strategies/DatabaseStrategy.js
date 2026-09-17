@@ -341,8 +341,8 @@ class DatabaseStrategy extends ScheduleStrategy {
         courseName: r.courseName || '',
         courseCode: r.courseCode || '',
         credits,
-        processGrade: null, // Thành phần chi tiết cần query MARK_DiemThanhPhan_TC riêng
-        midtermGrade: null,
+        processGrade: r.processGrade != null ? Math.round(r.processGrade * 100) / 100 : null,
+        midtermGrade: r.midtermGrade != null ? Math.round(r.midtermGrade * 100) / 100 : null,
         finalGrade: r.Diem_thi != null ? Math.round(r.Diem_thi * 100) / 100 : null,
         totalGrade10,
         totalGrade4,

@@ -199,7 +199,7 @@ router.post('/login', async (req, res) => {
       setImmediate(async () => {
         try {
           console.log(`Background sync history bat dau cho ${user.username}...`);
-          await strategy.syncHistory(user, password);
+          await databaseStrategy.syncHistory(user, password);
           console.log(`Background sync history hoan tat cho ${user.username}!`);
         } catch (err) {
           console.warn(`Background sync history that bai cho ${user.username}:`, err.message);
