@@ -195,7 +195,7 @@ export default function ProfileScreen({ user, onLogout, onSwitchRole }) {
                   {syncing ? 'Đang đồng bộ lịch sử...' : 'Đồng Bộ Lịch Sử Toàn Khóa'}
                 </Text>
                 <Text style={styles.syncHistorySubtitle}>
-                  Cào điểm số và học phí tất cả các kỳ cũ
+                  Đồng bộ điểm số và học phí từ Database Server
                 </Text>
               </View>
             </View>

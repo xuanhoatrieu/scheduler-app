@@ -177,11 +177,11 @@ class DatabaseStrategy extends ScheduleStrategy {
     }
 
     // Nhóm điểm theo kỳ và cache
+    const gradesByKey = {};
     if (rawAllGrades && rawAllGrades.length > 0) {
       // Xóa TOÀN BỘ điểm cũ của user để loại bỏ triệt để các kỳ ma và môn ma do crawler cũ tạo ra
       await Grade.destroy({ where: { userId: user.id } });
 
-      const gradesByKey = {};
       for (const r of rawAllGrades) {
         const semester = `HocKy${r.Hoc_ky}`;
         const schoolYear = r.Nam_hoc;
@@ -205,7 +205,7 @@ class DatabaseStrategy extends ScheduleStrategy {
     const financeByKey = {};
     
     // Ghi nhận kỳ từ biên lai
-    for (const r of rawAllFinance) {
+    for (const r of (rawAllFinance || [])) {
       const semester = `HocKy${r.Hoc_ky}`;
       const schoolYear = r.Nam_hoc;
       const key = `${semester}|${schoolYear}`;
@@ -214,7 +214,7 @@ class DatabaseStrategy extends ScheduleStrategy {
     }
 
     // Ghi nhận kỳ từ bảng miễn giảm
-    for (const r of rawExemptions) {
+    for (const r of (rawExemptions || [])) {
       const semester = `HocKy${r.Hoc_ky}`;
       const schoolYear = r.Nam_hoc;
       const key = `${semester}|${schoolYear}`;
@@ -223,7 +223,7 @@ class DatabaseStrategy extends ScheduleStrategy {
     }
 
     // Ghi nhận kỳ từ bảng tổng hợp công nợ
-    for (const r of rawSummaryTerms) {
+    for (const r of (rawSummaryTerms || [])) {
       const semester = `HocKy${r.Hoc_ky}`;
       const schoolYear = r.Nam_hoc;
       const key = `${semester}|${schoolYear}`;
@@ -231,10 +231,13 @@ class DatabaseStrategy extends ScheduleStrategy {
       financeByKey[key].summaryTerm = r;
     }
 
+    // Xóa TOÀN BỘ học phí cũ trong cache của user trước khi nạp từ SQL Server
+    // để loại bỏ triệt để các kỳ ma do crawler cũ để lại (tương tự như với Grade)
+    await Finance.destroy({ where: { userId: user.id } });
+
     for (const [key, group] of Object.entries(financeByKey)) {
       const [semester, schoolYear] = key.split('|');
       const aggregated = this._aggregateFinanceGroup(group);
-      await Finance.destroy({ where: { userId: user.id, semester, schoolYear } });
       await Finance.create({
         userId: user.id,
         semester,
@@ -250,9 +253,10 @@ class DatabaseStrategy extends ScheduleStrategy {
     }
 
     // Cache CTĐT (Chỉ lấy các môn phân từ Kỳ 1 đến Kỳ 8)
-    if (rawCurriculum.length > 0) {
+    const validCurriculum = rawCurriculum || [];
+    if (validCurriculum.length > 0) {
       await Curriculum.destroy({ where: { userId: user.id } });
-      await Curriculum.bulkCreate(rawCurriculum.map(r => ({
+      await Curriculum.bulkCreate(validCurriculum.map(r => ({
         courseName: r.courseName,
         courseCode: r.courseCode || '',
         credits: r.credits || 0,
@@ -263,12 +267,13 @@ class DatabaseStrategy extends ScheduleStrategy {
       })));
     }
 
-    console.log(`📚 [Strategy: Database] Lịch sử hoàn tất! ${rawAllGrades.length} điểm, ${Object.keys(financeByKey).length} kỳ học phí, ${rawCurriculum.length} môn CTĐT`);
+    const totalGrades = (rawAllGrades || []).length;
+    console.log(`📚 [Strategy: Database] Lịch sử hoàn tất! ${totalGrades} điểm, ${Object.keys(financeByKey).length} kỳ học phí, ${validCurriculum.length} môn CTĐT`);
 
     return {
-      gradesCount: rawAllGrades.length,
+      gradesCount: totalGrades,
       financeCount: Object.keys(financeByKey).length,
-      curriculumCount: rawCurriculum.length,
+      curriculumCount: validCurriculum.length,
       semestersCrawled: Object.keys(gradesByKey).length
     };
   }
@@ -383,15 +388,6 @@ class DatabaseStrategy extends ScheduleStrategy {
 
     // Nếu không có summaryTerm, tính toán từ exemptions và receipts
     if (!summaryTerm) {
-      if (exemptions.length > 0) {
-        const percent = exemptions[0]?.Phan_tram || 0;
-        discountTuition = exemptions.reduce((sum, e) => sum + (e.So_tien_MG || 0), 0);
-        if (percent === 100) {
-          discountTuition = totalTuition > 0 ? totalTuition : (discountTuition || 0);
-          debtTuition = 0;
-        }
-      }
-
       for (const r of receipts) {
         const isRefund = r.Thu_chi === false || (r.Noi_dung && r.Noi_dung.toLowerCase().includes('hoàn'));
         if (isRefund) {
@@ -404,7 +400,19 @@ class DatabaseStrategy extends ScheduleStrategy {
       if (totalTuition === 0 && paidTuition > 0) {
         totalTuition = paidTuition;
       }
-      debtTuition = Math.max(0, totalTuition - discountTuition - paidTuition + refundTuition);
+
+      if (exemptions.length > 0) {
+        const percent = exemptions[0]?.Phan_tram || 0;
+        discountTuition = exemptions.reduce((sum, e) => sum + (e.So_tien_MG || 0), 0);
+        if (percent === 100) {
+          discountTuition = totalTuition > 0 ? totalTuition : (discountTuition || 0);
+          debtTuition = 0;
+        }
+      }
+
+      if (debtTuition !== 0) {
+        debtTuition = Math.max(0, totalTuition - discountTuition - paidTuition + refundTuition);
+      }
     } else {
       // Nếu có summaryTerm nhưng So_tien_mien_giam = 0 và Thieu_thua = 0, kiểm tra nếu là miễn giảm 100%
       if (discountTuition === 0 && debtTuition === 0 && paidTuition === 0 && totalTuition > 0) {
