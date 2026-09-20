@@ -71,10 +71,8 @@ class DatabaseStrategy extends ScheduleStrategy {
     let drlData = null;
 
     if (user.role === 'lecturer') {
-      const [rawSchedules, rawExams] = await Promise.all([
-        tuafQueries.getLecturerSchedule(pool, entityId, hocKy, namHoc),
-        tuafQueries.getLecturerExams(pool, entityId, hocKy, namHoc)
-      ]);
+      const rawSchedules = await tuafQueries.getLecturerSchedule(pool, entityId, hocKy, namHoc);
+      const rawExams = await tuafQueries.getLecturerExams(pool, entityId, hocKy, namHoc, rawSchedules);
       scheduleList = this._transformSchedules(rawSchedules, formattedSemester, formattedSchoolYear);
       examList = this._transformLecturerExams(rawExams);
     } else {

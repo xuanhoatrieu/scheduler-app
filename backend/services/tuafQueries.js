@@ -334,143 +334,228 @@ async function getStudentExams(pool, idSv, hocKy, namHoc) {
 
 /**
  * Lấy lịch thi các môn học phần mà Giảng viên phụ trách trong 1 kỳ
- * CHỈ HIỂN THỊ CÁC MÔN CÓ XẾP LỊCH THI
+ * CƠ CHẾ: Dựa vào TKB để xác định các môn/lớp giảng viên giảng dạy trong kỳ,
+ * sau đó đối chiếu với cơ sở dữ liệu lịch thi để trích xuất lịch thi tương ứng.
  */
-async function getLecturerExams(pool, idCb, hocKy, namHoc) {
+async function getLecturerExams(pool, idCb, hocKy, namHoc, knownSchedules = null) {
   const cleanNamHoc = String(namHoc || '').replace('_', '-');
   const altNamHoc = cleanNamHoc.replace('-', '_');
+  const shortNamHoc = cleanNamHoc.split('-')[0];
 
-  // 1. Lấy lịch thi từ phần mềm xếp lịch thi (TCT_DotThi_Phong, TCT_DotThi_Mon, TCT_DotThi)
-  // Nối với lớp học phần mà Giảng viên trực tiếp giảng dạy (qua PLAN_SukiensTinChi_TC hoặc PLAN_LopTinChi_TC)
-  const result = await safeQuery(pool,
+  // 1. Trích xuất danh sách môn / lớp tín chỉ mà Giảng viên giảng dạy trong kỳ này từ TKB
+  const classesMap = new Map();
+
+  if (Array.isArray(knownSchedules) && knownSchedules.length > 0) {
+    for (const s of knownSchedules) {
+      if (s.ID_lop_tc && !classesMap.has(s.ID_lop_tc)) {
+        classesMap.set(s.ID_lop_tc, {
+          ID_lop_tc: s.ID_lop_tc,
+          Ten_lop_hp: s.Ten_lop_hp || '',
+          courseCode: s.courseCode || '',
+          courseName: s.courseName || '',
+          credits: s.credits || 0,
+          ID_mon: s.ID_mon || null
+        });
+      }
+    }
+  }
+
+  // Nếu chưa có classes từ knownSchedules, truy vấn từ TKB theo kỳ
+  if (classesMap.size === 0) {
+    const kyDangKys = await findAllKyDangKy(pool, hocKy, namHoc);
+    if (kyDangKys.length === 0) return [];
+    const kyList = kyDangKys.join(',');
+
+    const classRes = await safeQuery(pool,
+      `SELECT DISTINCT
+        ltc.ID_lop_tc,
+        ltc.Ten_lop_hp,
+        mtc.ID_mon,
+        mh.Ky_hieu AS courseCode,
+        mh.Ten_mon AS courseName,
+        COALESCE(mtc.So_tin_chi, 0) AS credits
+      FROM PLAN_SukiensTinChi_TC sk
+      JOIN PLAN_LopTinChi_TC ltc ON sk.ID_lop_tc = ltc.ID_lop_tc
+      JOIN PLAN_MonTinChi_TC mtc ON ltc.ID_mon_tc = mtc.ID_mon_tc
+      JOIN dmMonHoc mh ON mtc.ID_mon = mh.ID_mon
+      WHERE COALESCE(sk.ID_cb, ltc.ID_cb) = @idCb
+        AND ISNULL(ltc.Huy_lop, 0) = 0
+        AND mtc.Ky_dang_ky IN (${kyList})`,
+      [{ name: 'idCb', type: sql.NVarChar(50), value: String(idCb) }],
+      { username: 'lecturer-tkb-classes' }
+    );
+    for (const c of (classRes.recordset || [])) {
+      if (c.ID_lop_tc && !classesMap.has(c.ID_lop_tc)) {
+        classesMap.set(c.ID_lop_tc, c);
+      }
+    }
+  }
+
+  // Nếu giảng viên không có lớp dạy trong kỳ này -> Không có lịch thi
+  if (classesMap.size === 0) {
+    return [];
+  }
+
+  const lopIds = Array.from(classesMap.keys());
+  const lopList = lopIds.join(',');
+
+  // 2. Đối chiếu danh sách lớp học phần vào cơ sở dữ liệu lịch thi
+  // Query 1: Bảng tổ chức thi theo lớp học phần (TCT_DotThi_Mon & TCT_DotThi_Phong)
+  const res1 = await safeQuery(pool,
     `SELECT DISTINCT
-      mh.Ky_hieu AS courseCode,
-      mh.Ten_mon AS courseName,
-      COALESCE(dtm.So_tin_chi, mtc.So_tin_chi, 0) AS credits,
-      ltc.ID_lop_tc,
-      ltc.Ten_lop_hp,
+      dtm.ID_lop_tc,
       dtp.Ngay_thi,
       dtp.Tu_tiet,
       COALESCE(dtp.So_tiet, 2) AS So_tiet,
       COALESCE(dmph.So_phong, dtp.Ten_phong, ph.So_phong, '') AS Phong,
-      COALESCE(
-        dtp.Si_so,
-        (SELECT COUNT(1) FROM STU_DanhSachLopTinChi ds WHERE ds.ID_lop_tc = ltc.ID_lop_tc AND ISNULL(ds.Huy_dang_ky, 0) = 0),
-        0
-      ) AS Si_so,
+      COALESCE(dtp.Si_so, 0) AS Si_so,
       COALESCE(dtm.ID_hinh_thuc, 1) AS Hinh_thuc,
       COALESCE(dt.Lan_thi, 1) AS Lan_thi,
       dt.Ten_dot,
       cb1.Ho_ten AS CbCoiThi1,
       cb2.Ho_ten AS CbCoiThi2
-    FROM PLAN_LopTinChi_TC ltc
-    JOIN PLAN_MonTinChi_TC mtc ON ltc.ID_mon_tc = mtc.ID_mon_tc
-    JOIN dmMonHoc mh ON mtc.ID_mon = mh.ID_mon
-    JOIN TCT_DotThi_Mon dtm ON (
-      dtm.ID_lop_tc = ltc.ID_lop_tc
-      OR dtm.ID_mon = mtc.ID_mon
-    )
+    FROM TCT_DotThi_Mon dtm
     JOIN TCT_DotThi dt ON dtm.ID_dot_thi = dt.ID_dot_thi
     JOIN TCT_DotThi_Phong dtp ON (
       dtp.ID_dot_thi = dtm.ID_dot_thi
       AND (
-        dtp.ID_lop_tcs = CAST(ltc.ID_lop_tc AS VARCHAR)
-        OR dtp.ID_lop_tcs LIKE '%,' + CAST(ltc.ID_lop_tc AS VARCHAR) + ',%'
-        OR dtp.ID_lop_tcs LIKE CAST(ltc.ID_lop_tc AS VARCHAR) + ',%'
-        OR dtp.ID_lop_tcs LIKE '%,' + CAST(ltc.ID_lop_tc AS VARCHAR)
-        OR (
-          (dtp.ID_lop_tcs IS NULL OR dtp.ID_lop_tcs = '')
-          AND (
-            dtp.ID_mons = CAST(mtc.ID_mon AS VARCHAR)
-            OR dtp.ID_mons LIKE '%,' + CAST(mtc.ID_mon AS VARCHAR) + ',%'
-            OR dtp.ID_mons LIKE CAST(mtc.ID_mon AS VARCHAR) + ',%'
-            OR dtp.ID_mons LIKE '%,' + CAST(mtc.ID_mon AS VARCHAR)
-          )
-        )
+        dtp.ID_lop_tcs = CAST(dtm.ID_lop_tc AS VARCHAR)
+        OR dtp.ID_lop_tcs LIKE '%,' + CAST(dtm.ID_lop_tc AS VARCHAR) + ',%'
+        OR dtp.ID_lop_tcs LIKE CAST(dtm.ID_lop_tc AS VARCHAR) + ',%'
+        OR dtp.ID_lop_tcs LIKE '%,' + CAST(dtm.ID_lop_tc AS VARCHAR)
       )
     )
     LEFT JOIN dmPhongHoc dmph ON dtp.ID_phong = dmph.ID_phong
     LEFT JOIN PLAN_PhongHoc ph ON dtp.ID_phong = ph.ID_phong
     LEFT JOIN HR_LyLich cb1 ON dtp.ID_cb_coi_thi1 = cb1.ID_cb
     LEFT JOIN HR_LyLich cb2 ON dtp.ID_cb_coi_thi2 = cb2.ID_cb
-    WHERE (
-      ltc.ID_cb = @idCb
-      OR EXISTS (
-        SELECT 1 FROM PLAN_SukiensTinChi_TC sk
-        WHERE sk.ID_lop_tc = ltc.ID_lop_tc AND sk.ID_cb = @idCb
-      )
-    )
-      AND ISNULL(ltc.Huy_lop, 0) = 0
+    WHERE dtm.ID_lop_tc IN (${lopList})
       AND dt.Hoc_ky = @hocKy
-      AND (dt.Nam_hoc = @namHoc OR dt.Nam_hoc = @altNamHoc)
+      AND (dt.Nam_hoc = @namHoc OR dt.Nam_hoc = @altNamHoc OR dt.Nam_hoc LIKE '%' + @shortNamHoc + '%')
       AND dtp.Ngay_thi IS NOT NULL
     ORDER BY dtp.Ngay_thi ASC, dtp.Tu_tiet ASC`,
     [
-      { name: 'idCb', type: sql.NVarChar(50), value: String(idCb) },
       { name: 'hocKy', type: sql.Int, value: hocKy },
       { name: 'namHoc', type: sql.NVarChar(50), value: cleanNamHoc },
-      { name: 'altNamHoc', type: sql.NVarChar(50), value: altNamHoc }
+      { name: 'altNamHoc', type: sql.NVarChar(50), value: altNamHoc },
+      { name: 'shortNamHoc', type: sql.NVarChar(50), value: shortNamHoc }
     ],
-    { username: 'lecturer-exams' }
+    { username: 'lecturer-exams-by-lop-tc' }
   );
 
-  if (result.recordset && result.recordset.length > 0) {
-    return result.recordset;
+  let rawExams = res1.recordset || [];
+
+  // Query 2: Fallback qua sinh viên của lớp học phần (STU_DanhSachLopTinChi -> TCT_DotThi_ThiSinh -> TCT_DotThi_Phong)
+  if (rawExams.length === 0) {
+    const res2 = await safeQuery(pool,
+      `SELECT DISTINCT
+        ds.ID_lop_tc,
+        dtp.Ngay_thi,
+        dtp.Tu_tiet,
+        COALESCE(dtp.So_tiet, 2) AS So_tiet,
+        COALESCE(dmph.So_phong, dtp.Ten_phong, '') AS Phong,
+        COALESCE(dtp.Si_so, 0) AS Si_so,
+        1 AS Hinh_thuc,
+        COALESCE(ts.Lan_thi_diem, dt.Lan_thi, 1) AS Lan_thi,
+        dt.Ten_dot,
+        cb1.Ho_ten AS CbCoiThi1,
+        cb2.Ho_ten AS CbCoiThi2
+      FROM STU_DanhSachLopTinChi ds
+      JOIN TCT_DotThi_ThiSinh ts ON ds.ID_sv = ts.ID_sv
+      JOIN TCT_DotThi_Phong dtp ON ts.ID_dot_thi_phong = dtp.ID_dot_thi_phong
+      JOIN TCT_DotThi dt ON dtp.ID_dot_thi = dt.ID_dot_thi
+      LEFT JOIN dmPhongHoc dmph ON dtp.ID_phong = dmph.ID_phong
+      LEFT JOIN HR_LyLich cb1 ON dtp.ID_cb_coi_thi1 = cb1.ID_cb
+      LEFT JOIN HR_LyLich cb2 ON dtp.ID_cb_coi_thi2 = cb2.ID_cb
+      WHERE ds.ID_lop_tc IN (${lopList})
+        AND ISNULL(ds.Huy_dang_ky, 0) = 0
+        AND dt.Hoc_ky = @hocKy
+        AND (dt.Nam_hoc = @namHoc OR dt.Nam_hoc = @altNamHoc OR dt.Nam_hoc LIKE '%' + @shortNamHoc + '%')
+        AND dtp.Ngay_thi IS NOT NULL
+      ORDER BY dtp.Ngay_thi ASC, dtp.Tu_tiet ASC`,
+      [
+        { name: 'hocKy', type: sql.Int, value: hocKy },
+        { name: 'namHoc', type: sql.NVarChar(50), value: cleanNamHoc },
+        { name: 'altNamHoc', type: sql.NVarChar(50), value: altNamHoc },
+        { name: 'shortNamHoc', type: sql.NVarChar(50), value: shortNamHoc }
+      ],
+      { username: 'lecturer-exams-by-students' }
+    );
+    rawExams = res2.recordset || [];
   }
 
-  // 2. Fallback: Lấy từ phân hệ tổ chức thi điểm số (MARK_TochucThi_TC) nếu phần mềm xếp lịch TCT chưa nạp
-  const fallback = await safeQuery(pool,
-    `SELECT DISTINCT
-      mh.Ky_hieu AS courseCode,
-      mh.Ten_mon AS courseName,
-      COALESCE(mtc.So_tin_chi, 0) AS credits,
-      ltc.ID_lop_tc,
-      ltc.Ten_lop_hp,
-      COALESCE(thi.Ngay_thi, dtp.Ngay_thi) AS Ngay_thi,
-      dtp.Tu_tiet,
-      COALESCE(dtp.So_tiet, thi.So_tiet, 2) AS So_tiet,
-      COALESCE(dmph.So_phong, dtp.Ten_phong, ph.So_phong, '') AS Phong,
-      COALESCE(
-        dtp.Si_so,
-        (SELECT COUNT(1) FROM STU_DanhSachLopTinChi ds WHERE ds.ID_lop_tc = ltc.ID_lop_tc AND ISNULL(ds.Huy_dang_ky, 0) = 0),
-        0
-      ) AS Si_so,
-      COALESCE(thi.Hinh_thuc_thi, 1) AS Hinh_thuc,
-      COALESCE(thi.Lan_thi, 1) AS Lan_thi,
-      COALESCE(thi.Dot_thi, 1) AS Ten_dot,
-      cb1.Ho_ten AS CbCoiThi1,
-      cb2.Ho_ten AS CbCoiThi2
-    FROM PLAN_LopTinChi_TC ltc
-    JOIN PLAN_MonTinChi_TC mtc ON ltc.ID_mon_tc = mtc.ID_mon_tc
-    JOIN dmMonHoc mh ON mtc.ID_mon = mh.ID_mon
-    JOIN MARK_TochucThi_TC thi ON thi.ID_mon = mh.ID_mon
-    LEFT JOIN TCT_DotThi_Phong dtp ON thi.ID_thi = dtp.ID_dot_thi
-    LEFT JOIN dmPhongHoc dmph ON dtp.ID_phong = dmph.ID_phong
-    LEFT JOIN PLAN_PhongHoc ph ON dtp.ID_phong = ph.ID_phong
-    LEFT JOIN HR_LyLich cb1 ON dtp.ID_cb_coi_thi1 = cb1.ID_cb
-    LEFT JOIN HR_LyLich cb2 ON dtp.ID_cb_coi_thi2 = cb2.ID_cb
-    WHERE (
-      ltc.ID_cb = @idCb
-      OR EXISTS (
-        SELECT 1 FROM PLAN_SukiensTinChi_TC sk
-        WHERE sk.ID_lop_tc = ltc.ID_lop_tc AND sk.ID_cb = @idCb
-      )
-    )
-      AND ISNULL(ltc.Huy_lop, 0) = 0
-      AND thi.Hoc_ky = @hocKy
-      AND (thi.Nam_hoc = @namHoc OR thi.Nam_hoc = @altNamHoc)
-      AND COALESCE(thi.Ngay_thi, dtp.Ngay_thi) IS NOT NULL
-    ORDER BY Ngay_thi ASC, dtp.Tu_tiet ASC`,
-    [
-      { name: 'idCb', type: sql.NVarChar(50), value: String(idCb) },
-      { name: 'hocKy', type: sql.Int, value: hocKy },
-      { name: 'namHoc', type: sql.NVarChar(50), value: cleanNamHoc },
-      { name: 'altNamHoc', type: sql.NVarChar(50), value: altNamHoc }
-    ],
-    { username: 'lecturer-exams-fallback' }
-  );
+  // Query 3: Fallback qua phân hệ điểm (STU_DanhSachLopTinChi -> MARK_TochucThiChiTiet_TC -> MARK_TochucThi_TC)
+  if (rawExams.length === 0) {
+    const res3 = await safeQuery(pool,
+      `SELECT DISTINCT
+        ds.ID_lop_tc,
+        COALESCE(thi.Ngay_thi, dtp.Ngay_thi) AS Ngay_thi,
+        COALESCE(dtp.Tu_tiet, 1) AS Tu_tiet,
+        COALESCE(dtp.So_tiet, thi.So_tiet, 2) AS So_tiet,
+        COALESCE(dmph.So_phong, dtp.Ten_phong, ph.So_phong, '') AS Phong,
+        COALESCE(dtp.Si_so, 0) AS Si_so,
+        COALESCE(thi.Hinh_thuc_thi, 1) AS Hinh_thuc,
+        COALESCE(thi.Lan_thi, 1) AS Lan_thi,
+        COALESCE(thi.Dot_thi, 1) AS Ten_dot,
+        cb1.Ho_ten AS CbCoiThi1,
+        cb2.Ho_ten AS CbCoiThi2
+      FROM STU_DanhSachLopTinChi ds
+      JOIN MARK_TochucThiChiTiet_TC ct ON ds.ID_sv = ct.ID_sv
+      JOIN MARK_TochucThi_TC thi ON ct.ID_thi = thi.ID_thi
+      LEFT JOIN TCT_DotThi_Phong dtp ON ct.ID_phong_thi = dtp.ID_dot_thi_phong
+      LEFT JOIN dmPhongHoc dmph ON dtp.ID_phong = dmph.ID_phong
+      LEFT JOIN PLAN_PhongHoc ph ON ct.ID_phong_thi = ph.ID_phong
+      LEFT JOIN HR_LyLich cb1 ON dtp.ID_cb_coi_thi1 = cb1.ID_cb
+      LEFT JOIN HR_LyLich cb2 ON dtp.ID_cb_coi_thi2 = cb2.ID_cb
+      WHERE ds.ID_lop_tc IN (${lopList})
+        AND ISNULL(ds.Huy_dang_ky, 0) = 0
+        AND thi.Hoc_ky = @hocKy
+        AND (thi.Nam_hoc = @namHoc OR thi.Nam_hoc = @altNamHoc OR thi.Nam_hoc LIKE '%' + @shortNamHoc + '%')
+        AND COALESCE(thi.Ngay_thi, dtp.Ngay_thi) IS NOT NULL
+      ORDER BY Ngay_thi ASC, dtp.Tu_tiet ASC`,
+      [
+        { name: 'hocKy', type: sql.Int, value: hocKy },
+        { name: 'namHoc', type: sql.NVarChar(50), value: cleanNamHoc },
+        { name: 'altNamHoc', type: sql.NVarChar(50), value: altNamHoc },
+        { name: 'shortNamHoc', type: sql.NVarChar(50), value: shortNamHoc }
+      ],
+      { username: 'lecturer-exams-by-mark' }
+    );
+    rawExams = res3.recordset || [];
+  }
 
-  return fallback.recordset || [];
+  // 3. Ghép nối chính xác thông tin môn và lớp học phần từ TKB và khử trùng lặp
+  const seenKey = new Set();
+  const finalExams = [];
+
+  for (const r of rawExams) {
+    const cls = classesMap.get(r.ID_lop_tc);
+    if (!cls) continue;
+
+    const dedupKey = `${cls.ID_lop_tc}_${r.Ngay_thi}_${r.Tu_tiet}_${r.Phong}`;
+    if (seenKey.has(dedupKey)) continue;
+    seenKey.add(dedupKey);
+
+    finalExams.push({
+      courseCode: cls.courseCode || '',
+      courseName: cls.courseName || '',
+      credits: cls.credits || 0,
+      ID_lop_tc: cls.ID_lop_tc,
+      Ten_lop_hp: cls.Ten_lop_hp || '',
+      Ngay_thi: r.Ngay_thi,
+      Tu_tiet: r.Tu_tiet,
+      So_tiet: r.So_tiet,
+      Phong: r.Phong,
+      Si_so: r.Si_so || 0,
+      Hinh_thuc: r.Hinh_thuc || 1,
+      Lan_thi: r.Lan_thi || 1,
+      Ten_dot: r.Ten_dot || '',
+      CbCoiThi1: r.CbCoiThi1 || '',
+      CbCoiThi2: r.CbCoiThi2 || ''
+    });
+  }
+
+  return finalExams;
 }
 
 /**
@@ -696,6 +781,7 @@ async function getLecturerSchedule(pool, idCb, hocKy, namHoc) {
       sk.Thu, sk.Tiet, sk.So_tiet, sk.Tu_ngay, sk.Den_ngay, sk.Tu_tuan, sk.Den_tuan,
       mh.Ky_hieu AS courseCode, mh.Ten_mon AS courseName,
       mtc.So_tin_chi AS credits,
+      mtc.ID_mon,
       COALESCE(
         CASE
           WHEN nha.Ten_nha IS NOT NULL AND nha.Ten_nha NOT LIKE '%Nông Lâm%'
