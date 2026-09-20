@@ -62,6 +62,7 @@ class DatabaseStrategy extends ScheduleStrategy {
     }
     const formattedSemester = `HocKy${hocKy}`;
     const formattedSchoolYear = namHoc;
+    const trainingSystem = String(options.trainingSystem || options.heDaoTao || 'DHCQ').toUpperCase();
 
     // 3. READ từ SQL Server (parallel cho tốc độ)
     let scheduleList = [];
@@ -71,32 +72,32 @@ class DatabaseStrategy extends ScheduleStrategy {
     let drlData = null;
 
     if (user.role === 'lecturer') {
-      const rawSchedules = await tuafQueries.getLecturerSchedule(pool, entityId, hocKy, namHoc);
-      const rawExams = await tuafQueries.getLecturerExams(pool, entityId, hocKy, namHoc, rawSchedules);
+      const rawSchedules = await tuafQueries.getLecturerSchedule(pool, entityId, hocKy, namHoc, trainingSystem);
+      const rawExams = await tuafQueries.getLecturerExams(pool, entityId, hocKy, namHoc, rawSchedules, trainingSystem);
       scheduleList = this._transformSchedules(rawSchedules, formattedSemester, formattedSchoolYear);
-      examList = this._transformLecturerExams(rawExams);
+      examList = this._transformLecturerExams(rawExams, trainingSystem);
     } else {
       // Student: lấy tất cả data song song
       const [rawSchedules, rawExams, rawGrades, rawFinance, rawDrl] = await Promise.all([
-        tuafQueries.getStudentSchedule(pool, entityId, hocKy, namHoc),
-        tuafQueries.getStudentExams(pool, entityId, hocKy, namHoc),
+        tuafQueries.getStudentSchedule(pool, entityId, hocKy, namHoc, trainingSystem),
+        tuafQueries.getStudentExams(pool, entityId, hocKy, namHoc, trainingSystem),
         tuafQueries.getStudentGrades(pool, entityId, hocKy, namHoc),
         tuafQueries.getStudentFinance(pool, entityId, hocKy, namHoc),
         tuafQueries.getStudentDRL(pool, entityId, hocKy, namHoc)
       ]);
 
       scheduleList = this._transformSchedules(rawSchedules, formattedSemester, formattedSchoolYear);
-      examList = this._transformStudentExams(rawExams);
+      examList = this._transformStudentExams(rawExams, trainingSystem);
       gradeList = this._transformGrades(rawGrades);
       financeRaw = rawFinance;
       drlData = rawDrl;
     }
 
     // 4. Cache vào PostgreSQL nội bộ
-    console.log(`💾 [Strategy: Database] Đang cache vào PostgreSQL cho ${user.username}...`);
+    console.log(`💾 [Strategy: Database] Đang cache vào PostgreSQL cho ${user.username} (hệ: ${trainingSystem})...`);
     await this._cacheToPostgres(user, formattedSemester, formattedSchoolYear, {
       scheduleList, examList, gradeList, financeRaw, drlData
-    });
+    }, trainingSystem);
 
     // 5. Cập nhật user profile
     const fullName = svInfo ? svInfo.Ho_ten : (user.fullName || user.username);
@@ -364,7 +365,7 @@ class DatabaseStrategy extends ScheduleStrategy {
     return 'Chưa xếp giờ';
   }
 
-  _transformStudentExams(rawRows) {
+  _transformStudentExams(rawRows, trainingSystem = 'DHCQ') {
     return rawRows.map(r => {
       const tuTiet = r.Tu_tiet != null ? parseInt(r.Tu_tiet) : null;
       const soTiet = r.So_tiet != null ? parseInt(r.So_tiet) : 2;
@@ -374,6 +375,7 @@ class DatabaseStrategy extends ScheduleStrategy {
 
       return {
         role: 'student',
+        trainingSystem,
         courseCode: r.courseCode || '',
         courseName: r.courseName || '',
         credits: r.credits ? Number(r.credits) : 0,
@@ -392,7 +394,7 @@ class DatabaseStrategy extends ScheduleStrategy {
     });
   }
 
-  _transformLecturerExams(rawRows) {
+  _transformLecturerExams(rawRows, trainingSystem = 'DHCQ') {
     return rawRows.map(r => {
       const tuTiet = r.Tu_tiet != null ? parseInt(r.Tu_tiet) : null;
       const soTiet = r.So_tiet != null ? parseInt(r.So_tiet) : 2;
@@ -402,6 +404,7 @@ class DatabaseStrategy extends ScheduleStrategy {
 
       return {
         role: 'lecturer',
+        trainingSystem,
         courseCode: r.courseCode || '',
         courseName: r.courseName || '',
         credits: r.credits ? Number(r.credits) : 0,
@@ -423,8 +426,8 @@ class DatabaseStrategy extends ScheduleStrategy {
     });
   }
 
-  _transformExams(rawRows) {
-    return this._transformStudentExams(rawRows);
+  _transformExams(rawRows, trainingSystem = 'DHCQ') {
+    return this._transformStudentExams(rawRows, trainingSystem);
   }
 
   _transformGrades(rawRows) {
@@ -549,7 +552,7 @@ class DatabaseStrategy extends ScheduleStrategy {
   // CACHE TO POSTGRESQL — Giống CrawlerStrategy
   // ═══════════════════════════════════════
 
-  async _cacheToPostgres(user, semester, schoolYear, data) {
+  async _cacheToPostgres(user, semester, schoolYear, data, trainingSystem = 'DHCQ') {
     const { scheduleList, examList, gradeList, financeRaw, drlData } = data;
 
     // A. TKB
@@ -558,11 +561,19 @@ class DatabaseStrategy extends ScheduleStrategy {
       await Schedule.bulkCreate(scheduleList.map(item => ({ ...item, userId: user.id })));
     }
 
-    // B. Lịch thi
-    await Exam.destroy({ where: { userId: user.id, semester, schoolYear } });
+    // B. Lịch thi: Xóa cache cũ của đúng user, semester, schoolYear VÀ trainingSystem
+    const examWhere = { userId: user.id, semester, schoolYear };
+    if (trainingSystem && trainingSystem !== 'ALL') {
+      examWhere.trainingSystem = trainingSystem;
+    }
+    await Exam.destroy({ where: examWhere });
     if (examList.length > 0) {
       await Exam.bulkCreate(examList.map(item => ({
-        ...item, semester, schoolYear, userId: user.id
+        ...item,
+        semester,
+        schoolYear,
+        userId: user.id,
+        trainingSystem: item.trainingSystem || trainingSystem
       })));
     }
 

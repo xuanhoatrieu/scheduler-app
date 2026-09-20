@@ -167,15 +167,33 @@ async function findKyDangKy(pool, hocKy, namHoc) {
 }
 
 /**
- * Lấy tất cả Ky_dang_ky cho 1 kỳ (có thể nhiều đợt trong cùng 1 HK)
+ * Trợ giúp tạo biểu thức lọc Hệ Đào Tạo cho SQL Server
+ * @param {string} columnName Tên cột chứa mô tả (Mo_ta_chi_tiet hoặc dt.Mo_ta)
+ * @param {string} heDaoTao Mã hệ đào tạo (DHCQ, VLVH, DTTX, SDH, CTTT, ALL)
  */
-async function findAllKyDangKy(pool, hocKy, namHoc) {
+function getTrainingSystemFilter(columnName, heDaoTao = 'DHCQ') {
+  const code = String(heDaoTao || 'DHCQ').toUpperCase();
+  if (code === 'ALL') return '1=1';
+  if (code === 'VLVH') return `(${columnName} LIKE '%VLVH%')`;
+  if (code === 'DTTX') return `(${columnName} LIKE '%DTTX%' OR ${columnName} LIKE N'%ĐTTX%')`;
+  if (code === 'SDH') return `(${columnName} LIKE N'%SĐH%' OR ${columnName} LIKE '%SDH%' OR ${columnName} LIKE N'%Thạc%' OR ${columnName} LIKE N'%Tiến%')`;
+  if (code === 'CTTT') return `(${columnName} LIKE '%CTTT%')`;
+  // DHCQ (Đại học chính quy - Mặc định)
+  return `(${columnName} LIKE '%DHCQ%' OR ${columnName} LIKE N'%ĐHCQ%' OR (${columnName} NOT LIKE '%VLVH%' AND ${columnName} NOT LIKE N'%ĐTTX%' AND ${columnName} NOT LIKE '%DTTX%' AND ${columnName} NOT LIKE N'%SĐH%' AND ${columnName} NOT LIKE '%SDH%' AND ${columnName} NOT LIKE '%CTTT%'))`;
+}
+
+/**
+ * Lấy tất cả Ky_dang_ky cho 1 kỳ (có thể nhiều đợt trong cùng 1 HK), hỗ trợ lọc theo hệ đào tạo
+ */
+async function findAllKyDangKy(pool, hocKy, namHoc, heDaoTao = 'DHCQ') {
   const cleanNamHoc = String(namHoc || '').replace('_', '-');
   const altNamHoc = cleanNamHoc.replace('-', '_');
+  const systemFilter = getTrainingSystemFilter('Mo_ta_chi_tiet', heDaoTao);
 
   const result = await safeQuery(pool,
     `SELECT Ky_dang_ky FROM PLAN_HocKyDangKy_TC
      WHERE Hoc_ky = @hocKy AND (Nam_hoc = @namHoc OR Nam_hoc = @altNamHoc)
+       AND ${systemFilter}
      ORDER BY Ky_dang_ky DESC`,
     [
       { name: 'hocKy', type: sql.Int, value: hocKy },
@@ -193,9 +211,9 @@ async function findAllKyDangKy(pool, hocKy, namHoc) {
  * Bảng sự kiện: PLAN_SukiensTinChi_TC
  * Bảng phòng: PLAN_PhongHoc
  */
-async function getStudentSchedule(pool, idSv, hocKy, namHoc) {
-  // Lấy tất cả Ky_dang_ky cho kỳ này
-  const kyDangKys = await findAllKyDangKy(pool, hocKy, namHoc);
+async function getStudentSchedule(pool, idSv, hocKy, namHoc, heDaoTao = 'DHCQ') {
+  // Lấy tất cả Ky_dang_ky cho kỳ này theo hệ đào tạo
+  const kyDangKys = await findAllKyDangKy(pool, hocKy, namHoc, heDaoTao);
   if (kyDangKys.length === 0) return [];
 
   // Build IN clause dynamically (safe — values are integers from DB)
@@ -243,12 +261,16 @@ async function getStudentSchedule(pool, idSv, hocKy, namHoc) {
  * Lấy lịch thi của 1 SV trong 1 kỳ từ phân hệ Tổ chức thi
  * Nối TCT_DotThi_Phong, dmPhongHoc, HR_LyLich để lấy chính xác tên phòng, ca/tiết thi, SBD và giám thị
  */
-async function getStudentExams(pool, idSv, hocKy, namHoc) {
+async function getStudentExams(pool, idSv, hocKy, namHoc, heDaoTao = 'DHCQ') {
+  const cleanNamHoc = String(namHoc || '').replace('_', '-');
+  const altNamHoc = cleanNamHoc.replace('-', '_');
+  const dotThiFilter = getTrainingSystemFilter('dt.Mo_ta', heDaoTao);
+
   // 1. Thử lấy từ MARK_TochucThiChiTiet_TC kết hợp TCT_DotThi_Phong
   const result = await safeQuery(pool,
     `SELECT
       COALESCE(thi.Ngay_thi, dtp.Ngay_thi) AS Ngay_thi,
-      thi.Ca_thi,
+      0 AS Ca_thi,
       COALESCE(thi.Gio_thi, '') AS Gio_thi,
       dtp.Tu_tiet,
       COALESCE(dtp.So_tiet, thi.So_tiet, 2) AS So_tiet,
@@ -270,12 +292,13 @@ async function getStudentExams(pool, idSv, hocKy, namHoc) {
     LEFT JOIN HR_LyLich cb1 ON dtp.ID_cb_coi_thi1 = cb1.ID_cb
     LEFT JOIN HR_LyLich cb2 ON dtp.ID_cb_coi_thi2 = cb2.ID_cb
     WHERE ct.ID_sv = @idSv
-      AND thi.Hoc_ky = @hocKy AND thi.Nam_hoc = @namHoc
+      AND thi.Hoc_ky = @hocKy AND (thi.Nam_hoc = @namHoc OR thi.Nam_hoc = @altNamHoc)
     ORDER BY COALESCE(thi.Ngay_thi, dtp.Ngay_thi) ASC, dtp.Tu_tiet ASC`,
     [
       { name: 'idSv', type: sql.UniqueIdentifier, value: idSv },
       { name: 'hocKy', type: sql.Int, value: hocKy },
-      { name: 'namHoc', type: sql.NVarChar(50), value: namHoc }
+      { name: 'namHoc', type: sql.NVarChar(50), value: cleanNamHoc },
+      { name: 'altNamHoc', type: sql.NVarChar(50), value: altNamHoc }
     ],
     { username: 'student-exams' }
   );
@@ -318,13 +341,15 @@ async function getStudentExams(pool, idSv, hocKy, namHoc) {
     LEFT JOIN HR_LyLich cb1 ON dtp.ID_cb_coi_thi1 = cb1.ID_cb
     LEFT JOIN HR_LyLich cb2 ON dtp.ID_cb_coi_thi2 = cb2.ID_cb
     WHERE ts.ID_sv = @idSv
-      AND dt.Hoc_ky = @hocKy AND dt.Nam_hoc = @namHoc
+      AND dt.Hoc_ky = @hocKy AND (dt.Nam_hoc = @namHoc OR dt.Nam_hoc = @altNamHoc)
+      AND ${dotThiFilter}
       AND dtp.Ngay_thi IS NOT NULL
     ORDER BY dtp.Ngay_thi ASC, dtp.Tu_tiet ASC`,
     [
       { name: 'idSv', type: sql.UniqueIdentifier, value: idSv },
       { name: 'hocKy', type: sql.Int, value: hocKy },
-      { name: 'namHoc', type: sql.NVarChar(50), value: namHoc }
+      { name: 'namHoc', type: sql.NVarChar(50), value: cleanNamHoc },
+      { name: 'altNamHoc', type: sql.NVarChar(50), value: altNamHoc }
     ],
     { username: 'student-exams-tct-fallback' }
   );
@@ -337,10 +362,10 @@ async function getStudentExams(pool, idSv, hocKy, namHoc) {
  * CƠ CHẾ: Dựa vào TKB để xác định các môn/lớp giảng viên giảng dạy trong kỳ,
  * sau đó đối chiếu với cơ sở dữ liệu lịch thi để trích xuất lịch thi tương ứng.
  */
-async function getLecturerExams(pool, idCb, hocKy, namHoc, knownSchedules = null) {
+async function getLecturerExams(pool, idCb, hocKy, namHoc, knownSchedules = null, heDaoTao = 'DHCQ') {
   const cleanNamHoc = String(namHoc || '').replace('_', '-');
   const altNamHoc = cleanNamHoc.replace('-', '_');
-  const shortNamHoc = cleanNamHoc.split('-')[0];
+  const dotThiFilter = getTrainingSystemFilter('dt.Mo_ta', heDaoTao);
 
   // 1. Trích xuất danh sách môn / lớp tín chỉ mà Giảng viên giảng dạy trong kỳ này từ TKB
   const classesMap = new Map();
@@ -362,7 +387,7 @@ async function getLecturerExams(pool, idCb, hocKy, namHoc, knownSchedules = null
 
   // Nếu chưa có classes từ knownSchedules, truy vấn từ TKB theo kỳ
   if (classesMap.size === 0) {
-    const kyDangKys = await findAllKyDangKy(pool, hocKy, namHoc);
+    const kyDangKys = await findAllKyDangKy(pool, hocKy, namHoc, heDaoTao);
     if (kyDangKys.length === 0) return [];
     const kyList = kyDangKys.join(',');
 
@@ -431,14 +456,14 @@ async function getLecturerExams(pool, idCb, hocKy, namHoc, knownSchedules = null
     LEFT JOIN HR_LyLich cb2 ON dtp.ID_cb_coi_thi2 = cb2.ID_cb
     WHERE dtm.ID_lop_tc IN (${lopList})
       AND dt.Hoc_ky = @hocKy
-      AND (dt.Nam_hoc = @namHoc OR dt.Nam_hoc = @altNamHoc OR dt.Nam_hoc LIKE '%' + @shortNamHoc + '%')
+      AND (dt.Nam_hoc = @namHoc OR dt.Nam_hoc = @altNamHoc)
+      AND ${dotThiFilter}
       AND dtp.Ngay_thi IS NOT NULL
     ORDER BY dtp.Ngay_thi ASC, dtp.Tu_tiet ASC`,
     [
       { name: 'hocKy', type: sql.Int, value: hocKy },
       { name: 'namHoc', type: sql.NVarChar(50), value: cleanNamHoc },
-      { name: 'altNamHoc', type: sql.NVarChar(50), value: altNamHoc },
-      { name: 'shortNamHoc', type: sql.NVarChar(50), value: shortNamHoc }
+      { name: 'altNamHoc', type: sql.NVarChar(50), value: altNamHoc }
     ],
     { username: 'lecturer-exams-by-lop-tc' }
   );
@@ -446,6 +471,7 @@ async function getLecturerExams(pool, idCb, hocKy, namHoc, knownSchedules = null
   let rawExams = res1.recordset || [];
 
   // Query 2: Fallback qua sinh viên của lớp học phần (STU_DanhSachLopTinChi -> TCT_DotThi_ThiSinh -> TCT_DotThi_Phong)
+  // RÀNG BUỘC CHẶT CHẼ: Phòng thi bắt buộc phải thuộc đúng môn học ID_mon của lớp
   if (rawExams.length === 0) {
     const res2 = await safeQuery(pool,
       `SELECT DISTINCT
@@ -461,23 +487,26 @@ async function getLecturerExams(pool, idCb, hocKy, namHoc, knownSchedules = null
         cb1.Ho_ten AS CbCoiThi1,
         cb2.Ho_ten AS CbCoiThi2
       FROM STU_DanhSachLopTinChi ds
+      JOIN PLAN_LopTinChi_TC ltc ON ds.ID_lop_tc = ltc.ID_lop_tc
+      JOIN PLAN_MonTinChi_TC mtc ON ltc.ID_mon_tc = mtc.ID_mon_tc
       JOIN TCT_DotThi_ThiSinh ts ON ds.ID_sv = ts.ID_sv
       JOIN TCT_DotThi_Phong dtp ON ts.ID_dot_thi_phong = dtp.ID_dot_thi_phong
       JOIN TCT_DotThi dt ON dtp.ID_dot_thi = dt.ID_dot_thi
+      JOIN TCT_DotThi_Mon dtm ON (dt.ID_dot_thi = dtm.ID_dot_thi AND dtm.ID_mon = mtc.ID_mon)
       LEFT JOIN dmPhongHoc dmph ON dtp.ID_phong = dmph.ID_phong
       LEFT JOIN HR_LyLich cb1 ON dtp.ID_cb_coi_thi1 = cb1.ID_cb
       LEFT JOIN HR_LyLich cb2 ON dtp.ID_cb_coi_thi2 = cb2.ID_cb
       WHERE ds.ID_lop_tc IN (${lopList})
         AND ISNULL(ds.Huy_dang_ky, 0) = 0
         AND dt.Hoc_ky = @hocKy
-        AND (dt.Nam_hoc = @namHoc OR dt.Nam_hoc = @altNamHoc OR dt.Nam_hoc LIKE '%' + @shortNamHoc + '%')
+        AND (dt.Nam_hoc = @namHoc OR dt.Nam_hoc = @altNamHoc)
+        AND ${dotThiFilter}
         AND dtp.Ngay_thi IS NOT NULL
       ORDER BY dtp.Ngay_thi ASC, dtp.Tu_tiet ASC`,
       [
         { name: 'hocKy', type: sql.Int, value: hocKy },
         { name: 'namHoc', type: sql.NVarChar(50), value: cleanNamHoc },
-        { name: 'altNamHoc', type: sql.NVarChar(50), value: altNamHoc },
-        { name: 'shortNamHoc', type: sql.NVarChar(50), value: shortNamHoc }
+        { name: 'altNamHoc', type: sql.NVarChar(50), value: altNamHoc }
       ],
       { username: 'lecturer-exams-by-students' }
     );
@@ -485,6 +514,7 @@ async function getLecturerExams(pool, idCb, hocKy, namHoc, knownSchedules = null
   }
 
   // Query 3: Fallback qua phân hệ điểm (STU_DanhSachLopTinChi -> MARK_TochucThiChiTiet_TC -> MARK_TochucThi_TC)
+  // RÀNG BUỘC CHẶT CHẼ: Bắt buộc thi.ID_mon = mtc.ID_mon
   if (rawExams.length === 0) {
     const res3 = await safeQuery(pool,
       `SELECT DISTINCT
@@ -500,8 +530,10 @@ async function getLecturerExams(pool, idCb, hocKy, namHoc, knownSchedules = null
         cb1.Ho_ten AS CbCoiThi1,
         cb2.Ho_ten AS CbCoiThi2
       FROM STU_DanhSachLopTinChi ds
+      JOIN PLAN_LopTinChi_TC ltc ON ds.ID_lop_tc = ltc.ID_lop_tc
+      JOIN PLAN_MonTinChi_TC mtc ON ltc.ID_mon_tc = mtc.ID_mon_tc
       JOIN MARK_TochucThiChiTiet_TC ct ON ds.ID_sv = ct.ID_sv
-      JOIN MARK_TochucThi_TC thi ON ct.ID_thi = thi.ID_thi
+      JOIN MARK_TochucThi_TC thi ON (ct.ID_thi = thi.ID_thi AND thi.ID_mon = mtc.ID_mon)
       LEFT JOIN TCT_DotThi_Phong dtp ON ct.ID_phong_thi = dtp.ID_dot_thi_phong
       LEFT JOIN dmPhongHoc dmph ON dtp.ID_phong = dmph.ID_phong
       LEFT JOIN PLAN_PhongHoc ph ON ct.ID_phong_thi = ph.ID_phong
@@ -510,14 +542,13 @@ async function getLecturerExams(pool, idCb, hocKy, namHoc, knownSchedules = null
       WHERE ds.ID_lop_tc IN (${lopList})
         AND ISNULL(ds.Huy_dang_ky, 0) = 0
         AND thi.Hoc_ky = @hocKy
-        AND (thi.Nam_hoc = @namHoc OR thi.Nam_hoc = @altNamHoc OR thi.Nam_hoc LIKE '%' + @shortNamHoc + '%')
+        AND (thi.Nam_hoc = @namHoc OR thi.Nam_hoc = @altNamHoc)
         AND COALESCE(thi.Ngay_thi, dtp.Ngay_thi) IS NOT NULL
-      ORDER BY Ngay_thi ASC, dtp.Tu_tiet ASC`,
+      ORDER BY COALESCE(thi.Ngay_thi, dtp.Ngay_thi) ASC, COALESCE(dtp.Tu_tiet, 1) ASC`,
       [
         { name: 'hocKy', type: sql.Int, value: hocKy },
         { name: 'namHoc', type: sql.NVarChar(50), value: cleanNamHoc },
-        { name: 'altNamHoc', type: sql.NVarChar(50), value: altNamHoc },
-        { name: 'shortNamHoc', type: sql.NVarChar(50), value: shortNamHoc }
+        { name: 'altNamHoc', type: sql.NVarChar(50), value: altNamHoc }
       ],
       { username: 'lecturer-exams-by-mark' }
     );
@@ -771,8 +802,8 @@ async function getStudentCurriculum(pool, idSv) {
  * Lấy lịch dạy của GV trong 1 kỳ
  * Bảng: PLAN_SukiensTinChi_TC (thay cho PLAN_BoTri)
  */
-async function getLecturerSchedule(pool, idCb, hocKy, namHoc) {
-  const kyDangKys = await findAllKyDangKy(pool, hocKy, namHoc);
+async function getLecturerSchedule(pool, idCb, hocKy, namHoc, heDaoTao = 'DHCQ') {
+  const kyDangKys = await findAllKyDangKy(pool, hocKy, namHoc, heDaoTao);
   if (kyDangKys.length === 0) return [];
   const kyList = kyDangKys.join(',');
 

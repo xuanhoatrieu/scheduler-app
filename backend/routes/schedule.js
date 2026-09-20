@@ -25,10 +25,11 @@ const normalizeTerm = (semQuery, yearQuery) => {
  */
 const handleForceSync = async (user, req) => {
   const { semester, startYear } = normalizeTerm(req.query.semester, req.query.schoolYear);
-  console.log(`🔄 [API Sync Database] Đang đồng bộ trực tiếp từ SQL Server TUAF cho ${user.username} (role: ${user.role})...`);
+  const trainingSystem = String(req.query.heDaoTao || req.query.trainingSystem || 'DHCQ').toUpperCase();
+  console.log(`🔄 [API Sync Database] Đang đồng bộ trực tiếp từ SQL Server TUAF cho ${user.username} (role: ${user.role}, hệ: ${trainingSystem})...`);
   const decryptedPassword = decrypt(user.encryptedPassword);
   const databaseStrategy = strategyManager.getDatabaseStrategy();
-  return await databaseStrategy.getSchedule(user, decryptedPassword, { semester, schoolYear: String(startYear) });
+  return await databaseStrategy.getSchedule(user, decryptedPassword, { semester, schoolYear: String(startYear), trainingSystem });
 };
 
 /**
@@ -214,17 +215,23 @@ router.get('/schedule', authMiddleware, async (req, res) => {
 router.get('/exams', authMiddleware, async (req, res) => {
   try {
     const { formattedSemester, formattedSchoolYear } = normalizeTerm(req.query.semester, req.query.schoolYear);
+    const trainingSystem = String(req.query.heDaoTao || req.query.trainingSystem || 'DHCQ').toUpperCase();
 
     if (req.query.forceSync === 'true') {
       await handleForceSync(req.user, req);
     }
 
+    const whereClause = {
+      userId: req.user.id,
+      semester: formattedSemester,
+      schoolYear: formattedSchoolYear
+    };
+    if (trainingSystem !== 'ALL') {
+      whereClause.trainingSystem = trainingSystem;
+    }
+
     let exams = await Exam.findAll({
-      where: {
-        userId: req.user.id,
-        semester: formattedSemester,
-        schoolYear: formattedSchoolYear
-      },
+      where: whereClause,
       order: [['examDate', 'ASC']]
     });
 
@@ -232,11 +239,7 @@ router.get('/exams', authMiddleware, async (req, res) => {
       try {
         await handleForceSync(req.user, req);
         exams = await Exam.findAll({
-          where: {
-            userId: req.user.id,
-            semester: formattedSemester,
-            schoolYear: formattedSchoolYear
-          },
+          where: whereClause,
           order: [['examDate', 'ASC']]
         });
       } catch (e) {
@@ -247,6 +250,7 @@ router.get('/exams', authMiddleware, async (req, res) => {
     res.json({
       success: true,
       data: exams,
+      trainingSystem,
       lastSyncedAt: req.user.lastSyncedAt
     });
   } catch (error) {

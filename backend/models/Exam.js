@@ -90,6 +90,10 @@ const Exam = sequelize.define('Exam', {
   notes: {
     type: DataTypes.TEXT,
     defaultValue: ''
+  },
+  trainingSystem: {
+    type: DataTypes.STRING,
+    defaultValue: 'DHCQ'
   }
 });
 

@@ -140,12 +140,16 @@ export const getSchedule = async (forceSync = false, semester = null, schoolYear
 /**
  * Lấy lịch thi học kỳ, tự động offline cache
  */
-export const getExams = async (forceSync = false, semester = null, schoolYear = null) => {
-  const cacheKey = semester && schoolYear ? `cached_exams_${semester}_${schoolYear}` : 'cached_exams';
+export const getExams = async (forceSync = false, semester = null, schoolYear = null, trainingSystem = 'DHCQ') => {
+  const sys = String(trainingSystem || 'DHCQ').toUpperCase();
+  const cacheKey = semester && schoolYear ? `cached_exams_${semester}_${schoolYear}_${sys}` : `cached_exams_${sys}`;
   try {
     let url = `/exams?forceSync=${forceSync}`;
     if (semester && schoolYear) {
       url += `&semester=${semester}&schoolYear=${schoolYear}`;
+    }
+    if (sys) {
+      url += `&heDaoTao=${sys}`;
     }
     const response = await api.get(url);
     const data = response.data.data;

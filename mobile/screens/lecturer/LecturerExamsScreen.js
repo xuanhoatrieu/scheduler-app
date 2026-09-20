@@ -25,6 +25,15 @@ const DAY_NAMES = {
   6: 'Thứ Bảy',
 };
 
+const TRAINING_SYSTEMS = [
+  { key: 'DHCQ', label: 'Chính quy' },
+  { key: 'VLVH', label: 'Vừa làm vừa học' },
+  { key: 'DTTX', label: 'Từ xa' },
+  { key: 'SDH', label: 'Sau ĐH' },
+  { key: 'CTTT', label: 'Tiên tiến' },
+  { key: 'ALL', label: 'Tất cả hệ' },
+];
+
 const getDynamicSemesters = () => {
   const now = new Date();
   const currentYear = now.getFullYear();
@@ -59,18 +68,21 @@ export default function LecturerExamsScreen({ user }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [semesters, setSemesters] = useState(getDynamicSemesters());
   const [selectedSemIdx, setSelectedSemIdx] = useState(0);
+  const [selectedSystem, setSelectedSystem] = useState('DHCQ');
 
   const currentSem = semesters[selectedSemIdx] || semesters[0] || { label: 'Học kỳ' };
+  const currentSysObj = TRAINING_SYSTEMS.find(s => s.key === selectedSystem) || TRAINING_SYSTEMS[0];
 
   // Tải dữ liệu lịch thi
-  const loadData = async (forceSync = false, semIdx = null, customSemList = null) => {
+  const loadData = async (forceSync = false, semIdx = null, customSemList = null, sys = null) => {
     const list = customSemList || semesters;
     const idx = semIdx !== null ? semIdx : selectedSemIdx;
     const sem = list[idx] || list[0];
+    const activeSys = sys !== null ? sys : selectedSystem;
     if (!sem) return;
 
     try {
-      const res = await getExams(forceSync, sem.semester, sem.schoolYear);
+      const res = await getExams(forceSync, sem.semester, sem.schoolYear, activeSys);
       if (res.success && Array.isArray(res.data)) {
         // Đảm bảo lọc chỉ các môn có lịch thi hợp lệ
         const validExams = res.data.filter(e => e && (e.examDate || e.room || e.examTime));
@@ -100,10 +112,10 @@ export default function LecturerExamsScreen({ user }) {
         const targetIdx = currentIdx >= 0 ? currentIdx : 0;
         if (isMounted) setSelectedSemIdx(targetIdx);
 
-        await loadData(false, targetIdx, semList);
+        await loadData(false, targetIdx, semList, 'DHCQ');
       } catch (err) {
         console.warn('Lỗi khởi tạo học kỳ lịch thi giảng viên:', err.message);
-        await loadData(false, 0);
+        await loadData(false, 0, null, 'DHCQ');
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -114,15 +126,24 @@ export default function LecturerExamsScreen({ user }) {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadData(true, selectedSemIdx, semesters);
+    await loadData(true, selectedSemIdx, semesters, selectedSystem);
     setRefreshing(false);
-  }, [selectedSemIdx, semesters]);
+  }, [selectedSemIdx, semesters, selectedSystem]);
 
   const onSelectSemester = async (idx) => {
     if (idx !== selectedSemIdx) {
       setSelectedSemIdx(idx);
       setLoading(true);
-      await loadData(false, idx, semesters);
+      await loadData(false, idx, semesters, selectedSystem);
+      setLoading(false);
+    }
+  };
+
+  const onSelectSystem = async (sysKey) => {
+    if (sysKey !== selectedSystem) {
+      setSelectedSystem(sysKey);
+      setLoading(true);
+      await loadData(false, selectedSemIdx, semesters, sysKey);
       setLoading(false);
     }
   };
@@ -188,8 +209,8 @@ export default function LecturerExamsScreen({ user }) {
       {/* Header */}
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Lịch Thi Môn Dạy</Text>
-          <Text style={styles.headerSubtitle}>{currentSem.label} • Các môn phụ trách có lịch thi</Text>
+          <Text style={styles.headerTitle}>Lịch Thi</Text>
+          <Text style={styles.headerSubtitle}>{currentSem.label} • Hệ {currentSysObj.label}</Text>
         </View>
         <TouchableOpacity
           style={styles.syncBtn}
@@ -223,6 +244,27 @@ export default function LecturerExamsScreen({ user }) {
                 {sem.current && (
                   <View style={[styles.currentDot, isSelected && styles.currentDotActive]} />
                 )}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      {/* Training System Picker */}
+      <View style={styles.sysPickerWrap}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sysScroll}>
+          {TRAINING_SYSTEMS.map((sys) => {
+            const isSelected = sys.key === selectedSystem;
+            return (
+              <TouchableOpacity
+                key={`sys_${sys.key}`}
+                style={[styles.sysChip, isSelected && styles.sysChipActive]}
+                onPress={() => onSelectSystem(sys.key)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.sysChipText, isSelected && styles.sysChipTextActive]}>
+                  {sys.label}
+                </Text>
               </TouchableOpacity>
             );
           })}
@@ -393,7 +435,7 @@ export default function LecturerExamsScreen({ user }) {
             <Text style={styles.emptySubtitle}>
               {searchQuery
                 ? 'Không tìm thấy môn phụ trách phù hợp với từ khóa.'
-                : `Trong ${currentSem.label}, các lớp học phần bạn giảng dạy chưa có lịch thi nào được xếp.\n(Bạn có thể chọn học kỳ trước ở thanh chọn kỳ phía trên để xem lịch thi đã qua).`}
+                : `Trong ${currentSem.label} (Hệ ${currentSysObj.label}), các lớp học phần bạn giảng dạy chưa có lịch thi nào được xếp.\n(Bạn có thể chọn hệ đào tạo hoặc học kỳ khác ở thanh chọn phía trên).`}
             </Text>
             {semesters.findIndex(s => s.semester === '2' && String(s.schoolYear).includes('2025')) >= 0 &&
              selectedSemIdx !== semesters.findIndex(s => s.semester === '2' && String(s.schoolYear).includes('2025')) && (
@@ -434,7 +476,7 @@ const styles = StyleSheet.create({
     elevation: 3, shadowColor: Colors.primary, shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25, shadowRadius: 4,
   },
-  semPickerWrap: { backgroundColor: Colors.surface, paddingBottom: 10 },
+  semPickerWrap: { backgroundColor: Colors.surface, paddingBottom: 6 },
   semScroll: { paddingHorizontal: 16, gap: 8 },
   semChip: {
     flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8,
@@ -445,6 +487,15 @@ const styles = StyleSheet.create({
   semChipTextActive: { color: Colors.primary, fontWeight: '700' },
   currentDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.textMuted, marginLeft: 6 },
   currentDotActive: { backgroundColor: Colors.primary },
+  sysPickerWrap: { backgroundColor: Colors.surface, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  sysScroll: { paddingHorizontal: 16, gap: 6 },
+  sysChip: {
+    paddingHorizontal: 12, paddingVertical: 5, borderRadius: 16,
+    backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0',
+  },
+  sysChipActive: { backgroundColor: '#EEF2FF', borderColor: '#6366F1' },
+  sysChipText: { fontSize: 12, fontWeight: '600', color: '#64748B' },
+  sysChipTextActive: { color: '#4F46E5', fontWeight: '700' },
   searchWrap: { paddingHorizontal: 16, paddingVertical: 10, backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   searchBox: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC',

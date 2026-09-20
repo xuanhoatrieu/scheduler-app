@@ -243,7 +243,7 @@ export default function TeachingScheduleScreen({ user, onSwitchRole }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Top Segmented Tabs: Lịch Giảng Dạy | Lịch Thi Môn Dạy */}
+      {/* Top Segmented Tabs: Lịch Giảng Dạy | Lịch Thi */}
       <View style={styles.topTabsWrapper}>
         <View style={styles.topTabsContainer}>
           <TouchableOpacity
@@ -274,7 +274,7 @@ export default function TeachingScheduleScreen({ user, onSwitchRole }) {
               style={{ marginRight: 6 }}
             />
             <Text style={[styles.topTabText, mainTab === 'exam' && styles.topTabTextActive]}>
-              Lịch Thi Môn Dạy
+              Lịch Thi
             </Text>
           </TouchableOpacity>
         </View>
