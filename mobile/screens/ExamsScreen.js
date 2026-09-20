@@ -112,7 +112,7 @@ export default function ExamsScreen({ user }) {
 
   // Tính countdown và ngày thi
   const parseExamDate = (dateStr) => {
-    if (!dateStr) return null;
+    if (!dateStr || typeof dateStr !== 'string') return null;
     const dmy = dateStr.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
     if (dmy) {
       return new Date(parseInt(dmy[3], 10), parseInt(dmy[2], 10) - 1, parseInt(dmy[1], 10));
@@ -149,9 +149,11 @@ export default function ExamsScreen({ user }) {
 
   // Lọc tìm kiếm
   const filteredExams = useMemo(() => {
+    if (!Array.isArray(examData)) return [];
     if (!searchQuery.trim()) return examData;
     const q = searchQuery.toLowerCase().trim();
     return examData.filter(item => {
+      if (!item) return false;
       const name = (item.courseName || '').toLowerCase();
       const code = (item.courseCode || '').toLowerCase();
       const room = (item.room || '').toLowerCase();
@@ -162,11 +164,12 @@ export default function ExamsScreen({ user }) {
 
   // Môn thi gần nhất (Upcoming Hero Card)
   const nextExam = useMemo(() => {
-    if (!examData || examData.length === 0) return null;
+    if (!examData || !Array.isArray(examData) || examData.length === 0) return null;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     const upcoming = examData
+      .filter(item => item && item.examDate)
       .map(item => ({ item, date: parseExamDate(item.examDate) }))
       .filter(x => x.date && x.date >= today)
       .sort((a, b) => a.date - b.date);
@@ -181,15 +184,18 @@ export default function ExamsScreen({ user }) {
     let passed = 0;
     let upcoming = 0;
 
-    examData.forEach(item => {
-      const d = parseExamDate(item.examDate);
-      if (d) {
-        if (d < today) passed++;
-        else upcoming++;
-      }
-    });
+    if (Array.isArray(examData)) {
+      examData.forEach(item => {
+        if (!item || !item.examDate) return;
+        const d = parseExamDate(item.examDate);
+        if (d) {
+          if (d < today) passed++;
+          else upcoming++;
+        }
+      });
+    }
 
-    return { total: examData.length, passed, upcoming };
+    return { total: examData ? examData.length : 0, passed, upcoming };
   }, [examData]);
 
   if (loading) {

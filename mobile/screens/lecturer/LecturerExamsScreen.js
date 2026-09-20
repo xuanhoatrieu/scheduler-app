@@ -62,55 +62,73 @@ export default function LecturerExamsScreen({ user }) {
 
   const currentSem = semesters[selectedSemIdx] || semesters[0] || { label: 'Học kỳ' };
 
-  // Load danh sách học kỳ
-  useEffect(() => {
-    let isMounted = true;
-    const fetchSemesters = async () => {
-      try {
-        const res = await getScheduleSemesters();
-        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
-          if (isMounted) setSemesters(res.data);
-        }
-      } catch (err) {
-        console.warn('Lỗi tải danh mục học kỳ giảng viên:', err.message);
-      }
-    };
-    fetchSemesters();
-    return () => { isMounted = false; };
-  }, []);
-
   // Tải dữ liệu lịch thi
-  const loadData = async (forceSync = false, semIdx = null) => {
+  const loadData = async (forceSync = false, semIdx = null, customSemList = null) => {
+    const list = customSemList || semesters;
     const idx = semIdx !== null ? semIdx : selectedSemIdx;
-    const sem = semesters[idx] || semesters[0];
-    const res = await getExams(forceSync, sem.semester, sem.schoolYear);
+    const sem = list[idx] || list[0];
+    if (!sem) return;
 
-    if (res.success && Array.isArray(res.data)) {
-      // Đảm bảo lọc chỉ các môn có lịch thi hợp lệ
-      const validExams = res.data.filter(e => e.examDate || e.room || e.examTime);
-      setExamData(validExams);
+    try {
+      const res = await getExams(forceSync, sem.semester, sem.schoolYear);
+      if (res.success && Array.isArray(res.data)) {
+        // Đảm bảo lọc chỉ các môn có lịch thi hợp lệ
+        const validExams = res.data.filter(e => e && (e.examDate || e.room || e.examTime));
+        setExamData(validExams);
+      } else {
+        setExamData([]);
+      }
+    } catch (err) {
+      console.warn('Lỗi tải lịch thi giảng viên:', err.message);
+      setExamData([]);
     }
   };
 
+  // Khởi tạo danh mục kỳ & tải dữ liệu kỳ hiện hành đồng bộ
   useEffect(() => {
-    setLoading(true);
-    loadData().finally(() => setLoading(false));
-  }, [selectedSemIdx]);
+    let isMounted = true;
+    const init = async () => {
+      try {
+        const res = await getScheduleSemesters();
+        let semList = semesters;
+        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+          semList = res.data;
+          if (isMounted) setSemesters(semList);
+        }
+
+        const currentIdx = semList.findIndex(s => s.current);
+        const targetIdx = currentIdx >= 0 ? currentIdx : 0;
+        if (isMounted) setSelectedSemIdx(targetIdx);
+
+        await loadData(false, targetIdx, semList);
+      } catch (err) {
+        console.warn('Lỗi khởi tạo học kỳ lịch thi giảng viên:', err.message);
+        await loadData(false, 0);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+    init();
+    return () => { isMounted = false; };
+  }, []);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadData(true);
+    await loadData(true, selectedSemIdx, semesters);
     setRefreshing(false);
   }, [selectedSemIdx, semesters]);
 
-  const onSelectSemester = (idx) => {
+  const onSelectSemester = async (idx) => {
     if (idx !== selectedSemIdx) {
       setSelectedSemIdx(idx);
+      setLoading(true);
+      await loadData(false, idx, semesters);
+      setLoading(false);
     }
   };
 
   const parseExamDate = (dateStr) => {
-    if (!dateStr) return null;
+    if (!dateStr || typeof dateStr !== 'string') return null;
     const dmy = dateStr.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
     if (dmy) return new Date(parseInt(dmy[3], 10), parseInt(dmy[2], 10) - 1, parseInt(dmy[1], 10));
     const ymd = dateStr.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
@@ -126,9 +144,11 @@ export default function LecturerExamsScreen({ user }) {
 
   // Tìm kiếm tức thì
   const filteredExams = useMemo(() => {
+    if (!Array.isArray(examData)) return [];
     if (!searchQuery.trim()) return examData;
     const q = searchQuery.toLowerCase().trim();
     return examData.filter(item => {
+      if (!item) return false;
       const name = (item.courseName || '').toLowerCase();
       const code = (item.courseCode || '').toLowerCase();
       const cls = (item.className || '').toLowerCase();
@@ -140,8 +160,11 @@ export default function LecturerExamsScreen({ user }) {
 
   // Thống kê
   const stats = useMemo(() => {
-    const distinctCourses = new Set(examData.map(e => e.courseCode || e.courseName)).size;
-    const totalStudents = examData.reduce((sum, e) => sum + (e.studentCount || 0), 0);
+    if (!Array.isArray(examData) || examData.length === 0) {
+      return { coursesCount: 0, shiftsCount: 0, totalStudents: 0 };
+    }
+    const distinctCourses = new Set(examData.map(e => (e ? (e.courseCode || e.courseName) : ''))).size;
+    const totalStudents = examData.reduce((sum, e) => sum + ((e && e.studentCount) || 0), 0);
     return {
       coursesCount: distinctCourses,
       shiftsCount: examData.length,
@@ -365,16 +388,27 @@ export default function LecturerExamsScreen({ user }) {
         }}
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
-            <Ionicons name="school-outline" size={60} color={Colors.borderLight} />
-            <Text style={styles.emptyTitle}>Không có lịch thi học phần!</Text>
+            <Ionicons name="calendar-outline" size={56} color={Colors.borderLight} />
+            <Text style={styles.emptyTitle}>Chưa có lịch thi học phần!</Text>
             <Text style={styles.emptySubtitle}>
               {searchQuery
                 ? 'Không tìm thấy môn phụ trách phù hợp với từ khóa.'
-                : `Trong ${currentSem.label}, hiện các môn bạn phụ trách chưa có lịch thi nào được xếp.`}
+                : `Trong ${currentSem.label}, các lớp học phần bạn giảng dạy chưa có lịch thi nào được xếp.\n(Bạn có thể chọn học kỳ trước ở thanh chọn kỳ phía trên để xem lịch thi đã qua).`}
             </Text>
+            {semesters.findIndex(s => s.semester === '2' && String(s.schoolYear).includes('2025')) >= 0 &&
+             selectedSemIdx !== semesters.findIndex(s => s.semester === '2' && String(s.schoolYear).includes('2025')) && (
+              <TouchableOpacity
+                style={[styles.emptySyncBtn, { backgroundColor: '#4F46E5', marginBottom: 10 }]}
+                onPress={() => onSelectSemester(semesters.findIndex(s => s.semester === '2' && String(s.schoolYear).includes('2025')))}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="calendar" size={16} color={Colors.textOnPrimary} style={{ marginRight: 6 }} />
+                <Text style={styles.emptySyncBtnText}>Xem lịch thi HK2 2025-2026</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity style={styles.emptySyncBtn} onPress={onRefresh} activeOpacity={0.8}>
               <Ionicons name="sync" size={16} color={Colors.textOnPrimary} style={{ marginRight: 6 }} />
-              <Text style={styles.emptySyncBtnText}>Đồng bộ lại CSDL</Text>
+              <Text style={styles.emptySyncBtnText}>Đồng bộ lại từ CSDL</Text>
             </TouchableOpacity>
           </View>
         }

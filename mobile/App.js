@@ -17,8 +17,12 @@ export default function App() {
 
   // Khởi tạo kênh thông báo hệ thống và kiểm tra trạng thái đăng nhập
   useEffect(() => {
-    initNotifications();
-    requestNotificationPermissions();
+    try {
+      initNotifications().catch((e) => console.warn('⚠️ Lỗi initNotifications:', e.message));
+      requestNotificationPermissions().catch((e) => console.warn('⚠️ Lỗi requestNotificationPermissions:', e.message));
+    } catch (e) {
+      console.warn('⚠️ Lỗi khởi tạo thông báo:', e.message);
+    }
 
     // Đăng ký lắng nghe sự kiện hết hạn phiên đăng nhập từ Axios interceptor
     registerSessionExpiredCallback(() => {

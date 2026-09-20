@@ -111,78 +111,88 @@ const parseExamDateTime = (dateStr, timeStr, startTimeStr) => {
 };
 
 /**
+ * Chuẩn hóa ID thông báo để tránh ký tự đặc biệt gây lỗi native
+ */
+const sanitizeNotifId = (id) => String(id || 'item').replace(/[^a-zA-Z0-9_-]/g, '_');
+
+/**
  * Lên lịch thông báo chuông và màn hình khóa trước giờ thi 30 phút và 15 phút
  */
 export const scheduleExamReminders = async (exams) => {
-  if (!exams || !Array.isArray(exams) || exams.length === 0) return;
+  try {
+    if (!exams || !Array.isArray(exams) || exams.length === 0) return;
 
-  const hasPermission = await requestNotificationPermissions();
-  if (!hasPermission) return;
+    const hasPermission = await requestNotificationPermissions();
+    if (!hasPermission) return;
 
-  const now = new Date().getTime();
+    const now = new Date().getTime();
 
-  for (const exam of exams) {
-    if (!exam.examDate) continue;
+    for (const exam of exams) {
+      if (!exam || !exam.examDate) continue;
 
-    const examDateTime = parseExamDateTime(exam.examDate, exam.examTime, exam.startTime);
-    if (!examDateTime) continue;
+      const examDateTime = parseExamDateTime(exam.examDate, exam.examTime, exam.startTime);
+      if (!examDateTime) continue;
 
-    const examTimestamp = examDateTime.getTime();
-    const timeDisplay = exam.startTime || (exam.examTime ? exam.examTime.replace(/Tiết.*?\((.*?)\)/, '$1') : '07:30');
-    const sbdText = exam.seatNumber ? ` • SBD: ${exam.seatNumber}` : '';
-    const roomText = exam.room ? ` • Phòng: ${exam.room}` : '';
+      const examTimestamp = examDateTime.getTime();
+      const timeDisplay = exam.startTime || (exam.examTime ? exam.examTime.replace(/Tiết.*?\((.*?)\)/, '$1') : '07:30');
+      const sbdText = exam.seatNumber ? ` • SBD: ${exam.seatNumber}` : '';
+      const roomText = exam.room ? ` • Phòng: ${exam.room}` : '';
+      const safeId = sanitizeNotifId(exam.id || exam.courseCode || exam.courseName);
 
-    // 1. Nhắc trước 30 phút
-    const trigger30m = examTimestamp - 30 * 60 * 1000;
-    if (trigger30m > now) {
-      const notifId = `exam_30m_${exam.id || exam.courseCode || exam.courseName}`;
-      try {
-        await Notifications.scheduleNotificationAsync({
-          identifier: notifId,
-          content: {
-            title: '🚨 Nhắc lịch thi [Trước 30 phút]',
-            body: `Môn "${exam.courseName}" thi lúc ${timeDisplay}${roomText}${sbdText}. Hãy chuẩn bị di chuyển đến phòng thi!`,
-            sound: true,
-            priority: Notifications.AndroidNotificationPriority.HIGH,
-            channelId: CHANNEL_ID,
-            data: { type: 'exam', examId: exam.id },
-          },
-          trigger: {
-            type: Notifications.SchedulableTriggerInputTypes.DATE,
-            date: new Date(trigger30m),
-            channelId: CHANNEL_ID,
-          },
-        });
-      } catch (err) {
-        console.warn('⚠️ Lỗi hẹn giờ thông báo thi 30m:', err.message);
+      // 1. Nhắc trước 30 phút
+      const trigger30m = examTimestamp - 30 * 60 * 1000;
+      if (trigger30m > now) {
+        const notifId = `exam_30m_${safeId}`;
+        try {
+          await Notifications.scheduleNotificationAsync({
+            identifier: notifId,
+            content: {
+              title: '🚨 Nhắc lịch thi [Trước 30 phút]',
+              body: `Môn "${exam.courseName || ''}" thi lúc ${timeDisplay}${roomText}${sbdText}. Hãy chuẩn bị di chuyển đến phòng thi!`,
+              sound: true,
+              priority: Notifications.AndroidNotificationPriority?.HIGH || 'high',
+              channelId: CHANNEL_ID,
+              data: { type: 'exam', examId: exam.id },
+            },
+            trigger: {
+              type: 'date',
+              date: new Date(trigger30m),
+              channelId: CHANNEL_ID,
+            },
+          });
+        } catch (err) {
+          console.warn('⚠️ Lỗi hẹn giờ thông báo thi 30m:', err.message);
+        }
+      }
+
+      // 2. Nhắc khẩn cấp trước 15 phút
+      const trigger15m = examTimestamp - 15 * 60 * 1000;
+      if (trigger15m > now) {
+        const notifId = `exam_15m_${safeId}`;
+        try {
+          await Notifications.scheduleNotificationAsync({
+            identifier: notifId,
+            content: {
+              title: '⏰ LỊCH THI KHẨN CẤP [Còn 15 phút]',
+              body: `Chỉ còn 15 phút nữa là bắt đầu thi môn "${exam.courseName || ''}"${roomText}${sbdText}. Khẩn trương vào phòng thi!`,
+              sound: true,
+              priority: Notifications.AndroidNotificationPriority?.MAX || 'max',
+              channelId: CHANNEL_ID,
+              data: { type: 'exam', examId: exam.id },
+            },
+            trigger: {
+              type: 'date',
+              date: new Date(trigger15m),
+              channelId: CHANNEL_ID,
+            },
+          });
+        } catch (err) {
+          console.warn('⚠️ Lỗi hẹn giờ thông báo thi 15m:', err.message);
+        }
       }
     }
-
-    // 2. Nhắc khẩn cấp trước 15 phút
-    const trigger15m = examTimestamp - 15 * 60 * 1000;
-    if (trigger15m > now) {
-      const notifId = `exam_15m_${exam.id || exam.courseCode || exam.courseName}`;
-      try {
-        await Notifications.scheduleNotificationAsync({
-          identifier: notifId,
-          content: {
-            title: '⏰ LỊCH THI KHẨN CẤP [Còn 15 phút]',
-            body: `Chỉ còn 15 phút nữa là bắt đầu thi môn "${exam.courseName}"${roomText}${sbdText}. Khẩn trương vào phòng thi!`,
-            sound: true,
-            priority: Notifications.AndroidNotificationPriority.MAX,
-            channelId: CHANNEL_ID,
-            data: { type: 'exam', examId: exam.id },
-          },
-          trigger: {
-            type: Notifications.SchedulableTriggerInputTypes.DATE,
-            date: new Date(trigger15m),
-            channelId: CHANNEL_ID,
-          },
-        });
-      } catch (err) {
-        console.warn('⚠️ Lỗi hẹn giờ thông báo thi 15m:', err.message);
-      }
-    }
+  } catch (globalErr) {
+    console.warn('⚠️ [notificationService] scheduleExamReminders gặp lỗi ngoại lệ:', globalErr.message);
   }
 };
 
@@ -239,100 +249,107 @@ const parseClassStudyRange = (studyTime) => {
  * Tự động nhắc nhở trước 30 phút và 15 phút
  */
 export const scheduleClassReminders = async (schedule) => {
-  if (!schedule || !Array.isArray(schedule) || schedule.length === 0) return;
+  try {
+    if (!schedule || !Array.isArray(schedule) || schedule.length === 0) return;
 
-  const hasPermission = await requestNotificationPermissions();
-  if (!hasPermission) return;
+    const hasPermission = await requestNotificationPermissions();
+    if (!hasPermission) return;
 
-  const now = new Date();
-  const nowTime = now.getTime();
+    const now = new Date();
+    const nowTime = now.getTime();
 
-  // Quét 7 ngày tới (từ hôm nay đến 7 ngày sau)
-  for (let offset = 0; offset < 7; offset++) {
-    const targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
-    targetDate.setHours(0, 0, 0, 0);
+    // Quét 7 ngày tới (từ hôm nay đến 7 ngày sau)
+    for (let offset = 0; offset < 7; offset++) {
+      const targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
+      targetDate.setHours(0, 0, 0, 0);
 
-    const dayOfWeek = targetDate.getDay() === 0 ? 8 : targetDate.getDay() + 1; // 2: Thứ 2, ..., 8: CN
+      const dayOfWeek = targetDate.getDay() === 0 ? 8 : targetDate.getDay() + 1; // 2: Thứ 2, ..., 8: CN
 
-    // Lọc các môn học diễn ra vào thứ này
-    const classesOnDay = schedule.filter(item => {
-      if (item.dayOfWeek !== dayOfWeek) return false;
-      const range = parseClassStudyRange(item.studyTime);
-      if (range) {
-        if (targetDate < range.start || targetDate > range.end) return false;
-      }
-      return true;
-    });
-
-    for (const classItem of classesOnDay) {
-      const startTimeStr = getClassStartTime(classItem.periodText);
-      const [h, m] = startTimeStr.split(':').map(Number);
-
-      const classStartTime = new Date(
-        targetDate.getFullYear(),
-        targetDate.getMonth(),
-        targetDate.getDate(),
-        h,
-        m,
-        0,
-        0
-      ).getTime();
-
-      const dateKey = `${targetDate.getFullYear()}_${targetDate.getMonth() + 1}_${targetDate.getDate()}`;
-      const roomStr = classItem.room ? ` • Phòng ${classItem.room}` : '';
-
-      // 1. Nhắc trước 30 phút
-      const trigger30m = classStartTime - 30 * 60 * 1000;
-      if (trigger30m > nowTime) {
-        const notifId = `class_30m_${classItem.id || classItem.courseName}_${dateKey}_${startTimeStr}`;
-        try {
-          await Notifications.scheduleNotificationAsync({
-            identifier: notifId,
-            content: {
-              title: '🚨 Nhắc lịch học [Trước 30 phút]',
-              body: `Môn "${classItem.courseName}" sẽ bắt đầu lúc ${startTimeStr}${roomStr}. Chuẩn bị sách vở và di chuyển đến trường nào!`,
-              sound: true,
-              priority: Notifications.AndroidNotificationPriority.HIGH,
-              channelId: CHANNEL_ID,
-              data: { type: 'class', classId: classItem.id },
-            },
-            trigger: {
-              type: Notifications.SchedulableTriggerInputTypes.DATE,
-              date: new Date(trigger30m),
-              channelId: CHANNEL_ID,
-            },
-          });
-        } catch (err) {
-          console.warn('⚠️ Lỗi hẹn giờ thông báo học 30m:', err.message);
+      // Lọc các môn học diễn ra vào thứ này
+      const classesOnDay = schedule.filter(item => {
+        if (!item || item.dayOfWeek !== dayOfWeek) return false;
+        const range = parseClassStudyRange(item.studyTime);
+        if (range) {
+          if (targetDate < range.start || targetDate > range.end) return false;
         }
-      }
+        return true;
+      });
 
-      // 2. Nhắc khẩn cấp trước 15 phút
-      const trigger15m = classStartTime - 15 * 60 * 1000;
-      if (trigger15m > nowTime) {
-        const notifId = `class_15m_${classItem.id || classItem.courseName}_${dateKey}_${startTimeStr}`;
-        try {
-          await Notifications.scheduleNotificationAsync({
-            identifier: notifId,
-            content: {
-              title: '⏰ Nhắc lịch học [Khẩn cấp - 15 phút]',
-              body: `Chỉ còn 15 phút nữa là bắt đầu môn "${classItem.courseName}"${roomStr} (giờ học: ${startTimeStr}). Khẩn trương vào lớp thôi!`,
-              sound: true,
-              priority: Notifications.AndroidNotificationPriority.MAX,
-              channelId: CHANNEL_ID,
-              data: { type: 'class', classId: classItem.id },
-            },
-            trigger: {
-              type: Notifications.SchedulableTriggerInputTypes.DATE,
-              date: new Date(trigger15m),
-              channelId: CHANNEL_ID,
-            },
-          });
-        } catch (err) {
-          console.warn('⚠️ Lỗi hẹn giờ thông báo học 15m:', err.message);
+      for (const classItem of classesOnDay) {
+        if (!classItem) continue;
+        const startTimeStr = getClassStartTime(classItem.periodText);
+        const [h, m] = startTimeStr.split(':').map(Number);
+
+        const classStartTime = new Date(
+          targetDate.getFullYear(),
+          targetDate.getMonth(),
+          targetDate.getDate(),
+          h,
+          m,
+          0,
+          0
+        ).getTime();
+
+        const dateKey = `${targetDate.getFullYear()}_${targetDate.getMonth() + 1}_${targetDate.getDate()}`;
+        const roomStr = classItem.room ? ` • Phòng ${classItem.room}` : '';
+        const safeClassId = sanitizeNotifId(classItem.id || classItem.courseName);
+        const safeTime = startTimeStr.replace(':', '_');
+
+        // 1. Nhắc trước 30 phút
+        const trigger30m = classStartTime - 30 * 60 * 1000;
+        if (trigger30m > nowTime) {
+          const notifId = `class_30m_${safeClassId}_${dateKey}_${safeTime}`;
+          try {
+            await Notifications.scheduleNotificationAsync({
+              identifier: notifId,
+              content: {
+                title: '🚨 Nhắc lịch học [Trước 30 phút]',
+                body: `Môn "${classItem.courseName || ''}" sẽ bắt đầu lúc ${startTimeStr}${roomStr}. Chuẩn bị sách vở và di chuyển đến trường nào!`,
+                sound: true,
+                priority: Notifications.AndroidNotificationPriority?.HIGH || 'high',
+                channelId: CHANNEL_ID,
+                data: { type: 'class', classId: classItem.id },
+              },
+              trigger: {
+                type: 'date',
+                date: new Date(trigger30m),
+                channelId: CHANNEL_ID,
+              },
+            });
+          } catch (err) {
+            console.warn('⚠️ Lỗi hẹn giờ thông báo học 30m:', err.message);
+          }
+        }
+
+        // 2. Nhắc khẩn cấp trước 15 phút
+        const trigger15m = classStartTime - 15 * 60 * 1000;
+        if (trigger15m > nowTime) {
+          const notifId = `class_15m_${safeClassId}_${dateKey}_${safeTime}`;
+          try {
+            await Notifications.scheduleNotificationAsync({
+              identifier: notifId,
+              content: {
+                title: '⏰ Nhắc lịch học [Khẩn cấp - 15 phút]',
+                body: `Chỉ còn 15 phút nữa là bắt đầu môn "${classItem.courseName || ''}"${roomStr} (giờ học: ${startTimeStr}). Khẩn trương vào lớp thôi!`,
+                sound: true,
+                priority: Notifications.AndroidNotificationPriority?.MAX || 'max',
+                channelId: CHANNEL_ID,
+                data: { type: 'class', classId: classItem.id },
+              },
+              trigger: {
+                type: 'date',
+                date: new Date(trigger15m),
+                channelId: CHANNEL_ID,
+              },
+            });
+          } catch (err) {
+            console.warn('⚠️ Lỗi hẹn giờ thông báo học 15m:', err.message);
+          }
         }
       }
     }
+  } catch (globalErr) {
+    console.warn('⚠️ [notificationService] scheduleClassReminders gặp lỗi ngoại lệ:', globalErr.message);
   }
 };
 

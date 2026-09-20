@@ -256,6 +256,9 @@ export default function ScheduleScreen({ user }) {
   const [selectedSemIdx, setSelectedSemIdx] = useState(0);
   const currentSem = semesters[selectedSemIdx] || semesters[0] || { label: 'Học kỳ' };
 
+  // Bộ lọc trạng thái thông minh: 'active' (mặc định) | 'upcoming' | 'past' | 'all'
+  const [statusFilter, setStatusFilter] = useState('active');
+
   // Tab chính: 'schedule' (Lịch học) | 'exam' (Lịch thi)
   const [mainTab, setMainTab] = useState('schedule');
 

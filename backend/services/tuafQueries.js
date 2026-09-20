@@ -337,6 +337,11 @@ async function getStudentExams(pool, idSv, hocKy, namHoc) {
  * CHỈ HIỂN THỊ CÁC MÔN CÓ XẾP LỊCH THI
  */
 async function getLecturerExams(pool, idCb, hocKy, namHoc) {
+  const cleanNamHoc = String(namHoc || '').replace('_', '-');
+  const altNamHoc = cleanNamHoc.replace('-', '_');
+
+  // 1. Lấy lịch thi từ phần mềm xếp lịch thi (TCT_DotThi_Phong, TCT_DotThi_Mon, TCT_DotThi)
+  // Nối với lớp học phần mà Giảng viên trực tiếp giảng dạy (qua PLAN_SukiensTinChi_TC hoặc PLAN_LopTinChi_TC)
   const result = await safeQuery(pool,
     `SELECT DISTINCT
       mh.Ky_hieu AS courseCode,
@@ -348,7 +353,11 @@ async function getLecturerExams(pool, idCb, hocKy, namHoc) {
       dtp.Tu_tiet,
       COALESCE(dtp.So_tiet, 2) AS So_tiet,
       COALESCE(dmph.So_phong, dtp.Ten_phong, ph.So_phong, '') AS Phong,
-      dtp.Si_so,
+      COALESCE(
+        dtp.Si_so,
+        (SELECT COUNT(1) FROM STU_DanhSachLopTinChi ds WHERE ds.ID_lop_tc = ltc.ID_lop_tc AND ISNULL(ds.Huy_dang_ky, 0) = 0),
+        0
+      ) AS Si_so,
       COALESCE(dtm.ID_hinh_thuc, 1) AS Hinh_thuc,
       COALESCE(dt.Lan_thi, 1) AS Lan_thi,
       dt.Ten_dot,
@@ -357,22 +366,25 @@ async function getLecturerExams(pool, idCb, hocKy, namHoc) {
     FROM PLAN_LopTinChi_TC ltc
     JOIN PLAN_MonTinChi_TC mtc ON ltc.ID_mon_tc = mtc.ID_mon_tc
     JOIN dmMonHoc mh ON mtc.ID_mon = mh.ID_mon
-    JOIN TCT_DotThi_Mon dtm ON dtm.ID_lop_tc = ltc.ID_lop_tc
+    JOIN TCT_DotThi_Mon dtm ON (
+      dtm.ID_lop_tc = ltc.ID_lop_tc
+      OR dtm.ID_mon = mtc.ID_mon
+    )
     JOIN TCT_DotThi dt ON dtm.ID_dot_thi = dt.ID_dot_thi
     JOIN TCT_DotThi_Phong dtp ON (
       dtp.ID_dot_thi = dtm.ID_dot_thi
       AND (
-        dtp.ID_lop_tcs = CAST(dtm.ID_lop_tc AS VARCHAR)
-        OR dtp.ID_lop_tcs LIKE '%,' + CAST(dtm.ID_lop_tc AS VARCHAR) + ',%'
-        OR dtp.ID_lop_tcs LIKE CAST(dtm.ID_lop_tc AS VARCHAR) + ',%'
-        OR dtp.ID_lop_tcs LIKE '%,' + CAST(dtm.ID_lop_tc AS VARCHAR)
+        dtp.ID_lop_tcs = CAST(ltc.ID_lop_tc AS VARCHAR)
+        OR dtp.ID_lop_tcs LIKE '%,' + CAST(ltc.ID_lop_tc AS VARCHAR) + ',%'
+        OR dtp.ID_lop_tcs LIKE CAST(ltc.ID_lop_tc AS VARCHAR) + ',%'
+        OR dtp.ID_lop_tcs LIKE '%,' + CAST(ltc.ID_lop_tc AS VARCHAR)
         OR (
-          dtp.ID_lop_tcs IS NULL
+          (dtp.ID_lop_tcs IS NULL OR dtp.ID_lop_tcs = '')
           AND (
-            dtp.ID_mons = CAST(dtm.ID_mon AS VARCHAR)
-            OR dtp.ID_mons LIKE '%,' + CAST(dtm.ID_mon AS VARCHAR) + ',%'
-            OR dtp.ID_mons LIKE CAST(dtm.ID_mon AS VARCHAR) + ',%'
-            OR dtp.ID_mons LIKE '%,' + CAST(dtm.ID_mon AS VARCHAR)
+            dtp.ID_mons = CAST(mtc.ID_mon AS VARCHAR)
+            OR dtp.ID_mons LIKE '%,' + CAST(mtc.ID_mon AS VARCHAR) + ',%'
+            OR dtp.ID_mons LIKE CAST(mtc.ID_mon AS VARCHAR) + ',%'
+            OR dtp.ID_mons LIKE '%,' + CAST(mtc.ID_mon AS VARCHAR)
           )
         )
       )
@@ -381,19 +393,84 @@ async function getLecturerExams(pool, idCb, hocKy, namHoc) {
     LEFT JOIN PLAN_PhongHoc ph ON dtp.ID_phong = ph.ID_phong
     LEFT JOIN HR_LyLich cb1 ON dtp.ID_cb_coi_thi1 = cb1.ID_cb
     LEFT JOIN HR_LyLich cb2 ON dtp.ID_cb_coi_thi2 = cb2.ID_cb
-    WHERE ltc.ID_cb = @idCb
-      AND dt.Hoc_ky = @hocKy AND dt.Nam_hoc = @namHoc
+    WHERE (
+      ltc.ID_cb = @idCb
+      OR EXISTS (
+        SELECT 1 FROM PLAN_SukiensTinChi_TC sk
+        WHERE sk.ID_lop_tc = ltc.ID_lop_tc AND sk.ID_cb = @idCb
+      )
+    )
+      AND ISNULL(ltc.Huy_lop, 0) = 0
+      AND dt.Hoc_ky = @hocKy
+      AND (dt.Nam_hoc = @namHoc OR dt.Nam_hoc = @altNamHoc)
       AND dtp.Ngay_thi IS NOT NULL
     ORDER BY dtp.Ngay_thi ASC, dtp.Tu_tiet ASC`,
     [
       { name: 'idCb', type: sql.NVarChar(50), value: String(idCb) },
       { name: 'hocKy', type: sql.Int, value: hocKy },
-      { name: 'namHoc', type: sql.NVarChar(50), value: namHoc }
+      { name: 'namHoc', type: sql.NVarChar(50), value: cleanNamHoc },
+      { name: 'altNamHoc', type: sql.NVarChar(50), value: altNamHoc }
     ],
     { username: 'lecturer-exams' }
   );
 
-  return result.recordset || [];
+  if (result.recordset && result.recordset.length > 0) {
+    return result.recordset;
+  }
+
+  // 2. Fallback: Lấy từ phân hệ tổ chức thi điểm số (MARK_TochucThi_TC) nếu phần mềm xếp lịch TCT chưa nạp
+  const fallback = await safeQuery(pool,
+    `SELECT DISTINCT
+      mh.Ky_hieu AS courseCode,
+      mh.Ten_mon AS courseName,
+      COALESCE(mtc.So_tin_chi, 0) AS credits,
+      ltc.ID_lop_tc,
+      ltc.Ten_lop_hp,
+      COALESCE(thi.Ngay_thi, dtp.Ngay_thi) AS Ngay_thi,
+      dtp.Tu_tiet,
+      COALESCE(dtp.So_tiet, thi.So_tiet, 2) AS So_tiet,
+      COALESCE(dmph.So_phong, dtp.Ten_phong, ph.So_phong, '') AS Phong,
+      COALESCE(
+        dtp.Si_so,
+        (SELECT COUNT(1) FROM STU_DanhSachLopTinChi ds WHERE ds.ID_lop_tc = ltc.ID_lop_tc AND ISNULL(ds.Huy_dang_ky, 0) = 0),
+        0
+      ) AS Si_so,
+      COALESCE(thi.Hinh_thuc_thi, 1) AS Hinh_thuc,
+      COALESCE(thi.Lan_thi, 1) AS Lan_thi,
+      COALESCE(thi.Dot_thi, 1) AS Ten_dot,
+      cb1.Ho_ten AS CbCoiThi1,
+      cb2.Ho_ten AS CbCoiThi2
+    FROM PLAN_LopTinChi_TC ltc
+    JOIN PLAN_MonTinChi_TC mtc ON ltc.ID_mon_tc = mtc.ID_mon_tc
+    JOIN dmMonHoc mh ON mtc.ID_mon = mh.ID_mon
+    JOIN MARK_TochucThi_TC thi ON thi.ID_mon = mh.ID_mon
+    LEFT JOIN TCT_DotThi_Phong dtp ON thi.ID_thi = dtp.ID_dot_thi
+    LEFT JOIN dmPhongHoc dmph ON dtp.ID_phong = dmph.ID_phong
+    LEFT JOIN PLAN_PhongHoc ph ON dtp.ID_phong = ph.ID_phong
+    LEFT JOIN HR_LyLich cb1 ON dtp.ID_cb_coi_thi1 = cb1.ID_cb
+    LEFT JOIN HR_LyLich cb2 ON dtp.ID_cb_coi_thi2 = cb2.ID_cb
+    WHERE (
+      ltc.ID_cb = @idCb
+      OR EXISTS (
+        SELECT 1 FROM PLAN_SukiensTinChi_TC sk
+        WHERE sk.ID_lop_tc = ltc.ID_lop_tc AND sk.ID_cb = @idCb
+      )
+    )
+      AND ISNULL(ltc.Huy_lop, 0) = 0
+      AND thi.Hoc_ky = @hocKy
+      AND (thi.Nam_hoc = @namHoc OR thi.Nam_hoc = @altNamHoc)
+      AND COALESCE(thi.Ngay_thi, dtp.Ngay_thi) IS NOT NULL
+    ORDER BY Ngay_thi ASC, dtp.Tu_tiet ASC`,
+    [
+      { name: 'idCb', type: sql.NVarChar(50), value: String(idCb) },
+      { name: 'hocKy', type: sql.Int, value: hocKy },
+      { name: 'namHoc', type: sql.NVarChar(50), value: cleanNamHoc },
+      { name: 'altNamHoc', type: sql.NVarChar(50), value: altNamHoc }
+    ],
+    { username: 'lecturer-exams-fallback' }
+  );
+
+  return fallback.recordset || [];
 }
 
 /**
