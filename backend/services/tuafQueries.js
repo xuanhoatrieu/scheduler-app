@@ -266,18 +266,22 @@ async function getStudentExams(pool, idSv, hocKy, namHoc, heDaoTao = 'DHCQ') {
   const altNamHoc = cleanNamHoc.replace('-', '_');
   const dotThiFilter = getTrainingSystemFilter('dt.Mo_ta', heDaoTao);
 
-  // 1. Thử lấy từ MARK_TochucThiChiTiet_TC kết hợp TCT_DotThi_Phong
+  // 1. Thử lấy từ MARK_TochucThiChiTiet_TC kết hợp MARK_ToChucThiPhong_TC & TCT_DotThi_Phong
   const result = await safeQuery(pool,
     `SELECT
-      COALESCE(thi.Ngay_thi, dtp.Ngay_thi) AS Ngay_thi,
+      COALESCE(mtp.Ngay_thi, dtp.Ngay_thi, thi.Ngay_thi) AS Ngay_thi,
       0 AS Ca_thi,
-      COALESCE(thi.Gio_thi, '') AS Gio_thi,
-      dtp.Tu_tiet,
-      COALESCE(dtp.So_tiet, thi.So_tiet, 2) AS So_tiet,
+      COALESCE(NULLIF(mtp.Gio_thi, ''), NULLIF(thi.Gio_thi, ''), '') AS Gio_thi,
+      COALESCE(mtp.Tu_tiet, dtp.Tu_tiet) AS Tu_tiet,
+      COALESCE(mtp.So_tiet, dtp.So_tiet, thi.So_tiet, 2) AS So_tiet,
       COALESCE(thi.Hinh_thuc_thi, 1) AS Hinh_thuc,
       COALESCE(thi.Lan_thi, 1) AS Lan_thi,
       COALESCE(thi.Dot_thi, 1) AS Dot_thi,
-      COALESCE(dmph.So_phong, dtp.Ten_phong, ph.So_phong, '') AS Phong,
+      CASE 
+        WHEN dmph.So_phong IS NOT NULL AND mtp.Ten_phong IS NOT NULL AND dmph.So_phong <> mtp.Ten_phong 
+        THEN dmph.So_phong + ' (' + mtp.Ten_phong + ')'
+        ELSE COALESCE(dmph.So_phong, mtp.Ten_phong, dtp.Ten_phong, ph.So_phong, '')
+      END AS Phong,
       mh.Ky_hieu AS courseCode,
       mh.Ten_mon AS courseName,
       ct.So_bao_danh,
@@ -286,14 +290,15 @@ async function getStudentExams(pool, idSv, hocKy, namHoc, heDaoTao = 'DHCQ') {
     FROM MARK_TochucThiChiTiet_TC ct
     JOIN MARK_TochucThi_TC thi ON ct.ID_thi = thi.ID_thi
     JOIN dmMonHoc mh ON thi.ID_mon = mh.ID_mon
-    LEFT JOIN TCT_DotThi_Phong dtp ON ct.ID_phong_thi = dtp.ID_dot_thi_phong
-    LEFT JOIN dmPhongHoc dmph ON dtp.ID_phong = dmph.ID_phong
-    LEFT JOIN PLAN_PhongHoc ph ON ct.ID_phong_thi = ph.ID_phong
-    LEFT JOIN HR_LyLich cb1 ON dtp.ID_cb_coi_thi1 = cb1.ID_cb
-    LEFT JOIN HR_LyLich cb2 ON dtp.ID_cb_coi_thi2 = cb2.ID_cb
+    LEFT JOIN MARK_ToChucThiPhong_TC mtp ON ct.ID_phong_thi = mtp.ID_phong_thi
+    LEFT JOIN TCT_DotThi_Phong dtp ON COALESCE(mtp.ID_dot_thi_phong, ct.ID_phong_thi) = dtp.ID_dot_thi_phong
+    LEFT JOIN dmPhongHoc dmph ON COALESCE(mtp.ID_phong, dtp.ID_phong) = dmph.ID_phong
+    LEFT JOIN PLAN_PhongHoc ph ON COALESCE(mtp.ID_phong, ct.ID_phong_thi) = ph.ID_phong
+    LEFT JOIN HR_LyLich cb1 ON COALESCE(mtp.ID_cb_coi_thi1, dtp.ID_cb_coi_thi1) = cb1.ID_cb
+    LEFT JOIN HR_LyLich cb2 ON COALESCE(mtp.ID_cb_coi_thi2, dtp.ID_cb_coi_thi2) = cb2.ID_cb
     WHERE ct.ID_sv = @idSv
       AND thi.Hoc_ky = @hocKy AND (thi.Nam_hoc = @namHoc OR thi.Nam_hoc = @altNamHoc)
-    ORDER BY COALESCE(thi.Ngay_thi, dtp.Ngay_thi) ASC, dtp.Tu_tiet ASC`,
+    ORDER BY COALESCE(mtp.Ngay_thi, dtp.Ngay_thi, thi.Ngay_thi) ASC, COALESCE(mtp.Tu_tiet, dtp.Tu_tiet) ASC`,
     [
       { name: 'idSv', type: sql.UniqueIdentifier, value: idSv },
       { name: 'hocKy', type: sql.Int, value: hocKy },
@@ -312,13 +317,17 @@ async function getStudentExams(pool, idSv, hocKy, namHoc, heDaoTao = 'DHCQ') {
     `SELECT
       dtp.Ngay_thi,
       0 AS Ca_thi,
-      '' AS Gio_thi,
+      COALESCE(NULLIF(mtp.Gio_thi, ''), '') AS Gio_thi,
       dtp.Tu_tiet,
-      COALESCE(dtp.So_tiet, 2) AS So_tiet,
+      COALESCE(dtp.So_tiet, mtp.So_tiet, 2) AS So_tiet,
       COALESCE(dtm.ID_hinh_thuc, 1) AS Hinh_thuc,
       COALESCE(ts.Lan_thi_diem, dt.Lan_thi, 1) AS Lan_thi,
       1 AS Dot_thi,
-      COALESCE(dmph.So_phong, dtp.Ten_phong, '') AS Phong,
+      CASE 
+        WHEN dmph.So_phong IS NOT NULL AND dtp.Ten_phong IS NOT NULL AND dmph.So_phong <> dtp.Ten_phong 
+        THEN dmph.So_phong + ' (' + dtp.Ten_phong + ')'
+        ELSE COALESCE(dmph.So_phong, dtp.Ten_phong, '')
+      END AS Phong,
       mh.Ky_hieu AS courseCode,
       mh.Ten_mon AS courseName,
       ts.SBD AS So_bao_danh,
@@ -327,6 +336,7 @@ async function getStudentExams(pool, idSv, hocKy, namHoc, heDaoTao = 'DHCQ') {
     FROM TCT_DotThi_ThiSinh ts
     JOIN TCT_DotThi_Phong dtp ON ts.ID_dot_thi_phong = dtp.ID_dot_thi_phong
     JOIN TCT_DotThi dt ON dtp.ID_dot_thi = dt.ID_dot_thi
+    LEFT JOIN MARK_ToChucThiPhong_TC mtp ON dtp.ID_dot_thi_phong = mtp.ID_dot_thi_phong
     LEFT JOIN TCT_DotThi_Mon dtm ON (
       dtm.ID_dot_thi = dt.ID_dot_thi
       AND (
@@ -337,9 +347,9 @@ async function getStudentExams(pool, idSv, hocKy, namHoc, heDaoTao = 'DHCQ') {
       )
     )
     LEFT JOIN dmMonHoc mh ON dtm.ID_mon = mh.ID_mon
-    LEFT JOIN dmPhongHoc dmph ON dtp.ID_phong = dmph.ID_phong
-    LEFT JOIN HR_LyLich cb1 ON dtp.ID_cb_coi_thi1 = cb1.ID_cb
-    LEFT JOIN HR_LyLich cb2 ON dtp.ID_cb_coi_thi2 = cb2.ID_cb
+    LEFT JOIN dmPhongHoc dmph ON COALESCE(dtp.ID_phong, mtp.ID_phong) = dmph.ID_phong
+    LEFT JOIN HR_LyLich cb1 ON COALESCE(dtp.ID_cb_coi_thi1, mtp.ID_cb_coi_thi1) = cb1.ID_cb
+    LEFT JOIN HR_LyLich cb2 ON COALESCE(dtp.ID_cb_coi_thi2, mtp.ID_cb_coi_thi2) = cb2.ID_cb
     WHERE ts.ID_sv = @idSv
       AND dt.Hoc_ky = @hocKy AND (dt.Nam_hoc = @namHoc OR dt.Nam_hoc = @altNamHoc)
       AND ${dotThiFilter}
@@ -519,11 +529,16 @@ async function getLecturerExams(pool, idCb, hocKy, namHoc, knownSchedules = null
     const res3 = await safeQuery(pool,
       `SELECT DISTINCT
         ds.ID_lop_tc,
-        COALESCE(thi.Ngay_thi, dtp.Ngay_thi) AS Ngay_thi,
-        COALESCE(dtp.Tu_tiet, 1) AS Tu_tiet,
-        COALESCE(dtp.So_tiet, thi.So_tiet, 2) AS So_tiet,
-        COALESCE(dmph.So_phong, dtp.Ten_phong, ph.So_phong, '') AS Phong,
-        COALESCE(dtp.Si_so, 0) AS Si_so,
+        COALESCE(mtp.Ngay_thi, dtp.Ngay_thi, thi.Ngay_thi) AS Ngay_thi,
+        COALESCE(NULLIF(mtp.Gio_thi, ''), NULLIF(thi.Gio_thi, ''), '') AS Gio_thi,
+        COALESCE(mtp.Tu_tiet, dtp.Tu_tiet, 1) AS Tu_tiet,
+        COALESCE(mtp.So_tiet, dtp.So_tiet, thi.So_tiet, 2) AS So_tiet,
+        CASE 
+          WHEN dmph.So_phong IS NOT NULL AND mtp.Ten_phong IS NOT NULL AND dmph.So_phong <> mtp.Ten_phong 
+          THEN dmph.So_phong + ' (' + mtp.Ten_phong + ')'
+          ELSE COALESCE(dmph.So_phong, mtp.Ten_phong, dtp.Ten_phong, ph.So_phong, '')
+        END AS Phong,
+        COALESCE(mtp.So_sv, dtp.Si_so, 0) AS Si_so,
         COALESCE(thi.Hinh_thuc_thi, 1) AS Hinh_thuc,
         COALESCE(thi.Lan_thi, 1) AS Lan_thi,
         COALESCE(thi.Dot_thi, 1) AS Ten_dot,
@@ -534,17 +549,18 @@ async function getLecturerExams(pool, idCb, hocKy, namHoc, knownSchedules = null
       JOIN PLAN_MonTinChi_TC mtc ON ltc.ID_mon_tc = mtc.ID_mon_tc
       JOIN MARK_TochucThiChiTiet_TC ct ON ds.ID_sv = ct.ID_sv
       JOIN MARK_TochucThi_TC thi ON (ct.ID_thi = thi.ID_thi AND thi.ID_mon = mtc.ID_mon)
-      LEFT JOIN TCT_DotThi_Phong dtp ON ct.ID_phong_thi = dtp.ID_dot_thi_phong
-      LEFT JOIN dmPhongHoc dmph ON dtp.ID_phong = dmph.ID_phong
-      LEFT JOIN PLAN_PhongHoc ph ON ct.ID_phong_thi = ph.ID_phong
-      LEFT JOIN HR_LyLich cb1 ON dtp.ID_cb_coi_thi1 = cb1.ID_cb
-      LEFT JOIN HR_LyLich cb2 ON dtp.ID_cb_coi_thi2 = cb2.ID_cb
+      LEFT JOIN MARK_ToChucThiPhong_TC mtp ON ct.ID_phong_thi = mtp.ID_phong_thi
+      LEFT JOIN TCT_DotThi_Phong dtp ON COALESCE(mtp.ID_dot_thi_phong, ct.ID_phong_thi) = dtp.ID_dot_thi_phong
+      LEFT JOIN dmPhongHoc dmph ON COALESCE(mtp.ID_phong, dtp.ID_phong) = dmph.ID_phong
+      LEFT JOIN PLAN_PhongHoc ph ON COALESCE(mtp.ID_phong, ct.ID_phong_thi) = ph.ID_phong
+      LEFT JOIN HR_LyLich cb1 ON COALESCE(mtp.ID_cb_coi_thi1, dtp.ID_cb_coi_thi1) = cb1.ID_cb
+      LEFT JOIN HR_LyLich cb2 ON COALESCE(mtp.ID_cb_coi_thi2, dtp.ID_cb_coi_thi2) = cb2.ID_cb
       WHERE ds.ID_lop_tc IN (${lopList})
         AND ISNULL(ds.Huy_dang_ky, 0) = 0
         AND thi.Hoc_ky = @hocKy
         AND (thi.Nam_hoc = @namHoc OR thi.Nam_hoc = @altNamHoc)
-        AND COALESCE(thi.Ngay_thi, dtp.Ngay_thi) IS NOT NULL
-      ORDER BY COALESCE(thi.Ngay_thi, dtp.Ngay_thi) ASC, COALESCE(dtp.Tu_tiet, 1) ASC`,
+        AND COALESCE(mtp.Ngay_thi, thi.Ngay_thi, dtp.Ngay_thi) IS NOT NULL
+      ORDER BY COALESCE(mtp.Ngay_thi, dtp.Ngay_thi, thi.Ngay_thi) ASC, COALESCE(mtp.Tu_tiet, dtp.Tu_tiet, 1) ASC`,
       [
         { name: 'hocKy', type: sql.Int, value: hocKy },
         { name: 'namHoc', type: sql.NVarChar(50), value: cleanNamHoc },

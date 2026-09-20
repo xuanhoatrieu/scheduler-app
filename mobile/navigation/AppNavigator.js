@@ -58,7 +58,7 @@ export default function AppNavigator({ user, onLogout }) {
       >
         <Tab.Screen
           name="Schedule"
-          options={{ tabBarLabel: 'Lịch Học' }}
+          options={{ tabBarLabel: 'Lịch' }}
         >
           {(props) => <ScheduleScreen {...props} user={user} />}
         </Tab.Screen>

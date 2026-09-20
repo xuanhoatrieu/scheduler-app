@@ -59,31 +59,20 @@ export default function ExamsScreen({ user }) {
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [semesters, setSemesters] = useState(getDynamicSemesters());
-  const [selectedSemIdx, setSelectedSemIdx] = useState(0);
+  const [selectedSemIdx, setSelectedSemIdx] = useState(() => {
+    const dyn = getDynamicSemesters();
+    const curIdx = dyn.findIndex(s => s.current);
+    return curIdx >= 0 ? curIdx : 0;
+  });
 
   const currentSem = semesters[selectedSemIdx] || semesters[0] || { label: 'Học kỳ' };
 
-  // Load danh sách học kỳ
-  useEffect(() => {
-    let isMounted = true;
-    const fetchSemesters = async () => {
-      try {
-        const res = await getScheduleSemesters();
-        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
-          if (isMounted) setSemesters(res.data);
-        }
-      } catch (err) {
-        console.warn('Lỗi tải danh mục học kỳ lịch thi:', err.message);
-      }
-    };
-    fetchSemesters();
-    return () => { isMounted = false; };
-  }, []);
-
   // Tải dữ liệu lịch thi
-  const loadData = async (forceSync = false, semIdx = null) => {
+  const loadData = async (forceSync = false, semIdx = null, customSemList = null) => {
+    const list = customSemList || semesters;
     const idx = semIdx !== null ? semIdx : selectedSemIdx;
-    const sem = semesters[idx] || semesters[0];
+    const sem = list[idx] || list[0];
+    if (!sem) return;
     try {
       const res = await getExams(forceSync, sem.semester, sem.schoolYear, 'ALL');
       if (res.success && Array.isArray(res.data)) {
@@ -99,20 +88,52 @@ export default function ExamsScreen({ user }) {
     }
   };
 
+  // Khởi tạo: Tải danh mục học kỳ và LUÔN chọn kỳ hiện tại (current: true)
   useEffect(() => {
-    setLoading(true);
-    loadData(false, selectedSemIdx).finally(() => setLoading(false));
-  }, [selectedSemIdx]);
+    let isMounted = true;
+    const init = async () => {
+      try {
+        const res = await getScheduleSemesters();
+        let semList = getDynamicSemesters();
+        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+          semList = res.data;
+          if (isMounted) setSemesters(semList);
+        }
+
+        const currentIdx = semList.findIndex(s => s.current);
+        const targetIdx = currentIdx >= 0 ? currentIdx : 0;
+        if (isMounted) setSelectedSemIdx(targetIdx);
+
+        await loadData(false, targetIdx, semList);
+      } catch (err) {
+        console.warn('Lỗi tải danh mục học kỳ lịch thi:', err.message);
+        await loadData(false, 0);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+    init();
+    return () => { isMounted = false; };
+  }, []);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadData(true, selectedSemIdx);
+    const semRes = await getScheduleSemesters();
+    let currentList = semesters;
+    if (semRes.success && Array.isArray(semRes.data) && semRes.data.length > 0) {
+      currentList = semRes.data;
+      setSemesters(currentList);
+    }
+    await loadData(true, selectedSemIdx, currentList);
     setRefreshing(false);
   }, [selectedSemIdx, semesters]);
 
-  const onSelectSemester = (idx) => {
+  const onSelectSemester = async (idx) => {
     if (idx !== selectedSemIdx) {
       setSelectedSemIdx(idx);
+      setLoading(true);
+      await loadData(false, idx);
+      setLoading(false);
     }
   };
 

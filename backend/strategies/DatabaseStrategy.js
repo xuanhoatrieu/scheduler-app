@@ -327,8 +327,7 @@ class DatabaseStrategy extends ScheduleStrategy {
 
   _getStartTimeByPeriod(period) {
     const p = parseInt(period);
-    if (!p) return '07:00';
-    if (p === 1) return '07:00';
+    if (p === 0 || p === 1 || isNaN(p)) return '07:00';
     if (p === 2) return '07:55';
     if (p === 3) return '08:50';
     if (p === 4) return '09:55';
@@ -346,6 +345,25 @@ class DatabaseStrategy extends ScheduleStrategy {
     return '07:00';
   }
 
+  _getExamStartTime(gioThi, tuTiet) {
+    if (gioThi) {
+      const m = String(gioThi).match(/(\d{1,2})\s*giờ\s*(\d{0,2})/i);
+      if (m) {
+        const h = String(m[1]).padStart(2, '0');
+        const min = String(m[2] || '00').padStart(2, '0');
+        return `${h}:${min}`;
+      }
+      const timeMatch = String(gioThi).match(/(\d{1,2}):(\d{2})/);
+      if (timeMatch) {
+        return `${String(timeMatch[1]).padStart(2, '0')}:${timeMatch[2]}`;
+      }
+    }
+    if (tuTiet !== null && tuTiet !== undefined && !isNaN(parseInt(tuTiet))) {
+      return this._getStartTimeByPeriod(parseInt(tuTiet));
+    }
+    return '07:00';
+  }
+
   _formatExamFormat(format) {
     if (format === 1 || format === '1') return 'Tự luận';
     if (format === 2 || format === '2') return 'Trắc nghiệm máy';
@@ -355,8 +373,17 @@ class DatabaseStrategy extends ScheduleStrategy {
   }
 
   _formatExamTime(tuTiet, soTiet, caThi, gioThi) {
-    if (gioThi && String(gioThi).trim()) return String(gioThi).trim();
-    if (tuTiet) {
+    const cleanGioThi = gioThi && String(gioThi).trim() ? String(gioThi).trim() : '';
+    const hasTuTiet = tuTiet !== null && tuTiet !== undefined && !isNaN(parseInt(tuTiet));
+
+    if (cleanGioThi && hasTuTiet) {
+      const startPeriod = parseInt(tuTiet);
+      const periodCount = parseInt(soTiet) || 2;
+      const endPeriod = startPeriod + periodCount - 1;
+      return `${cleanGioThi} (Tiết ${startPeriod}-${endPeriod})`;
+    }
+    if (cleanGioThi) return cleanGioThi;
+    if (hasTuTiet) {
       const startPeriod = parseInt(tuTiet);
       const periodCount = parseInt(soTiet) || 2;
       const endPeriod = startPeriod + periodCount - 1;
@@ -371,8 +398,8 @@ class DatabaseStrategy extends ScheduleStrategy {
     return rawRows.map(r => {
       const tuTiet = r.Tu_tiet != null ? parseInt(r.Tu_tiet) : null;
       const soTiet = r.So_tiet != null ? parseInt(r.So_tiet) : 2;
-      const startTime = tuTiet ? this._getStartTimeByPeriod(tuTiet) : (r.Gio_thi || '07:00');
-      const examShift = r.Ca_thi ? `Ca ${r.Ca_thi}` : (tuTiet ? `Tiết ${tuTiet}-${tuTiet + soTiet - 1}` : '');
+      const startTime = this._getExamStartTime(r.Gio_thi, tuTiet);
+      const examShift = r.Ca_thi ? `Ca ${r.Ca_thi}` : (tuTiet !== null ? `Tiết ${tuTiet}-${tuTiet + soTiet - 1}` : '');
       const proctors = [r.CbCoiThi1, r.CbCoiThi2].filter(Boolean).join(', ');
 
       return {
@@ -400,8 +427,8 @@ class DatabaseStrategy extends ScheduleStrategy {
     return rawRows.map(r => {
       const tuTiet = r.Tu_tiet != null ? parseInt(r.Tu_tiet) : null;
       const soTiet = r.So_tiet != null ? parseInt(r.So_tiet) : 2;
-      const startTime = tuTiet ? this._getStartTimeByPeriod(tuTiet) : '07:00';
-      const examShift = r.Ca_thi ? `Ca ${r.Ca_thi}` : (tuTiet ? `Tiết ${tuTiet}-${tuTiet + soTiet - 1}` : '');
+      const startTime = this._getExamStartTime(r.Gio_thi, tuTiet);
+      const examShift = r.Ca_thi ? `Ca ${r.Ca_thi}` : (tuTiet !== null ? `Tiết ${tuTiet}-${tuTiet + soTiet - 1}` : '');
       const proctors = [r.CbCoiThi1, r.CbCoiThi2].filter(Boolean).join(', ');
 
       return {
@@ -413,7 +440,7 @@ class DatabaseStrategy extends ScheduleStrategy {
         classCode: r.ID_lop_tc ? String(r.ID_lop_tc) : '',
         className: r.Ten_lop_hp || '',
         examDate: this._formatDate(r.Ngay_thi),
-        examTime: this._formatExamTime(tuTiet, soTiet, r.Ca_thi),
+        examTime: this._formatExamTime(tuTiet, soTiet, r.Ca_thi, r.Gio_thi),
         examShift,
         startTime,
         room: (r.Phong || '').trim(),

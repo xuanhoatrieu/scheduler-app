@@ -108,7 +108,7 @@ router.get('/schedule/semesters', authMiddleware, async (req, res) => {
       }
     }
 
-    // 3. Đảm bảo các kỳ hiện tại và kỳ kế tiếp luôn có mặt trong danh sách
+    // 3. Đảm bảo kỳ hiện tại luôn có mặt và được đánh dấu current: true
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth() + 1;
@@ -116,15 +116,13 @@ router.get('/schedule/semesters', authMiddleware, async (req, res) => {
     const baseYear = isSem1 ? currentYear : currentYear - 1;
     const activeSem = isSem1 ? '1' : '2';
 
-    if (isSem1) {
-      addEntry('2', String(baseYear), false); // Kỳ 2 sắp tới
-    } else {
-      addEntry('1', String(baseYear + 1), false); // Kỳ 1 năm sau sắp tới
-    }
     addEntry(activeSem, String(baseYear), true);
 
+    // Thêm các kỳ đã và đang diễn ra từ kỳ hiện tại trở về trước
     for (let y = baseYear; y >= baseYear - 4; y--) {
-      addEntry('2', String(y));
+      if (y < baseYear || !isSem1) {
+        addEntry('2', String(y));
+      }
       addEntry('1', String(y));
     }
 

@@ -57,7 +57,7 @@ export default function LecturerNavigator({ user, onLogout, onSwitchRole }) {
       >
         <Tab.Screen
           name="TeachingSchedule"
-          options={{ tabBarLabel: 'Lịch Dạy' }}
+          options={{ tabBarLabel: 'Lịch' }}
         >
           {(props) => <TeachingScheduleScreen {...props} user={user} onSwitchRole={onSwitchRole} />}
         </Tab.Screen>

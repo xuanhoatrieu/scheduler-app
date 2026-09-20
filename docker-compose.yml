@@ -7,6 +7,8 @@ services:
       dockerfile: Dockerfile
     container_name: scheduler-api
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       NODE_ENV: production
       PORT: 5000
@@ -15,6 +17,14 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
       DATA_SOURCE: ${DATA_SOURCE:-database}
+      NAMVIET_API_URL: ${NAMVIET_API_URL}
+      NAMVIET_SECRET_KEY: ${NAMVIET_SECRET_KEY}
+      NAMVIET_MA_TRUONG: ${NAMVIET_MA_TRUONG}
+      NAMVIET_USERNAME: ${NAMVIET_USERNAME}
+      TUAF_DB_SERVER: ${TUAF_DB_SERVER}
+      TUAF_DB_USER: ${TUAF_DB_USER}
+      TUAF_DB_PASSWORD: ${TUAF_DB_PASSWORD}
+      TUAF_DB_NAME: ${TUAF_DB_NAME}
     networks:
       - tuaf-ai-network
     healthcheck:
