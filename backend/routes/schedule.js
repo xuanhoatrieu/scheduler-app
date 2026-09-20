@@ -25,7 +25,9 @@ const normalizeTerm = (semQuery, yearQuery) => {
  */
 const handleForceSync = async (user, req) => {
   const { semester, startYear } = normalizeTerm(req.query.semester, req.query.schoolYear);
-  const trainingSystem = String(req.query.heDaoTao || req.query.trainingSystem || 'DHCQ').toUpperCase();
+  const trainingSystem = user.role === 'student'
+    ? 'ALL'
+    : String(req.query.heDaoTao || req.query.trainingSystem || 'DHCQ').toUpperCase();
   console.log(`🔄 [API Sync Database] Đang đồng bộ trực tiếp từ SQL Server TUAF cho ${user.username} (role: ${user.role}, hệ: ${trainingSystem})...`);
   const decryptedPassword = decrypt(user.encryptedPassword);
   const databaseStrategy = strategyManager.getDatabaseStrategy();
@@ -159,19 +161,29 @@ router.get('/schedule/semesters', authMiddleware, async (req, res) => {
 router.get('/schedule', authMiddleware, async (req, res) => {
   try {
     const { formattedSemester, formattedSchoolYear } = normalizeTerm(req.query.semester, req.query.schoolYear);
+    const trainingSystem = String(req.query.heDaoTao || req.query.trainingSystem || 'DHCQ').toUpperCase();
 
     // 1. Kích hoạt đồng bộ realtime nếu forceSync = true
     if (req.query.forceSync === 'true') {
       await handleForceSync(req.user, req);
     }
 
-    // 2. Lấy dữ liệu đã cache từ PostgreSQL
+    // 2. Lấy dữ liệu đã cache từ PostgreSQL theo hệ đào tạo (Sinh viên xem toàn bộ, Giảng viên lọc theo hệ)
+    const { Op } = require('sequelize');
+    const whereClause = {
+      userId: req.user.id,
+      semester: formattedSemester,
+      schoolYear: formattedSchoolYear
+    };
+    if (req.user.role !== 'student' && trainingSystem && trainingSystem !== 'ALL') {
+      whereClause[Op.or] = [
+        { trainingSystem },
+        { trainingSystem: null } // Tương thích dữ liệu TKB cũ trước khi có cột này
+      ];
+    }
+
     let schedules = await Schedule.findAll({
-      where: {
-        userId: req.user.id,
-        semester: formattedSemester,
-        schoolYear: formattedSchoolYear
-      },
+      where: whereClause,
       order: [['dayOfWeek', 'ASC'], ['studyTime', 'ASC']]
     });
 
@@ -180,11 +192,7 @@ router.get('/schedule', authMiddleware, async (req, res) => {
       try {
         await handleForceSync(req.user, req);
         schedules = await Schedule.findAll({
-          where: {
-            userId: req.user.id,
-            semester: formattedSemester,
-            schoolYear: formattedSchoolYear
-          },
+          where: whereClause,
           order: [['dayOfWeek', 'ASC'], ['studyTime', 'ASC']]
         });
       } catch (e) {
@@ -195,6 +203,7 @@ router.get('/schedule', authMiddleware, async (req, res) => {
     res.json({
       success: true,
       data: schedules,
+      trainingSystem: req.user.role === 'student' ? 'ALL' : trainingSystem,
       lastSyncedAt: req.user.lastSyncedAt
     });
   } catch (error) {
@@ -215,7 +224,9 @@ router.get('/schedule', authMiddleware, async (req, res) => {
 router.get('/exams', authMiddleware, async (req, res) => {
   try {
     const { formattedSemester, formattedSchoolYear } = normalizeTerm(req.query.semester, req.query.schoolYear);
-    const trainingSystem = String(req.query.heDaoTao || req.query.trainingSystem || 'DHCQ').toUpperCase();
+    const trainingSystem = req.user.role === 'student'
+      ? 'ALL'
+      : String(req.query.heDaoTao || req.query.trainingSystem || 'DHCQ').toUpperCase();
 
     if (req.query.forceSync === 'true') {
       await handleForceSync(req.user, req);
@@ -226,7 +237,7 @@ router.get('/exams', authMiddleware, async (req, res) => {
       semester: formattedSemester,
       schoolYear: formattedSchoolYear
     };
-    if (trainingSystem !== 'ALL') {
+    if (req.user.role !== 'student' && trainingSystem !== 'ALL') {
       whereClause.trainingSystem = trainingSystem;
     }
 
@@ -250,7 +261,7 @@ router.get('/exams', authMiddleware, async (req, res) => {
     res.json({
       success: true,
       data: exams,
-      trainingSystem,
+      trainingSystem: req.user.role === 'student' ? 'ALL' : trainingSystem,
       lastSyncedAt: req.user.lastSyncedAt
     });
   } catch (error) {

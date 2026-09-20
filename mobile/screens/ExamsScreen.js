@@ -26,15 +26,6 @@ const DAY_NAMES = {
   6: 'Thứ Bảy',
 };
 
-const TRAINING_SYSTEMS = [
-  { key: 'DHCQ', label: 'Chính quy' },
-  { key: 'VLVH', label: 'Vừa làm vừa học' },
-  { key: 'DTTX', label: 'Từ xa' },
-  { key: 'SDH', label: 'Sau ĐH' },
-  { key: 'CTTT', label: 'Tiên tiến' },
-  { key: 'ALL', label: 'Tất cả hệ' },
-];
-
 const getDynamicSemesters = () => {
   const now = new Date();
   const currentYear = now.getFullYear();
@@ -69,10 +60,8 @@ export default function ExamsScreen({ user }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [semesters, setSemesters] = useState(getDynamicSemesters());
   const [selectedSemIdx, setSelectedSemIdx] = useState(0);
-  const [selectedSystem, setSelectedSystem] = useState('DHCQ');
 
   const currentSem = semesters[selectedSemIdx] || semesters[0] || { label: 'Học kỳ' };
-  const currentSysObj = TRAINING_SYSTEMS.find(s => s.key === selectedSystem) || TRAINING_SYSTEMS[0];
 
   // Load danh sách học kỳ
   useEffect(() => {
@@ -92,12 +81,11 @@ export default function ExamsScreen({ user }) {
   }, []);
 
   // Tải dữ liệu lịch thi
-  const loadData = async (forceSync = false, semIdx = null, sys = null) => {
+  const loadData = async (forceSync = false, semIdx = null) => {
     const idx = semIdx !== null ? semIdx : selectedSemIdx;
     const sem = semesters[idx] || semesters[0];
-    const activeSys = sys !== null ? sys : selectedSystem;
     try {
-      const res = await getExams(forceSync, sem.semester, sem.schoolYear, activeSys);
+      const res = await getExams(forceSync, sem.semester, sem.schoolYear, 'ALL');
       if (res.success && Array.isArray(res.data)) {
         setExamData(res.data);
         // Tự động lên lịch nhắc nhở 30 phút và 15 phút ra màn hình khóa có chuông
@@ -113,24 +101,18 @@ export default function ExamsScreen({ user }) {
 
   useEffect(() => {
     setLoading(true);
-    loadData(false, selectedSemIdx, selectedSystem).finally(() => setLoading(false));
-  }, [selectedSemIdx, selectedSystem]);
+    loadData(false, selectedSemIdx).finally(() => setLoading(false));
+  }, [selectedSemIdx]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadData(true, selectedSemIdx, selectedSystem);
+    await loadData(true, selectedSemIdx);
     setRefreshing(false);
-  }, [selectedSemIdx, semesters, selectedSystem]);
+  }, [selectedSemIdx, semesters]);
 
   const onSelectSemester = (idx) => {
     if (idx !== selectedSemIdx) {
       setSelectedSemIdx(idx);
-    }
-  };
-
-  const onSelectSystem = (sysKey) => {
-    if (sysKey !== selectedSystem) {
-      setSelectedSystem(sysKey);
     }
   };
 
@@ -239,7 +221,7 @@ export default function ExamsScreen({ user }) {
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>Lịch Thi</Text>
-          <Text style={styles.headerSubtitle}>{currentSem.label} • Hệ {currentSysObj.label}</Text>
+          <Text style={styles.headerSubtitle}>{currentSem.label} • Xếp lịch đào tạo</Text>
         </View>
         <TouchableOpacity
           style={styles.syncBtn}
@@ -273,27 +255,6 @@ export default function ExamsScreen({ user }) {
                 {sem.current && (
                   <View style={[styles.currentDot, isSelected && styles.currentDotActive]} />
                 )}
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
-
-      {/* Training System Picker */}
-      <View style={styles.sysPickerWrap}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sysScroll}>
-          {TRAINING_SYSTEMS.map((sys) => {
-            const isSelected = sys.key === selectedSystem;
-            return (
-              <TouchableOpacity
-                key={`sys_${sys.key}`}
-                style={[styles.sysChip, isSelected && styles.sysChipActive]}
-                onPress={() => onSelectSystem(sys.key)}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.sysChipText, isSelected && styles.sysChipTextActive]}>
-                  {sys.label}
-                </Text>
               </TouchableOpacity>
             );
           })}
@@ -561,7 +522,7 @@ const styles = StyleSheet.create({
     elevation: 3, shadowColor: Colors.primary, shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25, shadowRadius: 4,
   },
-  semPickerWrap: { backgroundColor: Colors.surface, paddingBottom: 6 },
+  semPickerWrap: { backgroundColor: Colors.surface, paddingBottom: 10 },
   semScroll: { paddingHorizontal: 16, gap: 8 },
   semChip: {
     flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8,
@@ -572,15 +533,6 @@ const styles = StyleSheet.create({
   semChipTextActive: { color: Colors.primary, fontWeight: '700' },
   currentDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.textMuted, marginLeft: 6 },
   currentDotActive: { backgroundColor: Colors.primary },
-  sysPickerWrap: { backgroundColor: Colors.surface, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  sysScroll: { paddingHorizontal: 16, gap: 6 },
-  sysChip: {
-    paddingHorizontal: 12, paddingVertical: 5, borderRadius: 16,
-    backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0',
-  },
-  sysChipActive: { backgroundColor: '#EEF2FF', borderColor: '#6366F1' },
-  sysChipText: { fontSize: 12, fontWeight: '600', color: '#64748B' },
-  sysChipTextActive: { color: '#4F46E5', fontWeight: '700' },
   searchWrap: { paddingHorizontal: 16, paddingVertical: 10, backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   searchBox: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC',

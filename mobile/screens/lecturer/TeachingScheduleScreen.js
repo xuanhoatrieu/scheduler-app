@@ -112,16 +112,26 @@ const getTeachingPeriodStatus = (studyTime, schoolYear) => {
   return 'active';
 };
 
+const TRAINING_SYSTEMS = [
+  { key: 'DHCQ', label: 'Chính quy' },
+  { key: 'VLVH', label: 'Vừa làm vừa học' },
+  { key: 'DTTX', label: 'Từ xa' },
+  { key: 'SDH', label: 'Sau ĐH' },
+  { key: 'CTTT', label: 'Tiên tiến' },
+  { key: 'ALL', label: 'Tất cả hệ' },
+];
+
 export default function TeachingScheduleScreen({ user, onSwitchRole }) {
   const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [attendanceModalSchedule, setAttendanceModalSchedule] = useState(null);
-  // Tab chính: 'schedule' (Lịch dạy) | 'exam' (Lịch thi môn phụ trách)
+  // Tab chính: 'schedule' (Lịch dạy) | 'exam' (Lịch thi)
   const [mainTab, setMainTab] = useState('schedule');
 
   const [semesters, setSemesters] = useState([]);
   const [selectedSemIdx, setSelectedSemIdx] = useState(0);
+  const [selectedSystem, setSelectedSystem] = useState('DHCQ');
   const [expandedCards, setExpandedCards] = useState({});
 
   const toggleCard = (key, defaultExpanded) => {
@@ -131,17 +141,20 @@ export default function TeachingScheduleScreen({ user, onSwitchRole }) {
     });
   };
 
-  const loadData = async (forceSync = false, semIdx = null, customSemesters = null) => {
+  const loadData = async (forceSync = false, semIdx = null, customSemesters = null, sys = null) => {
     const list = customSemesters || semesters;
     const sem = list[semIdx ?? selectedSemIdx];
     const semParam = sem ? sem.semester : null;
     const yearParam = sem ? sem.schoolYear : null;
+    const activeSys = sys !== null ? sys : selectedSystem;
 
-    const res = await getSchedule(forceSync, semParam, yearParam);
+    const res = await getSchedule(forceSync, semParam, yearParam, activeSys);
     if (res.success) {
       setSchedules(res.data || []);
       // Tự động kích hoạt chuông và thông báo màn hình khóa 30m & 15m cho lịch dạy
       scheduleClassReminders(res.data || []);
+    } else {
+      setSchedules([]);
     }
   };
 
@@ -160,10 +173,10 @@ export default function TeachingScheduleScreen({ user, onSwitchRole }) {
         const targetIdx = currentIdx >= 0 ? currentIdx : 0;
         if (isMounted) setSelectedSemIdx(targetIdx);
 
-        await loadData(false, targetIdx, semList);
+        await loadData(false, targetIdx, semList, 'DHCQ');
       } catch (err) {
         console.warn('Lỗi tải học kỳ giảng dạy:', err);
-        await loadData(false, 0);
+        await loadData(false, 0, null, 'DHCQ');
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -175,16 +188,25 @@ export default function TeachingScheduleScreen({ user, onSwitchRole }) {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     setExpandedCards({});
-    await loadData(true);
+    await loadData(true, selectedSemIdx, semesters, selectedSystem);
     setRefreshing(false);
-  }, [selectedSemIdx, semesters]);
+  }, [selectedSemIdx, semesters, selectedSystem]);
 
   const onSelectSemester = async (idx) => {
     if (idx === selectedSemIdx) return;
     setSelectedSemIdx(idx);
     setExpandedCards({});
     setLoading(true);
-    await loadData(false, idx);
+    await loadData(false, idx, null, selectedSystem);
+    setLoading(false);
+  };
+
+  const onSelectSystem = async (sysKey) => {
+    if (sysKey === selectedSystem) return;
+    setSelectedSystem(sysKey);
+    setExpandedCards({});
+    setLoading(true);
+    await loadData(false, selectedSemIdx, null, sysKey);
     setLoading(false);
   };
 
@@ -240,6 +262,7 @@ export default function TeachingScheduleScreen({ user, onSwitchRole }) {
   }
 
   const currentSem = semesters[selectedSemIdx];
+  const currentSysObj = TRAINING_SYSTEMS.find(s => s.key === selectedSystem) || TRAINING_SYSTEMS[0];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -289,7 +312,7 @@ export default function TeachingScheduleScreen({ user, onSwitchRole }) {
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>Lịch Giảng Dạy</Text>
           <Text style={styles.headerSubtitle} numberOfLines={1}>
-            {user?.fullName || 'Giảng viên TUAF'}
+            {user?.fullName || 'Giảng viên TUAF'}{currentSem?.label ? ` • ${currentSem.label}` : ''} • Hệ {currentSysObj.label}
           </Text>
         </View>
 
@@ -350,6 +373,31 @@ export default function TeachingScheduleScreen({ user, onSwitchRole }) {
           </ScrollView>
         </View>
       )}
+
+      {/* TRAINING SYSTEM PICKER */}
+      <View style={styles.sysPickerContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.sysPickerWrap}
+        >
+          {TRAINING_SYSTEMS.map((sys) => {
+            const isSelected = sys.key === selectedSystem;
+            return (
+              <TouchableOpacity
+                key={`sys_${sys.key}`}
+                style={[styles.sysChip, isSelected && styles.sysChipActive]}
+                onPress={() => onSelectSystem(sys.key)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.sysChipText, isSelected && styles.sysChipTextActive]}>
+                  {sys.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
 
       {/* STATS BAR */}
       <View style={styles.statsBar}>
@@ -966,4 +1014,35 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   emptyBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  sysPickerContainer: {
+    backgroundColor: Colors.surface,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  sysPickerWrap: {
+    paddingHorizontal: 16,
+    gap: 6,
+  },
+  sysChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 16,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  sysChipActive: {
+    backgroundColor: '#EEF2FF',
+    borderColor: '#6366F1',
+  },
+  sysChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  sysChipTextActive: {
+    color: '#4F46E5',
+    fontWeight: '700',
+  },
 });

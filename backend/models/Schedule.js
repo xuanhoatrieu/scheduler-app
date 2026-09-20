@@ -59,6 +59,11 @@ const Schedule = sequelize.define('Schedule', {
   batch: {
     type: DataTypes.STRING,
     allowNull: false
+  },
+  trainingSystem: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    defaultValue: 'DHCQ'
   }
 });
 

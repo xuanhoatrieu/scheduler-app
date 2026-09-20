@@ -113,22 +113,23 @@ export const getScheduleSemesters = async () => {
 /**
  * Lấy thời khóa biểu học tập, tự động fallback đọc offline cache nếu có lỗi
  */
-export const getSchedule = async (forceSync = false, semester = null, schoolYear = null) => {
+export const getSchedule = async (forceSync = false, semester = null, schoolYear = null, trainingSystem = 'DHCQ') => {
+  const sys = String(trainingSystem || 'DHCQ').toUpperCase();
+  const cacheKey = semester ? `cached_schedule_${semester}_${schoolYear}_${sys}` : `cached_schedule_${sys}`;
   try {
     let url = `/schedule?forceSync=${forceSync}`;
     if (semester) url += `&semester=${semester}`;
     if (schoolYear) url += `&schoolYear=${schoolYear}`;
+    if (sys) url += `&heDaoTao=${sys}`;
     const response = await api.get(url);
     const data = response.data.data;
     
-    // Cache dữ liệu cục bộ trên điện thoại để đọc offline
-    const cacheKey = semester ? `cached_schedule_${semester}_${schoolYear}` : 'cached_schedule';
+    // Cache dữ liệu cục bộ trên điện thoại để đọc offline theo từng hệ đào tạo
     await AsyncStorage.setItem(cacheKey, JSON.stringify(data));
     
     return { success: true, data, lastSyncedAt: response.data.lastSyncedAt, source: 'network' };
   } catch (error) {
     console.warn('Network error, loading offline schedule cache...');
-    const cacheKey = semester ? `cached_schedule_${semester}_${schoolYear}` : 'cached_schedule';
     const cached = await AsyncStorage.getItem(cacheKey);
     if (cached) {
       return { success: true, data: JSON.parse(cached), source: 'cache' };

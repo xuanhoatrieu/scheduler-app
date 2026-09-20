@@ -267,12 +267,12 @@ export default function ScheduleScreen({ user }) {
     const sem = list[semIdx ?? selectedSemIdx] || list[0];
     if (!sem) return;
 
-    let res = await getSchedule(forceSync, sem.semester, sem.schoolYear);
+    let res = await getSchedule(forceSync, sem.semester, sem.schoolYear, 'ALL');
     
     // Nếu không Force Sync nhưng DB trống trơn -> tự động kích hoạt Force Sync
     if (res.success && (!res.data || res.data.length === 0) && !forceSync) {
       console.log(`[Schedule] DB trống cho kỳ ${sem.label} -> Tự động kích hoạt Force Sync...`);
-      res = await getSchedule(true, sem.semester, sem.schoolYear);
+      res = await getSchedule(true, sem.semester, sem.schoolYear, 'ALL');
     }
     
     if (res.success) {
