@@ -71,8 +71,12 @@ class DatabaseStrategy extends ScheduleStrategy {
     let drlData = null;
 
     if (user.role === 'lecturer') {
-      const rawSchedules = await tuafQueries.getLecturerSchedule(pool, entityId, hocKy, namHoc);
+      const [rawSchedules, rawExams] = await Promise.all([
+        tuafQueries.getLecturerSchedule(pool, entityId, hocKy, namHoc),
+        tuafQueries.getLecturerExams(pool, entityId, hocKy, namHoc)
+      ]);
       scheduleList = this._transformSchedules(rawSchedules, formattedSemester, formattedSchoolYear);
+      examList = this._transformLecturerExams(rawExams);
     } else {
       // Student: lấy tất cả data song song
       const [rawSchedules, rawExams, rawGrades, rawFinance, rawDrl] = await Promise.all([
@@ -84,7 +88,7 @@ class DatabaseStrategy extends ScheduleStrategy {
       ]);
 
       scheduleList = this._transformSchedules(rawSchedules, formattedSemester, formattedSchoolYear);
-      examList = this._transformExams(rawExams);
+      examList = this._transformStudentExams(rawExams);
       gradeList = this._transformGrades(rawGrades);
       financeRaw = rawFinance;
       drlData = rawDrl;
@@ -320,15 +324,109 @@ class DatabaseStrategy extends ScheduleStrategy {
     });
   }
 
+  _getStartTimeByPeriod(period) {
+    const p = parseInt(period);
+    if (!p) return '07:00';
+    if (p === 1) return '07:00';
+    if (p === 2) return '07:55';
+    if (p === 3) return '08:50';
+    if (p === 4) return '09:55';
+    if (p === 5) return '10:50';
+    if (p === 6) return '13:00';
+    if (p === 7) return '13:55';
+    if (p === 8) return '14:50';
+    if (p === 9) return '15:55';
+    if (p === 10) return '16:50';
+    if (p === 11) return '17:40';
+    if (p === 12) return '18:30';
+    if (p === 13) return '19:20';
+    if (p === 14) return '20:10';
+    if (p === 15) return '21:00';
+    return '07:00';
+  }
+
+  _formatExamFormat(format) {
+    if (format === 1 || format === '1') return 'Tự luận';
+    if (format === 2 || format === '2') return 'Trắc nghiệm máy';
+    if (format === 3 || format === '3') return 'Vấn đáp';
+    if (format === 4 || format === '4') return 'Tiểu luận / Đồ án';
+    return String(format || 'Thi viết');
+  }
+
+  _formatExamTime(tuTiet, soTiet, caThi, gioThi) {
+    if (gioThi && String(gioThi).trim()) return String(gioThi).trim();
+    if (tuTiet) {
+      const startPeriod = parseInt(tuTiet);
+      const periodCount = parseInt(soTiet) || 2;
+      const endPeriod = startPeriod + periodCount - 1;
+      const startTime = this._getStartTimeByPeriod(startPeriod);
+      return `Tiết ${startPeriod}-${endPeriod} (${startTime})`;
+    }
+    if (caThi) return `Ca ${caThi}`;
+    return 'Chưa xếp giờ';
+  }
+
+  _transformStudentExams(rawRows) {
+    return rawRows.map(r => {
+      const tuTiet = r.Tu_tiet != null ? parseInt(r.Tu_tiet) : null;
+      const soTiet = r.So_tiet != null ? parseInt(r.So_tiet) : 2;
+      const startTime = tuTiet ? this._getStartTimeByPeriod(tuTiet) : (r.Gio_thi || '07:00');
+      const examShift = r.Ca_thi ? `Ca ${r.Ca_thi}` : (tuTiet ? `Tiết ${tuTiet}-${tuTiet + soTiet - 1}` : '');
+      const proctors = [r.CbCoiThi1, r.CbCoiThi2].filter(Boolean).join(', ');
+
+      return {
+        role: 'student',
+        courseCode: r.courseCode || '',
+        courseName: r.courseName || '',
+        credits: r.credits ? Number(r.credits) : 0,
+        examDate: this._formatDate(r.Ngay_thi),
+        examTime: this._formatExamTime(tuTiet, soTiet, r.Ca_thi, r.Gio_thi),
+        examShift,
+        startTime,
+        room: (r.Phong || '').trim(),
+        seatNumber: (r.So_bao_danh || '').trim(),
+        examFormat: this._formatExamFormat(r.Hinh_thuc),
+        examAttempt: r.Lan_thi ? Number(r.Lan_thi) : 1,
+        examBatch: r.Dot_thi ? `Đợt ${r.Dot_thi}` : '',
+        proctors,
+        notes: ''
+      };
+    });
+  }
+
+  _transformLecturerExams(rawRows) {
+    return rawRows.map(r => {
+      const tuTiet = r.Tu_tiet != null ? parseInt(r.Tu_tiet) : null;
+      const soTiet = r.So_tiet != null ? parseInt(r.So_tiet) : 2;
+      const startTime = tuTiet ? this._getStartTimeByPeriod(tuTiet) : '07:00';
+      const examShift = r.Ca_thi ? `Ca ${r.Ca_thi}` : (tuTiet ? `Tiết ${tuTiet}-${tuTiet + soTiet - 1}` : '');
+      const proctors = [r.CbCoiThi1, r.CbCoiThi2].filter(Boolean).join(', ');
+
+      return {
+        role: 'lecturer',
+        courseCode: r.courseCode || '',
+        courseName: r.courseName || '',
+        credits: r.credits ? Number(r.credits) : 0,
+        classCode: r.ID_lop_tc ? String(r.ID_lop_tc) : '',
+        className: r.Ten_lop_hp || '',
+        examDate: this._formatDate(r.Ngay_thi),
+        examTime: this._formatExamTime(tuTiet, soTiet, r.Ca_thi),
+        examShift,
+        startTime,
+        room: (r.Phong || '').trim(),
+        seatNumber: '',
+        studentCount: r.Si_so ? Number(r.Si_so) : 0,
+        examFormat: this._formatExamFormat(r.Hinh_thuc),
+        examAttempt: r.Lan_thi ? Number(r.Lan_thi) : 1,
+        examBatch: r.Ten_dot ? `Đợt ${r.Ten_dot}` : '',
+        proctors,
+        notes: ''
+      };
+    });
+  }
+
   _transformExams(rawRows) {
-    return rawRows.map(r => ({
-      courseName: r.courseName || '',
-      examDate: this._formatDate(r.Ngay_thi),
-      examTime: r.Ca_thi ? `Ca ${r.Ca_thi}` : '',
-      room: r.Phong || '',
-      seatNumber: r.So_bao_danh || '',
-      examFormat: r.Hinh_thuc || ''
-    }));
+    return this._transformStudentExams(rawRows);
   }
 
   _transformGrades(rawRows) {

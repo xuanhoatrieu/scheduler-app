@@ -62,8 +62,13 @@ router.get('/schedule/semesters', authMiddleware, async (req, res) => {
     };
 
     // 1. Lấy tất cả các kỳ đã có dữ liệu trong PostgreSQL cache
-    const [userSchedules, userGrades, userFinances] = await Promise.all([
+    const [userSchedules, userExams, userGrades, userFinances] = await Promise.all([
       Schedule.findAll({
+        attributes: ['semester', 'schoolYear'],
+        where: { userId: req.user.id },
+        group: ['semester', 'schoolYear']
+      }),
+      Exam.findAll({
         attributes: ['semester', 'schoolYear'],
         where: { userId: req.user.id },
         group: ['semester', 'schoolYear']
@@ -81,6 +86,7 @@ router.get('/schedule/semesters', authMiddleware, async (req, res) => {
     ]);
 
     userSchedules.forEach(s => addEntry(s.semester, s.schoolYear));
+    userExams.forEach(e => addEntry(e.semester, e.schoolYear));
     userGrades.forEach(g => addEntry(g.semester, g.schoolYear));
     userFinances.forEach(f => addEntry(f.semester, f.schoolYear));
 

@@ -8,14 +8,18 @@ import InspectorNavigator from './navigation/InspectorNavigator';
 import LecturerNavigator from './navigation/LecturerNavigator';
 import LoginScreen from './screens/LoginScreen';
 import { logout, checkCurrentUser, registerSessionExpiredCallback } from './services/api';
+import { initNotifications, requestNotificationPermissions } from './services/notificationService';
 import { Colors } from './theme/colors';
 
 export default function App() {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
 
-  // Kiểm tra trạng thái đăng nhập khi ứng dụng khởi chạy
+  // Khởi tạo kênh thông báo hệ thống và kiểm tra trạng thái đăng nhập
   useEffect(() => {
+    initNotifications();
+    requestNotificationPermissions();
+
     // Đăng ký lắng nghe sự kiện hết hạn phiên đăng nhập từ Axios interceptor
     registerSessionExpiredCallback(() => {
       setUser(null);

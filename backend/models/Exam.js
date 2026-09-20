@@ -42,6 +42,54 @@ const Exam = sequelize.define('Exam', {
   schoolYear: {
     type: DataTypes.STRING,
     allowNull: false
+  },
+  role: {
+    type: DataTypes.STRING,
+    defaultValue: 'student'
+  },
+  courseCode: {
+    type: DataTypes.STRING,
+    defaultValue: ''
+  },
+  credits: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0
+  },
+  examShift: {
+    type: DataTypes.STRING,
+    defaultValue: ''
+  },
+  startTime: {
+    type: DataTypes.STRING,
+    defaultValue: ''
+  },
+  examAttempt: {
+    type: DataTypes.INTEGER,
+    defaultValue: 1
+  },
+  examBatch: {
+    type: DataTypes.STRING,
+    defaultValue: ''
+  },
+  classCode: {
+    type: DataTypes.STRING,
+    defaultValue: ''
+  },
+  className: {
+    type: DataTypes.STRING,
+    defaultValue: ''
+  },
+  studentCount: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0
+  },
+  proctors: {
+    type: DataTypes.STRING,
+    defaultValue: ''
+  },
+  notes: {
+    type: DataTypes.TEXT,
+    defaultValue: ''
   }
 });
 

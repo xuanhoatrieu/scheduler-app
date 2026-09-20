@@ -240,25 +240,38 @@ async function getStudentSchedule(pool, idSv, hocKy, namHoc) {
 }
 
 /**
- * Lấy lịch thi của 1 SV trong 1 kỳ
- * Bảng: MARK_TochucThi_TC (chứa Ngay_thi, Ca_thi, Phong...) 
- *        + MARK_TochucThiChiTiet_TC (chứa ID_sv)
+ * Lấy lịch thi của 1 SV trong 1 kỳ từ phân hệ Tổ chức thi
+ * Nối TCT_DotThi_Phong, dmPhongHoc, HR_LyLich để lấy chính xác tên phòng, ca/tiết thi, SBD và giám thị
  */
 async function getStudentExams(pool, idSv, hocKy, namHoc) {
+  // 1. Thử lấy từ MARK_TochucThiChiTiet_TC kết hợp TCT_DotThi_Phong
   const result = await safeQuery(pool,
     `SELECT
-      thi.Ngay_thi, thi.Ca_thi, thi.Hinh_thuc_thi AS Hinh_thuc,
-      thi.Lan_thi, thi.Nhom_tiet, thi.So_tiet,
-      ph.So_phong AS Phong,
-      mh.Ky_hieu AS courseCode, mh.Ten_mon AS courseName,
-      ct.So_bao_danh
+      COALESCE(thi.Ngay_thi, dtp.Ngay_thi) AS Ngay_thi,
+      thi.Ca_thi,
+      COALESCE(thi.Gio_thi, '') AS Gio_thi,
+      dtp.Tu_tiet,
+      COALESCE(dtp.So_tiet, thi.So_tiet, 2) AS So_tiet,
+      COALESCE(thi.Hinh_thuc_thi, 1) AS Hinh_thuc,
+      COALESCE(thi.Lan_thi, 1) AS Lan_thi,
+      COALESCE(thi.Dot_thi, 1) AS Dot_thi,
+      COALESCE(dmph.So_phong, dtp.Ten_phong, ph.So_phong, '') AS Phong,
+      mh.Ky_hieu AS courseCode,
+      mh.Ten_mon AS courseName,
+      ct.So_bao_danh,
+      cb1.Ho_ten AS CbCoiThi1,
+      cb2.Ho_ten AS CbCoiThi2
     FROM MARK_TochucThiChiTiet_TC ct
     JOIN MARK_TochucThi_TC thi ON ct.ID_thi = thi.ID_thi
     JOIN dmMonHoc mh ON thi.ID_mon = mh.ID_mon
+    LEFT JOIN TCT_DotThi_Phong dtp ON ct.ID_phong_thi = dtp.ID_dot_thi_phong
+    LEFT JOIN dmPhongHoc dmph ON dtp.ID_phong = dmph.ID_phong
     LEFT JOIN PLAN_PhongHoc ph ON ct.ID_phong_thi = ph.ID_phong
+    LEFT JOIN HR_LyLich cb1 ON dtp.ID_cb_coi_thi1 = cb1.ID_cb
+    LEFT JOIN HR_LyLich cb2 ON dtp.ID_cb_coi_thi2 = cb2.ID_cb
     WHERE ct.ID_sv = @idSv
       AND thi.Hoc_ky = @hocKy AND thi.Nam_hoc = @namHoc
-    ORDER BY thi.Ngay_thi, thi.Ca_thi`,
+    ORDER BY COALESCE(thi.Ngay_thi, dtp.Ngay_thi) ASC, dtp.Tu_tiet ASC`,
     [
       { name: 'idSv', type: sql.UniqueIdentifier, value: idSv },
       { name: 'hocKy', type: sql.Int, value: hocKy },
@@ -266,7 +279,121 @@ async function getStudentExams(pool, idSv, hocKy, namHoc) {
     ],
     { username: 'student-exams' }
   );
-  return result.recordset;
+
+  if (result.recordset && result.recordset.length > 0) {
+    return result.recordset;
+  }
+
+  // 2. Fallback: Nếu bảng MARK chưa có, lấy trực tiếp từ TCT_DotThi_ThiSinh (phần mềm xếp lịch thi)
+  const fallback = await safeQuery(pool,
+    `SELECT
+      dtp.Ngay_thi,
+      0 AS Ca_thi,
+      '' AS Gio_thi,
+      dtp.Tu_tiet,
+      COALESCE(dtp.So_tiet, 2) AS So_tiet,
+      COALESCE(dtm.ID_hinh_thuc, 1) AS Hinh_thuc,
+      COALESCE(ts.Lan_thi_diem, dt.Lan_thi, 1) AS Lan_thi,
+      1 AS Dot_thi,
+      COALESCE(dmph.So_phong, dtp.Ten_phong, '') AS Phong,
+      mh.Ky_hieu AS courseCode,
+      mh.Ten_mon AS courseName,
+      ts.SBD AS So_bao_danh,
+      cb1.Ho_ten AS CbCoiThi1,
+      cb2.Ho_ten AS CbCoiThi2
+    FROM TCT_DotThi_ThiSinh ts
+    JOIN TCT_DotThi_Phong dtp ON ts.ID_dot_thi_phong = dtp.ID_dot_thi_phong
+    JOIN TCT_DotThi dt ON dtp.ID_dot_thi = dt.ID_dot_thi
+    LEFT JOIN TCT_DotThi_Mon dtm ON (
+      dtm.ID_dot_thi = dt.ID_dot_thi
+      AND (
+        dtp.ID_mons = CAST(dtm.ID_mon AS VARCHAR)
+        OR dtp.ID_mons LIKE '%,' + CAST(dtm.ID_mon AS VARCHAR) + ',%'
+        OR dtp.ID_mons LIKE CAST(dtm.ID_mon AS VARCHAR) + ',%'
+        OR dtp.ID_mons LIKE '%,' + CAST(dtm.ID_mon AS VARCHAR)
+      )
+    )
+    LEFT JOIN dmMonHoc mh ON dtm.ID_mon = mh.ID_mon
+    LEFT JOIN dmPhongHoc dmph ON dtp.ID_phong = dmph.ID_phong
+    LEFT JOIN HR_LyLich cb1 ON dtp.ID_cb_coi_thi1 = cb1.ID_cb
+    LEFT JOIN HR_LyLich cb2 ON dtp.ID_cb_coi_thi2 = cb2.ID_cb
+    WHERE ts.ID_sv = @idSv
+      AND dt.Hoc_ky = @hocKy AND dt.Nam_hoc = @namHoc
+      AND dtp.Ngay_thi IS NOT NULL
+    ORDER BY dtp.Ngay_thi ASC, dtp.Tu_tiet ASC`,
+    [
+      { name: 'idSv', type: sql.UniqueIdentifier, value: idSv },
+      { name: 'hocKy', type: sql.Int, value: hocKy },
+      { name: 'namHoc', type: sql.NVarChar(50), value: namHoc }
+    ],
+    { username: 'student-exams-tct-fallback' }
+  );
+
+  return fallback.recordset || [];
+}
+
+/**
+ * Lấy lịch thi các môn học phần mà Giảng viên phụ trách trong 1 kỳ
+ * CHỈ HIỂN THỊ CÁC MÔN CÓ XẾP LỊCH THI
+ */
+async function getLecturerExams(pool, idCb, hocKy, namHoc) {
+  const result = await safeQuery(pool,
+    `SELECT DISTINCT
+      mh.Ky_hieu AS courseCode,
+      mh.Ten_mon AS courseName,
+      COALESCE(dtm.So_tin_chi, mtc.So_tin_chi, 0) AS credits,
+      ltc.ID_lop_tc,
+      ltc.Ten_lop_hp,
+      dtp.Ngay_thi,
+      dtp.Tu_tiet,
+      COALESCE(dtp.So_tiet, 2) AS So_tiet,
+      COALESCE(dmph.So_phong, dtp.Ten_phong, ph.So_phong, '') AS Phong,
+      dtp.Si_so,
+      COALESCE(dtm.ID_hinh_thuc, 1) AS Hinh_thuc,
+      COALESCE(dt.Lan_thi, 1) AS Lan_thi,
+      dt.Ten_dot,
+      cb1.Ho_ten AS CbCoiThi1,
+      cb2.Ho_ten AS CbCoiThi2
+    FROM PLAN_LopTinChi_TC ltc
+    JOIN PLAN_MonTinChi_TC mtc ON ltc.ID_mon_tc = mtc.ID_mon_tc
+    JOIN dmMonHoc mh ON mtc.ID_mon = mh.ID_mon
+    JOIN TCT_DotThi_Mon dtm ON dtm.ID_lop_tc = ltc.ID_lop_tc
+    JOIN TCT_DotThi dt ON dtm.ID_dot_thi = dt.ID_dot_thi
+    JOIN TCT_DotThi_Phong dtp ON (
+      dtp.ID_dot_thi = dtm.ID_dot_thi
+      AND (
+        dtp.ID_lop_tcs = CAST(dtm.ID_lop_tc AS VARCHAR)
+        OR dtp.ID_lop_tcs LIKE '%,' + CAST(dtm.ID_lop_tc AS VARCHAR) + ',%'
+        OR dtp.ID_lop_tcs LIKE CAST(dtm.ID_lop_tc AS VARCHAR) + ',%'
+        OR dtp.ID_lop_tcs LIKE '%,' + CAST(dtm.ID_lop_tc AS VARCHAR)
+        OR (
+          dtp.ID_lop_tcs IS NULL
+          AND (
+            dtp.ID_mons = CAST(dtm.ID_mon AS VARCHAR)
+            OR dtp.ID_mons LIKE '%,' + CAST(dtm.ID_mon AS VARCHAR) + ',%'
+            OR dtp.ID_mons LIKE CAST(dtm.ID_mon AS VARCHAR) + ',%'
+            OR dtp.ID_mons LIKE '%,' + CAST(dtm.ID_mon AS VARCHAR)
+          )
+        )
+      )
+    )
+    LEFT JOIN dmPhongHoc dmph ON dtp.ID_phong = dmph.ID_phong
+    LEFT JOIN PLAN_PhongHoc ph ON dtp.ID_phong = ph.ID_phong
+    LEFT JOIN HR_LyLich cb1 ON dtp.ID_cb_coi_thi1 = cb1.ID_cb
+    LEFT JOIN HR_LyLich cb2 ON dtp.ID_cb_coi_thi2 = cb2.ID_cb
+    WHERE ltc.ID_cb = @idCb
+      AND dt.Hoc_ky = @hocKy AND dt.Nam_hoc = @namHoc
+      AND dtp.Ngay_thi IS NOT NULL
+    ORDER BY dtp.Ngay_thi ASC, dtp.Tu_tiet ASC`,
+    [
+      { name: 'idCb', type: sql.NVarChar(50), value: String(idCb) },
+      { name: 'hocKy', type: sql.Int, value: hocKy },
+      { name: 'namHoc', type: sql.NVarChar(50), value: namHoc }
+    ],
+    { username: 'lecturer-exams' }
+  );
+
+  return result.recordset || [];
 }
 
 /**
@@ -1393,6 +1520,7 @@ module.exports = {
   getStudentCurriculum,
   getStudentCurriculumSummary,
   getLecturerSchedule,
+  getLecturerExams,
   getStudentSurveyedCourses,
   getExemptCourseIds,
   isSurveyActive,

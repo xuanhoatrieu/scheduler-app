@@ -13,6 +13,8 @@ import {
 } from 'react-native';
 import { getSchedule, getScheduleSemesters } from '../services/api';
 import { Colors, getDayColor } from '../theme/colors';
+import ExamsScreen from './ExamsScreen';
+import { scheduleClassReminders } from '../services/notificationService';
 
 const DAY_FULL = {
   0: 'Lịch Thực Tập / Chưa Xếp Thứ',
@@ -254,8 +256,8 @@ export default function ScheduleScreen({ user }) {
   const [selectedSemIdx, setSelectedSemIdx] = useState(0);
   const currentSem = semesters[selectedSemIdx] || semesters[0] || { label: 'Học kỳ' };
 
-  // Bộ lọc trạng thái thông minh: 'active' (mặc định) | 'upcoming' | 'past' | 'all'
-  const [statusFilter, setStatusFilter] = useState('active');
+  // Tab chính: 'schedule' (Lịch học) | 'exam' (Lịch thi)
+  const [mainTab, setMainTab] = useState('schedule');
 
   const loadData = async (forceSync = false, semIdx = null, customSemesters = null) => {
     const list = customSemesters || semesters;
@@ -270,8 +272,13 @@ export default function ScheduleScreen({ user }) {
       res = await getSchedule(true, sem.semester, sem.schoolYear);
     }
     
-    if (res.success) setScheduleData(res.data || []);
-    else setScheduleData([]);
+    if (res.success) {
+      setScheduleData(res.data || []);
+      // Tự động kích hoạt chuông và thông báo màn hình khóa 30m & 15m cho TKB
+      scheduleClassReminders(res.data || []);
+    } else {
+      setScheduleData([]);
+    }
   };
 
   useEffect(() => {
@@ -489,20 +496,61 @@ export default function ScheduleScreen({ user }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>Lịch Học</Text>
-          <Text style={styles.headerSubtitle}>{currentSem.label}</Text>
+      {/* Top Segmented Tabs: Lịch Học | Lịch Thi */}
+      <View style={styles.topTabsWrapper}>
+        <View style={styles.topTabsContainer}>
+          <TouchableOpacity
+            style={[styles.topTabBtn, mainTab === 'schedule' && styles.topTabBtnActive]}
+            onPress={() => setMainTab('schedule')}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name={mainTab === 'schedule' ? 'calendar' : 'calendar-outline'}
+              size={15}
+              color={mainTab === 'schedule' ? Colors.primary : Colors.textSecondary}
+              style={{ marginRight: 6 }}
+            />
+            <Text style={[styles.topTabText, mainTab === 'schedule' && styles.topTabTextActive]}>
+              Lịch Học
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.topTabBtn, mainTab === 'exam' && styles.topTabBtnActive]}
+            onPress={() => setMainTab('exam')}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name={mainTab === 'exam' ? 'document-text' : 'document-text-outline'}
+              size={15}
+              color={mainTab === 'exam' ? Colors.primary : Colors.textSecondary}
+              style={{ marginRight: 6 }}
+            />
+            <Text style={[styles.topTabText, mainTab === 'exam' && styles.topTabTextActive]}>
+              Lịch Thi
+            </Text>
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.syncBtn} onPress={onRefresh} disabled={refreshing}>
-          {refreshing ? (
-            <ActivityIndicator size="small" color={Colors.textOnPrimary} />
-          ) : (
-            <Ionicons name="sync-outline" size={18} color={Colors.textOnPrimary} />
-          )}
-        </TouchableOpacity>
       </View>
+
+      {mainTab === 'exam' ? (
+        <ExamsScreen user={user} />
+      ) : (
+        <>
+          {/* Header */}
+          <View style={styles.header}>
+            <View>
+              <Text style={styles.headerTitle}>Lịch Học</Text>
+              <Text style={styles.headerSubtitle}>{currentSem.label}</Text>
+            </View>
+            <TouchableOpacity style={styles.syncBtn} onPress={onRefresh} disabled={refreshing}>
+              {refreshing ? (
+                <ActivityIndicator size="small" color={Colors.textOnPrimary} />
+              ) : (
+                <Ionicons name="sync-outline" size={18} color={Colors.textOnPrimary} />
+              )}
+            </TouchableOpacity>
+          </View>
 
       {/* Semester Picker */}
       <View style={styles.semPickerContainer}>
@@ -692,6 +740,8 @@ export default function ScheduleScreen({ user }) {
           </View>
         )}
       </ScrollView>
+        </>
+      )}
     </SafeAreaView>
   );
 }
@@ -1078,4 +1128,45 @@ const styles = StyleSheet.create({
   switchTabBtnText: { color: Colors.primary, fontWeight: '700', fontSize: 13 },
   emptyBtn: { marginTop: 16, backgroundColor: Colors.primary, paddingHorizontal: 24, paddingVertical: 10, borderRadius: 12 },
   emptyBtnText: { color: Colors.textOnPrimary, fontWeight: '700', fontSize: 14 },
+
+  // Top Segmented Tabs
+  topTabsWrapper: {
+    backgroundColor: Colors.surface,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  topTabsContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 12,
+    padding: 3,
+  },
+  topTabBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  topTabBtnActive: {
+    backgroundColor: '#FFFFFF',
+    elevation: 2,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+  },
+  topTabText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.textSecondary,
+  },
+  topTabTextActive: {
+    color: Colors.primary,
+    fontWeight: '700',
+  },
 });

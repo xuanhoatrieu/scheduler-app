@@ -14,6 +14,8 @@ import {
 import { getSchedule, getScheduleSemesters } from '../../services/api';
 import { Colors, getDayColor } from '../../theme/colors';
 import StudentAttendanceScreen from './StudentAttendanceScreen';
+import LecturerExamsScreen from './LecturerExamsScreen';
+import { scheduleClassReminders } from '../../services/notificationService';
 
 const DAY_NAMES = {
   0: 'Chưa xếp thứ / Khác',
@@ -115,6 +117,8 @@ export default function TeachingScheduleScreen({ user, onSwitchRole }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [attendanceModalSchedule, setAttendanceModalSchedule] = useState(null);
+  // Tab chính: 'schedule' (Lịch dạy) | 'exam' (Lịch thi môn phụ trách)
+  const [mainTab, setMainTab] = useState('schedule');
 
   const [semesters, setSemesters] = useState([]);
   const [selectedSemIdx, setSelectedSemIdx] = useState(0);
@@ -136,6 +140,8 @@ export default function TeachingScheduleScreen({ user, onSwitchRole }) {
     const res = await getSchedule(forceSync, semParam, yearParam);
     if (res.success) {
       setSchedules(res.data || []);
+      // Tự động kích hoạt chuông và thông báo màn hình khóa 30m & 15m cho lịch dạy
+      scheduleClassReminders(res.data || []);
     }
   };
 
@@ -237,8 +243,49 @@ export default function TeachingScheduleScreen({ user, onSwitchRole }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* HEADER */}
-      <View style={styles.header}>
+      {/* Top Segmented Tabs: Lịch Giảng Dạy | Lịch Thi Môn Dạy */}
+      <View style={styles.topTabsWrapper}>
+        <View style={styles.topTabsContainer}>
+          <TouchableOpacity
+            style={[styles.topTabBtn, mainTab === 'schedule' && styles.topTabBtnActive]}
+            onPress={() => setMainTab('schedule')}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name={mainTab === 'schedule' ? 'calendar' : 'calendar-outline'}
+              size={15}
+              color={mainTab === 'schedule' ? Colors.primary : Colors.textSecondary}
+              style={{ marginRight: 6 }}
+            />
+            <Text style={[styles.topTabText, mainTab === 'schedule' && styles.topTabTextActive]}>
+              Lịch Giảng Dạy
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.topTabBtn, mainTab === 'exam' && styles.topTabBtnActive]}
+            onPress={() => setMainTab('exam')}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name={mainTab === 'exam' ? 'document-text' : 'document-text-outline'}
+              size={15}
+              color={mainTab === 'exam' ? Colors.primary : Colors.textSecondary}
+              style={{ marginRight: 6 }}
+            />
+            <Text style={[styles.topTabText, mainTab === 'exam' && styles.topTabTextActive]}>
+              Lịch Thi Môn Dạy
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {mainTab === 'exam' ? (
+        <LecturerExamsScreen user={user} />
+      ) : (
+        <>
+          {/* HEADER */}
+          <View style={styles.header}>
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>Lịch Giảng Dạy</Text>
           <Text style={styles.headerSubtitle} numberOfLines={1}>
@@ -585,6 +632,8 @@ export default function TeachingScheduleScreen({ user, onSwitchRole }) {
           onClose={() => setAttendanceModalSchedule(null)}
         />
       </Modal>
+        </>
+      )}
     </SafeAreaView>
   );
 }
@@ -598,6 +647,46 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20, paddingTop: 16, paddingBottom: 16,
     backgroundColor: Colors.surface,
     borderBottomWidth: 1, borderBottomColor: Colors.borderLight,
+  },
+  // Top Segmented Tabs
+  topTabsWrapper: {
+    backgroundColor: Colors.surface,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  topTabsContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 12,
+    padding: 3,
+  },
+  topTabBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  topTabBtnActive: {
+    backgroundColor: '#FFFFFF',
+    elevation: 2,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+  },
+  topTabText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.textSecondary,
+  },
+  topTabTextActive: {
+    color: Colors.primary,
+    fontWeight: '700',
   },
   headerTitle: { fontSize: 24, fontWeight: '800', color: Colors.textPrimary },
   headerSubtitle: { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },

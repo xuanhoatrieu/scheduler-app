@@ -12,9 +12,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { getExams, getScheduleSemesters } from '../services/api';
-import { scheduleExamReminders } from '../services/notificationService';
-import { Colors } from '../theme/colors';
+import { getExams, getScheduleSemesters } from '../../services/api';
+import { Colors } from '../../theme/colors';
 
 const DAY_NAMES = {
   0: 'Chủ Nhật',
@@ -53,7 +52,7 @@ const getDynamicSemesters = () => {
   return list;
 };
 
-export default function ExamsScreen({ user }) {
+export default function LecturerExamsScreen({ user }) {
   const [examData, setExamData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -73,7 +72,7 @@ export default function ExamsScreen({ user }) {
           if (isMounted) setSemesters(res.data);
         }
       } catch (err) {
-        console.warn('Lỗi tải danh mục học kỳ lịch thi:', err.message);
+        console.warn('Lỗi tải danh mục học kỳ giảng viên:', err.message);
       }
     };
     fetchSemesters();
@@ -87,9 +86,9 @@ export default function ExamsScreen({ user }) {
     const res = await getExams(forceSync, sem.semester, sem.schoolYear);
 
     if (res.success && Array.isArray(res.data)) {
-      setExamData(res.data);
-      // Tự động lên lịch nhắc nhở 30 phút và 15 phút ra màn hình khóa có chuông
-      scheduleExamReminders(res.data);
+      // Đảm bảo lọc chỉ các môn có lịch thi hợp lệ
+      const validExams = res.data.filter(e => e.examDate || e.room || e.examTime);
+      setExamData(validExams);
     }
   };
 
@@ -110,86 +109,44 @@ export default function ExamsScreen({ user }) {
     }
   };
 
-  // Tính countdown và ngày thi
   const parseExamDate = (dateStr) => {
     if (!dateStr) return null;
     const dmy = dateStr.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
-    if (dmy) {
-      return new Date(parseInt(dmy[3], 10), parseInt(dmy[2], 10) - 1, parseInt(dmy[1], 10));
-    }
+    if (dmy) return new Date(parseInt(dmy[3], 10), parseInt(dmy[2], 10) - 1, parseInt(dmy[1], 10));
     const ymd = dateStr.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
-    if (ymd) {
-      return new Date(parseInt(ymd[1], 10), parseInt(ymd[2], 10) - 1, parseInt(ymd[3], 10));
-    }
+    if (ymd) return new Date(parseInt(ymd[1], 10), parseInt(ymd[2], 10) - 1, parseInt(ymd[3], 10));
     return null;
   };
 
-  const getCountdown = (dateStr) => {
-    const examDate = parseExamDate(dateStr);
-    if (!examDate) return null;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return Math.ceil((examDate - today) / (1000 * 60 * 60 * 24));
-  };
-
-  const getCountdownBadgeStyle = (days) => {
-    if (days === null) return { bg: Colors.borderLight, text: Colors.textMuted, label: 'Chưa rõ' };
-    if (days < 0) return { bg: '#F3F4F6', text: Colors.textMuted, label: 'Đã thi' };
-    if (days === 0) return { bg: '#FEE2E2', text: Colors.danger, label: '🚨 HÔM NAY' };
-    if (days <= 3) return { bg: '#FEE2E2', text: Colors.danger, label: `Còn ${days} ngày` };
-    if (days <= 7) return { bg: '#FEF3C7', text: Colors.warning, label: `Còn ${days} ngày` };
-    return { bg: Colors.primaryBg, text: Colors.primary, label: `Còn ${days} ngày` };
-  };
-
   const getDayOfWeekText = (dateStr) => {
-    const examDate = parseExamDate(dateStr);
-    if (!examDate) return '';
-    return DAY_NAMES[examDate.getDay()] || '';
+    const d = parseExamDate(dateStr);
+    if (!d) return '';
+    return DAY_NAMES[d.getDay()] || '';
   };
 
-  // Lọc tìm kiếm
+  // Tìm kiếm tức thì
   const filteredExams = useMemo(() => {
     if (!searchQuery.trim()) return examData;
     const q = searchQuery.toLowerCase().trim();
     return examData.filter(item => {
       const name = (item.courseName || '').toLowerCase();
       const code = (item.courseCode || '').toLowerCase();
+      const cls = (item.className || '').toLowerCase();
       const room = (item.room || '').toLowerCase();
-      const sbd = (item.seatNumber || '').toLowerCase();
-      return name.includes(q) || code.includes(q) || room.includes(q) || sbd.includes(q);
+      const proctors = (item.proctors || '').toLowerCase();
+      return name.includes(q) || code.includes(q) || cls.includes(q) || room.includes(q) || proctors.includes(q);
     });
   }, [examData, searchQuery]);
 
-  // Môn thi gần nhất (Upcoming Hero Card)
-  const nextExam = useMemo(() => {
-    if (!examData || examData.length === 0) return null;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const upcoming = examData
-      .map(item => ({ item, date: parseExamDate(item.examDate) }))
-      .filter(x => x.date && x.date >= today)
-      .sort((a, b) => a.date - b.date);
-
-    return upcoming.length > 0 ? upcoming[0].item : null;
-  }, [examData]);
-
-  // Thống kê nhanh
+  // Thống kê
   const stats = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    let passed = 0;
-    let upcoming = 0;
-
-    examData.forEach(item => {
-      const d = parseExamDate(item.examDate);
-      if (d) {
-        if (d < today) passed++;
-        else upcoming++;
-      }
-    });
-
-    return { total: examData.length, passed, upcoming };
+    const distinctCourses = new Set(examData.map(e => e.courseCode || e.courseName)).size;
+    const totalStudents = examData.reduce((sum, e) => sum + (e.studentCount || 0), 0);
+    return {
+      coursesCount: distinctCourses,
+      shiftsCount: examData.length,
+      totalStudents,
+    };
   }, [examData]);
 
   if (loading) {
@@ -197,7 +154,7 @@ export default function ExamsScreen({ user }) {
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingWrap}>
           <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.loadingText}>Đang tải lịch thi từ CSDL...</Text>
+          <Text style={styles.loadingText}>Đang nạp lịch thi các môn phụ trách...</Text>
         </View>
       </SafeAreaView>
     );
@@ -208,8 +165,8 @@ export default function ExamsScreen({ user }) {
       {/* Header */}
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Lịch Thi</Text>
-          <Text style={styles.headerSubtitle}>{currentSem.label} • Xếp lịch đào tạo</Text>
+          <Text style={styles.headerTitle}>Lịch Thi Môn Dạy</Text>
+          <Text style={styles.headerSubtitle}>{currentSem.label} • Các môn phụ trách có lịch thi</Text>
         </View>
         <TouchableOpacity
           style={styles.syncBtn}
@@ -255,7 +212,7 @@ export default function ExamsScreen({ user }) {
           <Ionicons name="search-outline" size={18} color={Colors.textMuted} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Tìm môn học, mã môn, phòng thi, SBD..."
+            placeholder="Tìm môn học, lớp học phần, phòng thi, giám thị..."
             placeholderTextColor={Colors.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -271,133 +228,81 @@ export default function ExamsScreen({ user }) {
 
       <FlatList
         data={filteredExams}
-        keyExtractor={(item, index) => item.id || `${item.courseCode}_${item.examDate}_${index}`}
+        keyExtractor={(item, index) => item.id || `${item.courseCode}_${item.classCode}_${index}`}
         contentContainerStyle={styles.listContent}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />
         }
         ListHeaderComponent={
-          <>
-            {/* Hero Card: Môn thi gần nhất */}
-            {nextExam && !searchQuery ? (
-              <View style={styles.heroCard}>
-                <View style={styles.heroTopRow}>
-                  <View style={styles.heroTagWrap}>
-                    <Ionicons name="flame" size={14} color="#EF4444" />
-                    <Text style={styles.heroTagText}>MÔN THI TIẾP THEO</Text>
-                  </View>
-                  {(() => {
-                    const cd = getCountdown(nextExam.examDate);
-                    const b = getCountdownBadgeStyle(cd);
-                    return (
-                      <View style={[styles.heroCountdownBadge, { backgroundColor: b.bg }]}>
-                        <Text style={[styles.heroCountdownText, { color: b.text }]}>{b.label}</Text>
-                      </View>
-                    );
-                  })()}
-                </View>
-
-                <Text style={styles.heroCourseName} numberOfLines={2}>
-                  {nextExam.courseName}
-                </Text>
-                {nextExam.courseCode ? (
-                  <Text style={styles.heroCourseCode}>Mã HP: {nextExam.courseCode}</Text>
-                ) : null}
-
-                <View style={styles.heroGrid}>
-                  <View style={styles.heroGridItem}>
-                    <Ionicons name="calendar" size={15} color="#3B82F6" />
-                    <Text style={styles.heroGridText}>
-                      {getDayOfWeekText(nextExam.examDate)}, {nextExam.examDate}
-                    </Text>
-                  </View>
-                  <View style={styles.heroGridItem}>
-                    <Ionicons name="time" size={15} color="#F59E0B" />
-                    <Text style={styles.heroGridText}>
-                      {nextExam.examTime || nextExam.examShift || 'Chưa xếp giờ'}
-                    </Text>
-                  </View>
-                  <View style={styles.heroGridItem}>
-                    <Ionicons name="location" size={15} color="#EC4899" />
-                    <Text style={styles.heroGridText}>
-                      Phòng: {nextExam.room || 'Chưa xếp'}
-                    </Text>
-                  </View>
-                  {nextExam.seatNumber ? (
-                    <View style={styles.heroGridItem}>
-                      <Ionicons name="id-card" size={15} color="#10B981" />
-                      <Text style={[styles.heroGridText, { fontWeight: '700', color: '#10B981' }]}>
-                        SBD: {nextExam.seatNumber}
-                      </Text>
-                    </View>
-                  ) : null}
-                </View>
-
-                {/* Banner nhắc nhở có chuông */}
-                <View style={styles.heroNotifBanner}>
-                  <Ionicons name="notifications" size={14} color="#2563EB" />
-                  <Text style={styles.heroNotifBannerText}>
-                    Đã kích hoạt chuông & thông báo màn hình khóa trước 30m & 15m
-                  </Text>
-                </View>
+          examData.length > 0 ? (
+            <View style={styles.statsCard}>
+              <View style={styles.statsCardHeader}>
+                <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+                <Text style={styles.statsCardTitle}>Chỉ hiển thị các môn phụ trách có xếp lịch thi</Text>
               </View>
-            ) : null}
-
-            {/* Quick Stats */}
-            {examData.length > 0 ? (
-              <View style={styles.statsBar}>
+              <View style={styles.statsRow}>
                 <View style={styles.statItem}>
-                  <Text style={styles.statNumber}>{stats.total}</Text>
-                  <Text style={styles.statLabel}>Môn thi</Text>
+                  <Text style={styles.statNumber}>{stats.coursesCount}</Text>
+                  <Text style={styles.statLabel}>Môn có lịch thi</Text>
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.statItem}>
-                  <Text style={[styles.statNumber, { color: Colors.primary }]}>{stats.upcoming}</Text>
-                  <Text style={styles.statLabel}>Sắp thi</Text>
+                  <Text style={[styles.statNumber, { color: Colors.primary }]}>{stats.shiftsCount}</Text>
+                  <Text style={styles.statLabel}>Ca / Phòng thi</Text>
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.statItem}>
-                  <Text style={[styles.statNumber, { color: Colors.textMuted }]}>{stats.passed}</Text>
-                  <Text style={styles.statLabel}>Đã thi</Text>
+                  <Text style={[styles.statNumber, { color: '#8B5CF6' }]}>{stats.totalStudents}</Text>
+                  <Text style={styles.statLabel}>Tổng SV dự thi</Text>
                 </View>
               </View>
-            ) : null}
-          </>
+            </View>
+          ) : null
         }
         renderItem={({ item }) => {
-          const countdown = getCountdown(item.examDate);
-          const badgeStyle = getCountdownBadgeStyle(countdown);
           const dayOfWeek = getDayOfWeekText(item.examDate);
 
           return (
-            <View style={styles.examCard}>
+            <View style={styles.card}>
               {/* Header card */}
-              <View style={styles.examCardHeader}>
+              <View style={styles.cardHeader}>
                 <View style={{ flex: 1, marginRight: 10 }}>
-                  <Text style={styles.examCourseName}>{item.courseName}</Text>
-                  <View style={styles.examMetaRow}>
+                  <Text style={styles.courseName}>{item.courseName}</Text>
+                  <View style={styles.metaRow}>
                     {item.courseCode ? (
-                      <Text style={styles.examMetaCode}>Mã: {item.courseCode}</Text>
+                      <View style={styles.codeBadge}>
+                        <Text style={styles.codeText}>{item.courseCode}</Text>
+                      </View>
                     ) : null}
                     {item.credits ? (
-                      <Text style={styles.examMetaCredits}> • {item.credits} tín chỉ</Text>
+                      <Text style={styles.metaText}>{item.credits} tín chỉ</Text>
                     ) : null}
-                    {item.examAttempt && item.examAttempt > 1 ? (
-                      <View style={styles.retakeBadge}>
-                        <Text style={styles.retakeBadgeText}>Thi lần {item.examAttempt}</Text>
-                      </View>
+                    {item.examBatch ? (
+                      <Text style={styles.metaText}> • {item.examBatch}</Text>
                     ) : null}
                   </View>
                 </View>
-                <View style={[styles.countdownBadge, { backgroundColor: badgeStyle.bg }]}>
-                  <Text style={[styles.countdownText, { color: badgeStyle.text }]}>
-                    {badgeStyle.label}
-                  </Text>
-                </View>
+
+                {item.studentCount > 0 ? (
+                  <View style={styles.studentCountBadge}>
+                    <Ionicons name="people" size={13} color="#2563EB" />
+                    <Text style={styles.studentCountText}>{item.studentCount} SV</Text>
+                  </View>
+                ) : null}
               </View>
 
-              {/* Chi tiết lịch thi */}
-              <View style={styles.examCardBody}>
+              {/* Tên lớp học phần */}
+              {item.className ? (
+                <View style={styles.classRow}>
+                  <Ionicons name="school-outline" size={15} color="#64748B" />
+                  <Text style={styles.classNameText} numberOfLines={1}>
+                    Lớp HP: {item.className}
+                  </Text>
+                </View>
+              ) : null}
+
+              {/* Chi tiết ca thi & phòng */}
+              <View style={styles.cardBody}>
                 <View style={styles.infoRow}>
                   <View style={[styles.iconWrap, { backgroundColor: '#EFF6FF' }]}>
                     <Ionicons name="calendar-outline" size={16} color="#3B82F6" />
@@ -423,68 +328,53 @@ export default function ExamsScreen({ user }) {
                     <Ionicons name="location-outline" size={16} color="#EC4899" />
                   </View>
                   <Text style={styles.infoLabel}>Phòng thi:</Text>
-                  <Text style={[styles.infoValue, { fontWeight: '700' }]}>
+                  <Text style={[styles.infoValue, { fontWeight: '700', color: Colors.primary }]}>
                     {item.room || 'Chưa xếp'}
                   </Text>
                 </View>
 
-                {item.seatNumber ? (
-                  <View style={styles.infoRow}>
-                    <View style={[styles.iconWrap, { backgroundColor: '#D1FAE5' }]}>
-                      <Ionicons name="id-card-outline" size={16} color="#10B981" />
-                    </View>
-                    <Text style={styles.infoLabel}>Số báo danh:</Text>
-                    <View style={styles.sbdBadge}>
-                      <Text style={styles.sbdText}>{item.seatNumber}</Text>
-                    </View>
-                  </View>
-                ) : null}
-
                 {item.proctors ? (
                   <View style={styles.infoRow}>
                     <View style={[styles.iconWrap, { backgroundColor: '#EDE9FE' }]}>
-                      <Ionicons name="people-outline" size={16} color="#8B5CF6" />
+                      <Ionicons name="person-outline" size={16} color="#8B5CF6" />
                     </View>
-                    <Text style={styles.infoLabel}>Giám thị:</Text>
-                    <Text style={styles.infoValue} numberOfLines={1}>{item.proctors}</Text>
+                    <Text style={styles.infoLabel}>Cán bộ coi thi:</Text>
+                    <Text style={styles.infoValue} numberOfLines={2}>
+                      {item.proctors}
+                    </Text>
                   </View>
                 ) : null}
               </View>
 
               {/* Footer card */}
-              <View style={styles.examCardFooter}>
-                <View style={styles.formatChip}>
+              <View style={styles.cardFooter}>
+                <View style={styles.formatBadge}>
                   <Ionicons name="document-text-outline" size={12} color={Colors.primary} />
-                  <Text style={styles.formatChipText}>{item.examFormat || 'Thi viết'}</Text>
+                  <Text style={styles.formatText}>{item.examFormat || 'Thi viết'}</Text>
                 </View>
-                {item.examBatch ? (
-                  <View style={[styles.formatChip, { backgroundColor: '#F3F4F6' }]}>
-                    <Text style={[styles.formatChipText, { color: Colors.textSecondary }]}>
-                      {item.examBatch}
+                {item.examAttempt && item.examAttempt > 1 ? (
+                  <View style={[styles.formatBadge, { backgroundColor: '#FEE2E2' }]}>
+                    <Text style={[styles.formatText, { color: Colors.danger }]}>
+                      Thi lần {item.examAttempt}
                     </Text>
                   </View>
                 ) : null}
-                <View style={{ flex: 1 }} />
-                <View style={styles.alarmIndicator}>
-                  <Ionicons name="alarm" size={13} color="#10B981" />
-                  <Text style={styles.alarmText}>Nhắc 30m & 15m</Text>
-                </View>
               </View>
             </View>
           );
         }}
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
-            <Ionicons name="calendar-outline" size={60} color={Colors.borderLight} />
-            <Text style={styles.emptyTitle}>Chưa có lịch thi!</Text>
+            <Ionicons name="school-outline" size={60} color={Colors.borderLight} />
+            <Text style={styles.emptyTitle}>Không có lịch thi học phần!</Text>
             <Text style={styles.emptySubtitle}>
               {searchQuery
-                ? 'Không tìm thấy môn thi phù hợp với từ khóa.'
-                : `Học kỳ ${currentSem.label} hiện chưa có môn thi nào được xếp.`}
+                ? 'Không tìm thấy môn phụ trách phù hợp với từ khóa.'
+                : `Trong ${currentSem.label}, hiện các môn bạn phụ trách chưa có lịch thi nào được xếp.`}
             </Text>
             <TouchableOpacity style={styles.emptySyncBtn} onPress={onRefresh} activeOpacity={0.8}>
               <Ionicons name="sync" size={16} color={Colors.textOnPrimary} style={{ marginRight: 6 }} />
-              <Text style={styles.emptySyncBtnText}>Đồng bộ CSDL Nhà trường</Text>
+              <Text style={styles.emptySyncBtnText}>Đồng bộ lại CSDL</Text>
             </TouchableOpacity>
           </View>
         }
@@ -529,63 +419,50 @@ const styles = StyleSheet.create({
   searchIcon: { marginRight: 8 },
   searchInput: { flex: 1, fontSize: 14, color: Colors.textPrimary },
   listContent: { padding: 16, paddingBottom: 32 },
-  heroCard: {
-    backgroundColor: '#1E293B', borderRadius: 20, padding: 20, marginBottom: 16,
-    elevation: 6, shadowColor: '#0F172A', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15, shadowRadius: 10,
+  statsCard: {
+    backgroundColor: Colors.surface, borderRadius: 16, padding: 16, marginBottom: 16,
+    borderWidth: 1, borderColor: '#E2E8F0', elevation: 2, shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6,
   },
-  heroTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  heroTagWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(239, 68, 68, 0.15)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-  heroTagText: { fontSize: 11, fontWeight: '800', color: '#EF4444', marginLeft: 4, letterSpacing: 0.5 },
-  heroCountdownBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-  heroCountdownText: { fontSize: 11, fontWeight: '700' },
-  heroCourseName: { fontSize: 18, fontWeight: '800', color: '#FFFFFF', lineHeight: 24, marginBottom: 4 },
-  heroCourseCode: { fontSize: 12, color: '#94A3B8', fontWeight: '600', marginBottom: 14 },
-  heroGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 14 },
-  heroGridItem: { flexDirection: 'row', alignItems: 'center', width: '47%' },
-  heroGridText: { fontSize: 13, color: '#E2E8F0', marginLeft: 6, fontWeight: '500' },
-  heroNotifBanner: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(37, 99, 235, 0.15)',
-    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderLeftWidth: 3, borderLeftColor: '#3B82F6',
-  },
-  heroNotifBannerText: { fontSize: 11, color: '#93C5FD', marginLeft: 8, fontWeight: '600', flex: 1 },
-  statsBar: {
-    flexDirection: 'row', backgroundColor: Colors.surface, borderRadius: 14, paddingVertical: 12,
-    marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center',
-  },
+  statsCardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  statsCardTitle: { fontSize: 12, fontWeight: '700', color: '#059669', marginLeft: 6 },
+  statsRow: { flexDirection: 'row', alignItems: 'center' },
   statItem: { flex: 1, alignItems: 'center' },
   statNumber: { fontSize: 18, fontWeight: '800', color: Colors.textPrimary },
   statLabel: { fontSize: 11, color: Colors.textSecondary, marginTop: 2, fontWeight: '600' },
   statDivider: { width: 1, height: 24, backgroundColor: '#E2E8F0' },
-  examCard: {
+  card: {
     backgroundColor: Colors.surface, borderRadius: 18, padding: 16, marginBottom: 14,
     borderWidth: 1, borderColor: '#E2E8F0', elevation: 2, shadowColor: '#64748B',
     shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6,
   },
-  examCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 },
-  examCourseName: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary, lineHeight: 22 },
-  examMetaRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
-  examMetaCode: { fontSize: 12, color: Colors.textSecondary, fontWeight: '600' },
-  examMetaCredits: { fontSize: 12, color: Colors.textSecondary },
-  retakeBadge: { backgroundColor: '#FEE2E2', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, marginLeft: 8 },
-  retakeBadgeText: { fontSize: 10, fontWeight: '700', color: Colors.danger },
-  countdownBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 },
-  countdownText: { fontSize: 11, fontWeight: '700' },
-  examCardBody: { gap: 8, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 },
+  courseName: { fontSize: 16, fontWeight: '800', color: Colors.textPrimary, lineHeight: 22 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
+  codeBadge: { backgroundColor: '#F1F5F9', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, marginRight: 6 },
+  codeText: { fontSize: 11, fontWeight: '700', color: Colors.textSecondary },
+  metaText: { fontSize: 12, color: Colors.textSecondary, fontWeight: '500' },
+  studentCountBadge: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#EFF6FF',
+    paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8,
+  },
+  studentCountText: { fontSize: 12, fontWeight: '700', color: '#2563EB', marginLeft: 4 },
+  classRow: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC',
+    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, marginBottom: 12,
+  },
+  classNameText: { fontSize: 12, fontWeight: '600', color: '#475569', marginLeft: 6, flex: 1 },
+  cardBody: { gap: 8, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   infoRow: { flexDirection: 'row', alignItems: 'center' },
   iconWrap: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
-  infoLabel: { fontSize: 13, color: Colors.textSecondary, width: 80, fontWeight: '500' },
+  infoLabel: { fontSize: 13, color: Colors.textSecondary, width: 95, fontWeight: '500' },
   infoValue: { fontSize: 13, color: Colors.textPrimary, fontWeight: '600', flex: 1 },
-  sbdBadge: { backgroundColor: '#D1FAE5', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
-  sbdText: { fontSize: 13, fontWeight: '800', color: '#065F46' },
-  examCardFooter: { flexDirection: 'row', alignItems: 'center', paddingTop: 10 },
-  formatChip: {
+  cardFooter: { flexDirection: 'row', alignItems: 'center', paddingTop: 10 },
+  formatBadge: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.primaryBg,
     paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, marginRight: 8,
   },
-  formatChipText: { fontSize: 11, fontWeight: '600', color: Colors.primary, marginLeft: 4 },
-  alarmIndicator: { flexDirection: 'row', alignItems: 'center' },
-  alarmText: { fontSize: 11, fontWeight: '600', color: '#10B981', marginLeft: 4 },
+  formatText: { fontSize: 11, fontWeight: '600', color: Colors.primary, marginLeft: 4 },
   emptyWrap: { alignItems: 'center', justifyContent: 'center', paddingTop: 60, paddingHorizontal: 20 },
   emptyTitle: { fontSize: 18, fontWeight: '800', color: Colors.textPrimary, marginTop: 16 },
   emptySubtitle: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center', marginTop: 8, lineHeight: 18 },
