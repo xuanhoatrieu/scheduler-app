@@ -55,12 +55,13 @@ const corsOptions = isDev
         ? process.env.ALLOWED_ORIGINS.split(',')
         : '*',
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-      allowedHeaders: ['Content-Type', 'Authorization'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-key'],
     };
 app.use(cors(corsOptions));
 
-// Body parsing with size limit (25MB max for Excel base64 uploads)
-app.use(express.json({ limit: '25mb' }));
+// Body parsing with size limit (50MB max for PDF/Word/Excel base64 uploads)
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Rate limiting for login endpoint (brute-force protection)
 const loginLimiter = rateLimit({

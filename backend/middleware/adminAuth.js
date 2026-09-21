@@ -48,8 +48,16 @@ function isLanOrLocalIp(rawIp) {
   return false;
 }
 
+function isTrustedHost(host) {
+  if (!host) return true;
+  const h = host.split(':')[0].toLowerCase();
+  if (h === 'localhost' || h === '127.0.0.1') return true;
+  if (h === 'scheduler.tuaf.edu.vn' || h.endsWith('.tuaf.edu.vn')) return true;
+  return isLanOrLocalIp(h);
+}
+
 function adminLocalGuard(req, res, next) {
-  // 0. Cho phép truy cập từ xa nếu có Admin Passkey hợp lệ
+  // 0. Cho phép nếu có Admin Passkey hợp lệ
   const secretKey = process.env.ADMIN_SECRET_KEY || 'tuafadmin2026';
   const providedKey = req.query.key || req.headers['x-admin-key'] || req.cookies?.admin_key;
   if (providedKey && String(providedKey).trim() === secretKey) {
@@ -63,9 +71,13 @@ function adminLocalGuard(req, res, next) {
 
   const isAllowed = isLanOrLocalIp(clientIp) || isLanOrLocalIp(req.ip);
 
-  // Chặn nếu request được forward qua tunnel public (localtunnel, ngrok...)
-  const forwardedHost = req.headers['x-forwarded-host'] || '';
-  if (forwardedHost && !isLanOrLocalIp(forwardedHost.split(':')[0])) {
+  // Chỉ chặn các tunnel lậu bên thứ 3 thật sự (localtunnel, ngrok...)
+  const forwardedHost = (req.headers['x-forwarded-host'] || '').toLowerCase();
+  const isBannedTunnel = forwardedHost.includes('loca.lt') || 
+                         forwardedHost.includes('ngrok') || 
+                         forwardedHost.includes('trycloudflare.com');
+
+  if (isBannedTunnel) {
     console.warn(`🚨 [Admin Security] Chặn truy cập từ xa qua Public Tunnel: ${forwardedHost} (IP: ${clientIp})`);
     return res.status(403).json({
       success: false,
@@ -73,7 +85,9 @@ function adminLocalGuard(req, res, next) {
     });
   }
 
-  if (!isAllowed) {
+  // Cho phép nếu client IP thuộc LAN/Localhost hoặc truy cập qua domain chính thức trường TUAF
+  const reqHost = req.headers.host || '';
+  if (!isAllowed && !isTrustedHost(forwardedHost) && !isTrustedHost(reqHost)) {
     console.warn(`🚨 [Admin Security] Chặn truy cập trái phép từ IP Internet ngoài: ${clientIp}`);
     return res.status(403).json({
       success: false,
