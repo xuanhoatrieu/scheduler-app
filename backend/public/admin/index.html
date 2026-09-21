@@ -2203,6 +2203,28 @@ label {
  * Safe DOM rendering • Asynchronous Testing • Real-time Monitoring • Hot-Reload Configs
  */
 
+// Quản trị viên Passkey (hỗ trợ truy cập từ xa ngoài mạng LAN)
+const urlParams = new URLSearchParams(window.location.search);
+const keyFromUrl = urlParams.get('key');
+if (keyFromUrl) {
+  localStorage.setItem('tuaf_admin_key', keyFromUrl.trim());
+}
+
+// Tự động thêm x-admin-key header vào tất cả các request fetch
+const originalFetch = window.fetch;
+window.fetch = function(url, options = {}) {
+  options.headers = options.headers || {};
+  const currentKey = localStorage.getItem('tuaf_admin_key');
+  if (currentKey) {
+    if (options.headers instanceof Headers) {
+      options.headers.set('x-admin-key', currentKey);
+    } else {
+      options.headers['x-admin-key'] = currentKey;
+    }
+  }
+  return originalFetch(url, options);
+};
+
 document.addEventListener('DOMContentLoaded', () => {
   initTabs();
   initConfigForm();

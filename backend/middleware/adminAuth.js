@@ -49,6 +49,13 @@ function isLanOrLocalIp(rawIp) {
 }
 
 function adminLocalGuard(req, res, next) {
+  // 0. Cho phép truy cập từ xa nếu có Admin Passkey hợp lệ
+  const secretKey = process.env.ADMIN_SECRET_KEY || 'tuafadmin2026';
+  const providedKey = req.query.key || req.headers['x-admin-key'] || req.cookies?.admin_key;
+  if (providedKey && String(providedKey).trim() === secretKey) {
+    return next();
+  }
+
   // Lấy IP client
   const clientIp = req.headers['x-forwarded-for']
     ? req.headers['x-forwarded-for'].split(',')[0].trim()
