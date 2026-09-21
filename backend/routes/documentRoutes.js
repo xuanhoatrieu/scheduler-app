@@ -110,6 +110,22 @@ router.post('/admin/create', adminLocalGuard, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Vui lòng nhập tiêu đề biểu mẫu / quy chế!' });
     }
 
+    // Chống double submit (nếu vừa tạo biểu mẫu cùng tiêu đề trong vòng 5 giây)
+    const fiveSecAgo = new Date(Date.now() - 5000);
+    const duplicate = await Document.findOne({
+      where: {
+        title: title.trim(),
+        createdAt: { [Op.gte]: fiveSecAgo }
+      }
+    });
+    if (duplicate) {
+      return res.json({
+        success: true,
+        message: 'Đã lưu biểu mẫu, quy chế thành công!',
+        data: duplicate
+      });
+    }
+
     let finalFileUrl = fileUrl || '';
     let finalFileName = fileName || 'tai-lieu.pdf';
     let finalFileSize = '0 KB';

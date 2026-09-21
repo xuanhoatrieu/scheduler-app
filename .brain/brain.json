@@ -3,16 +3,19 @@
     "name": "TUAF Scheduler",
     "description": "Hệ thống xem lịch học và lịch giảng dạy thông minh dành cho Sinh viên & Giảng viên trường Đại học Nông Lâm Thái Nguyên (TUAF). Hỗ trợ đăng nhập SSO, cào dữ liệu TKB/Điểm/Học phí/CTĐT tự động, và giao diện mobile Expo trực quan phân quyền theo vai trò.",
     "created_at": "2026-05-27T10:52:00Z",
-    "last_saved": "2026-07-23T16:46:00Z",
-    "save_count": 6
+    "last_saved": "2026-09-21T16:15:00Z",
+    "save_count": 7
   },
   "tech_stack": [
     "Node.js 20+",
     "Express.js 4",
     "React Native 0.81 / Expo SDK 54",
     "React 19.1",
-    "PostgreSQL 14 (vitts-postgres Docker)",
+    "PostgreSQL 14 (Supabase container tuaf-supabase-db)",
     "Sequelize ORM",
+    "react-native-webview",
+    "expo-file-system",
+    "expo-sharing",
     "node-cron",
     "JSON Web Token (JWT)",
     "AES-256-CBC Encryption",
@@ -22,8 +25,7 @@
     "react-native-safe-area-context",
     "expo-font",
     "@expo/vector-icons",
-    "eas-cli (Expo Application Services build)",
-    "localtunnel (tunnel development)"
+    "eas-cli (Expo Application Services build)"
   ],
   "features": [
     "Student Portal Crawler: Tự động đăng nhập và bóc tách dữ liệu Sinh viên (Lịch học, Lịch thi, Điểm, Học phí)",
@@ -33,46 +35,53 @@
     "Strategy Pattern: Tự động điều phối luồng dữ liệu Dual-Mode giữa cào trực tiếp (Crawler) và Database nội bộ (API)",
     "Cron Job Service: Tự động giải mã tài khoản và đồng bộ lúc 3:00 sáng hàng ngày",
     "Express SECURE Rest API: Securing endpoints qua JWT Bearer authentication",
-    "Expo Mobile Application: 8 màn hình đầy đủ (Login, Dashboard, Schedule, Exams, Grades, Finance, Notifications, Profile)",
+    "Expo Mobile Application: Đầy đủ các màn hình phân quyền theo vai trò (Sinh viên, Giảng viên, Thanh tra)",
     "Smart Expandable Schedule UI: Giao diện lịch học thông minh - co gọn giai đoạn đã kết thúc/chưa tới, mở rộng giai đoạn hiện tại",
     "Tabbed Notifications & School News: Phân luồng 2 Tab (Lịch cá nhân & Thông báo từ Phòng Đào tạo qua tblNews) kèm Modal Reader xem nội dung bài viết",
     "Comprehensive Tuition Finance: Hiển thị đầy đủ Mức học phí gốc, Miễn giảm 100%/Học bổng, Thực nộp, Hoàn trả khi nộp thừa, và phân loại Phiếu thu / Hoàn trả",
-    "Auto-Start Script: start.sh tự động khởi chạy Backend + Localtunnel + đồng bộ URL + Expo tunnel",
-    "Offline Caching: AsyncStorage lưu trữ offline cho session đăng nhập và dữ liệu",
-    "Login UX: Tiền tố DTN tự động cho sinh viên, input lowercase cho giảng viên",
-    "Dual Navigator: Phân luồng giao diện riêng cho GV (Lịch Dạy, Lớp Học) và SV (Lịch Học, Điểm, Học Phí) dựa trên role đăng nhập",
-    "Curriculum CTĐT: Cào khung chương trình đào tạo từ portal, merge với bảng điểm, hiển thị color-coded (4 trạng thái) + progress bar tín chỉ",
-    "Lecturer API: Danh sách lớp phụ trách GV (/api/lecturer/classes) trích xuất từ lịch dạy",
-    "Detailed Study Time: Hiển thị giờ học, tiết học trực quan và sinh động trong card môn học (cả Expand và Collapse)",
-    "Auto Force-Sync: Tự động cào và đồng bộ lịch học kỳ cũ thời gian thực từ portal trường khi chuyển tab học kỳ",
-    "Rowspan-capable Curriculum Parser: Giải thuật cào và bóc tách CTĐT rowspan chính xác 100%, cào 74 môn học chuyên ngành"
+    "Curriculum CTĐT: Cào khung chương trình đào tạo từ portal, merge với bảng điểm, hiển thị color-coded + progress bar tín chỉ",
+    "Lecturer API & Utilities: Lịch sử giảng dạy, thanh toán giờ giảng theo năm học, danh bạ lớp học phần",
+    "Academic Documents Management: Quản lý Biểu mẫu & Quy chế đào tạo trên Admin Portal (đăng tải tệp/đường dẫn, phân loại, đếm lượt tải)",
+    "In-App Document Reader: Trình đọc biểu mẫu trực tiếp trong app (WebKit native trên iOS và Google Docs Viewer nhúng trên Android) cho PDF, Word, Excel, PPT",
+    "Native Download & Sharing: Tải tệp tin về thiết bị và kích hoạt hộp thoại chia sẻ/lưu tệp hệ điều hành"
   ],
   "decisions": [
-    "Sử dụng PostgreSQL 14 (docker vitts-postgres) thay thế hoàn toàn cho MongoDB do phù hợp hạ tầng thực tế",
+    "Sử dụng PostgreSQL 14 (docker tuaf-supabase-db) kết nối qua Sequelize ORM",
     "Áp dụng cơ chế split-and-zip (splitCellByBr) để tách bóc môn học bị gộp nhiều tiết/thứ trong cùng một ô bảng thời khóa biểu",
     "Hiện thực hóa Strategy Pattern để mở rộng hệ thống sang kết nối API chính thức dễ dàng",
-    "Sử dụng lưu trữ đệm JSON động trong PostgreSQL cho bảng lịch sử biên lai hóa đơn học phí của Sinh viên",
-    "Nâng cấp Expo SDK 54 + React 19.1 + React Native 0.81 để đồng bộ với hệ sinh thái mới nhất",
-    "Dùng Localtunnel free thay vì ngrok vì hạn chế bandwidth quota",
-    "Tách giao diện mobile thành 8 màn hình riêng biệt với Bottom Tab Navigation",
-    "Dual Navigator: AppNavigator (5 tabs SV) + LecturerNavigator (4 tabs GV), dùng chung Notifications + Profile",
-    "PA1 Curriculum: Cào CTĐT từ portal (5 URL paths) + fallback dùng bảng điểm. Segment Control tích hợp vào tab Điểm",
-    "Thêm trường periodText vào Schedule model để lưu trữ tiết học cào được, phục vụ hiển thị giờ học chi tiết trên mobile",
-    "Giải thuật Rowspan Parser: Nhận biết hàng 9 cột (đầy đủ) và hàng 8 cột (khuyết do rowspan) để phân tích Khung CTĐT chính xác",
-    "Tự động Force Sync ngầm khi người dùng xem học kỳ cũ mà database chưa có dữ liệu lịch học",
-    "Phát triển Tab tin tức thông báo từ nhà trường bằng cách khai thác bảng tblNews (lọc SinhVien=1/GiaoVien=1 và Trang_thai=1)",
-    "Loại bỏ hoàn toàn logic ghi đè công nợ sai lệch trong API /finance/all để đảm bảo sinh viên miễn giảm 100% không bị coi là nợ học phí",
-    "Xây dựng tài liệu hướng dẫn build ứng dụng thử nghiệm (preview APK/IPA) và đóng gói phát hành CH Play (.aab) & App Store (.ipa) vào README.md"
+    "Tách giao diện mobile thành luồng riêng biệt cho Sinh viên, Giảng viên và Thanh tra",
+    "Tích hợp react-native-webview kết hợp Google Docs Viewer và WebKit native để đọc trực tiếp file tài liệu mà không bị tải ngầm ra trình duyệt",
+    "Cấu hình scriptSrcAttr: unsafe-inline trong Helmet CSP để bảo vệ và cho phép hoạt động an toàn của Admin Dashboard",
+    "Thêm cơ chế phòng vệ chống double-submit 5 giây trên API /documents/admin/create",
+    "Đóng gói bản phát hành thử nghiệm APK v1.0.35 (versionCode: 35) hỗ trợ In-App Document Reader"
   ],
   "infrastructure": {
-    "data_source_mode": "dual_mode",
+    "server": {
+      "ip": "10.64.11.109",
+      "user": "moodle",
+      "os": "Linux Ubuntu",
+      "domain": "scheduler.tuaf.edu.vn"
+    },
+    "database": {
+      "type": "PostgreSQL (Supabase container tuaf-supabase-db)",
+      "database_name": "scheduler",
+      "tuaf_sql_server": "10.64.12.100 (ESS_TUAF_NEW_2)"
+    },
+    "services": {
+      "backend_api": "Docker container scheduler-api (port 5000)",
+      "admin_url": "https://scheduler.tuaf.edu.vn/admin",
+      "download_url": "https://scheduler.tuaf.edu.vn/downloads"
+    },
+    "mobile": {
+      "version": "1.0.35",
+      "versionCode": 35,
+      "preview_apk": "tuaf-schedule-v1.0.35-preview.apk"
+    },
     "cron_job": "0 3 * * *",
-    "encryption": "AES-256-CBC",
-    "database": "PostgreSQL 14 (vitts-postgres Docker container)",
-    "port": 5000,
-    "tunnel": "localtunnel (free, dynamic URL per session)",
-    "expo_sdk": "54",
-    "start_script": "start.sh (auto backend + tunnel + expo)"
+    "encryption": "AES-256-CBC"
   },
-  "github": {}
+  "github": {
+    "repo_url": "https://github.com/xuanhoatrieu/scheduler-app",
+    "rules": "Always ask before commit/push"
+  }
 }
