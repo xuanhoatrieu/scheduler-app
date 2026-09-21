@@ -1201,6 +1201,11 @@ label {
           <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
           <span>Nhật ký Hoạt động</span>
         </button>
+
+        <button class="nav-item" data-tab="tab-documents">
+          <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+          <span>Biểu mẫu & Quy chế</span>
+        </button>
       </nav>
 
       <div class="sidebar-footer">
@@ -1987,6 +1992,86 @@ label {
           </div>
         </div>
       </section>
+
+      <!-- TAB 6: BIỂU MẪU & QUY CHẾ -->
+      <section id="tab-documents" class="tab-pane">
+        <div class="card glass-card mb-4">
+          <div class="card-header">
+            <div class="card-title">
+              <span class="icon">📤</span>
+              <h3>Đăng Tải Biểu Mẫu, Quy Chế Mới</h3>
+            </div>
+          </div>
+          <div class="card-body">
+            <form id="form-upload-document" onsubmit="handleUploadDocument(event)">
+              <div class="form-group mb-3">
+                <label for="doc_title" style="font-weight:600; font-size:13px; margin-bottom:6px; display:block;">Tiêu Đề Biểu Mẫu / Quy Chế <span style="color:#ef4444">*</span></label>
+                <input type="text" id="doc_title" class="form-control" placeholder="VD: Mẫu đề cương chi tiết học phần theo chuẩn đầu ra 2026" required>
+              </div>
+              <div class="form-row mb-3" style="display:flex; gap:16px;">
+                <div class="form-group col" style="flex:1;">
+                  <label for="doc_category" style="font-weight:600; font-size:13px; margin-bottom:6px; display:block;">Danh Mục Phân Loại</label>
+                  <select id="doc_category" class="form-control">
+                    <option value="daotao">Đào tạo & Kế hoạch dạy học</option>
+                    <option value="khaothi">Khảo thí & Đảm bảo chất lượng</option>
+                    <option value="bieumau">Biểu mẫu Giảng viên</option>
+                    <option value="nckh">Nghiên cứu khoa học & Dự án</option>
+                    <option value="khac">Văn bản & Quy chế khác</option>
+                  </select>
+                </div>
+                <div class="form-group col" style="flex:1;">
+                  <label for="doc_file" style="font-weight:600; font-size:13px; margin-bottom:6px; display:block;">Chọn Tệp Tin (PDF, Word, Excel)</label>
+                  <input type="file" id="doc_file" class="form-control" accept=".pdf,.doc,.docx,.xls,.xlsx">
+                </div>
+              </div>
+              <div class="form-group mb-3">
+                <label for="doc_file_url" style="font-weight:600; font-size:13px; margin-bottom:6px; display:block;">Hoặc Đường Dẫn Tài Liệu Trực Tuyến (Google Drive, Portal...)</label>
+                <input type="url" id="doc_file_url" class="form-control" placeholder="https://tuaf.edu.vn/... (nếu đã chọn tệp ở trên thì có thể để trống)">
+              </div>
+              <div class="form-group mb-3">
+                <label for="doc_desc" style="font-weight:600; font-size:13px; margin-bottom:6px; display:block;">Mô Tả / Hướng Dẫn Kèm Theo</label>
+                <textarea id="doc_desc" class="form-control" rows="2" placeholder="Ghi chú đối tượng áp dụng, hướng dẫn kê khai hoặc văn bản liên quan..."></textarea>
+              </div>
+              <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:12px;">
+                <button type="submit" id="btn-save-doc" class="btn btn-primary">
+                  <span>💾 Lưu & Xuất Bản Biểu Mẫu</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div class="card glass-card">
+          <div class="card-header">
+            <div class="card-title">
+              <span class="icon">📁</span>
+              <h3>Danh Sách Biểu Mẫu & Quy Chế Đã Ban Hành</h3>
+            </div>
+            <button type="button" onclick="loadAdminDocuments()" class="btn btn-sm btn-secondary">Làm mới</button>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive" style="overflow-x:auto;">
+              <table class="table" style="width:100%; border-collapse:collapse;" id="table-admin-documents">
+                <thead>
+                  <tr style="border-bottom:1px solid var(--border-color); text-align:left;">
+                    <th style="padding:10px;">STT</th>
+                    <th style="padding:10px;">Tên Biểu Mẫu / Quy Chế</th>
+                    <th style="padding:10px;">Danh Mục</th>
+                    <th style="padding:10px;">Loại Tệp</th>
+                    <th style="padding:10px;">Kích Thước</th>
+                    <th style="padding:10px;">Ngày Đăng</th>
+                    <th style="padding:10px;">Lượt Tải</th>
+                    <th style="padding:10px; text-align:center;">Thao Tác</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-documents">
+                  <tr><td colspan="8" class="text-center" style="padding:20px; color:var(--text-muted);">Đang tải danh sách tài liệu...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
     </main>
   </div>
 
@@ -2177,6 +2262,10 @@ function initTabs() {
     'tab-logs': {
       title: '📜 Nhật Ký Hoạt Động Thời Gian Thực',
       desc: 'Xem nhật ký các yêu cầu kết nối, kiểm thử và đồng bộ từ máy chủ backend.'
+    },
+    'tab-documents': {
+      title: '📁 Biểu Mẫu & Quy Chế Đào Tạo',
+      desc: 'Đăng tải các biểu mẫu, hướng dẫn, quy định và tài liệu dùng chung cho Giảng viên & Sinh viên.'
     }
   };
 
@@ -2200,6 +2289,8 @@ function initTabs() {
         checkAllNodes();
       } else if (target === 'tab-inspectors') {
         loadInspectors();
+      } else if (target === 'tab-documents') {
+        loadAdminDocuments();
       }
     });
   });
@@ -3929,6 +4020,132 @@ function closeModal(modalId) {
   const m = document.getElementById(modalId);
   if (m) m.classList.remove('active');
 }
+
+/* ── 9. Quản Lý Biểu Mẫu & Quy Chế ── */
+const CAT_NAMES = {
+  daotao: 'Đào tạo',
+  khaothi: 'Khảo thí',
+  bieumau: 'Biểu mẫu GV',
+  nckh: 'Nghiên cứu KH',
+  khac: 'Quy chế / Khác'
+};
+
+async function loadAdminDocuments() {
+  const tbody = document.getElementById('tbody-documents');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="8" class="text-center" style="padding:20px; color:var(--text-muted);">Đang tải danh sách tài liệu...</td></tr>';
+
+  try {
+    const res = await fetch('/api/documents/admin/all');
+    const data = await res.json();
+    if (!data.success || !data.data || data.data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" class="text-center" style="padding:20px; color:var(--text-muted);">Chưa có biểu mẫu, quy chế nào. Hãy đăng tải tài liệu đầu tiên ở trên!</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = data.data.map((doc, idx) => {
+      const dateStr = new Date(doc.createdAt).toLocaleDateString('vi-VN');
+      const catLabel = CAT_NAMES[doc.category] || doc.category;
+      return `
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+          <td style="padding:10px; font-weight:600;">${idx + 1}</td>
+          <td style="padding:10px;">
+            <div style="font-weight:700; color:#fff;">${doc.title}</div>
+            ${doc.description ? `<div style="font-size:11px; color:var(--text-muted); margin-top:2px;">${doc.description}</div>` : ''}
+          </td>
+          <td style="padding:10px;"><span style="padding:3px 8px; border-radius:6px; background:rgba(59,130,246,0.15); color:#60a5fa; font-size:11px; font-weight:600;">${catLabel}</span></td>
+          <td style="padding:10px; font-family:var(--font-mono); font-size:12px; text-transform:uppercase;">${doc.fileType || 'PDF'}</td>
+          <td style="padding:10px; font-size:12px; color:var(--text-muted);">${doc.fileSize || 'N/A'}</td>
+          <td style="padding:10px; font-size:12px; color:var(--text-muted);">${dateStr}</td>
+          <td style="padding:10px; font-size:12px; font-weight:600;">${doc.downloads || 0}</td>
+          <td style="padding:10px; text-align:center;">
+            <div style="display:flex; gap:8px; justify-content:center;">
+              <a href="${doc.fileUrl}" target="_blank" class="btn btn-sm btn-secondary" style="text-decoration:none; padding:4px 8px; font-size:11px;">Mở File</a>
+              <button onclick="confirmDeleteDocument('${doc.id}', '${doc.title.replace(/'/g, "\\'")}')" class="btn btn-sm btn-outline" style="color:#f87171; border-color:#ef4444; padding:4px 8px; font-size:11px;">Xóa</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="8" class="text-center" style="padding:20px; color:#f87171;">Lỗi tải dữ liệu: ${err.message}</td></tr>`;
+  }
+}
+
+async function handleUploadDocument(e) {
+  e.preventDefault();
+  const title = document.getElementById('doc_title').value.trim();
+  const category = document.getElementById('doc_category').value;
+  const fileUrl = document.getElementById('doc_file_url').value.trim();
+  const description = document.getElementById('doc_desc').value.trim();
+  const fileInput = document.getElementById('doc_file');
+  const btn = document.getElementById('btn-save-doc');
+
+  if (!title) {
+    showToast('error', 'Vui lòng nhập tiêu đề tài liệu');
+    return;
+  }
+
+  const payload = { title, category, description, fileUrl };
+
+  const save = async () => {
+    btn.disabled = true;
+    btn.innerText = 'Đang lưu tài liệu...';
+    try {
+      const res = await fetch('/api/documents/admin/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('success', 'Đã xuất bản biểu mẫu, quy chế thành công!');
+        document.getElementById('form-upload-document').reset();
+        loadAdminDocuments();
+      } else {
+        showToast('error', data.message || 'Không thể lưu tài liệu');
+      }
+    } catch (err) {
+      showToast('error', 'Lỗi kết nối: ' + err.message);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<span>💾 Lưu & Xuất Bản Biểu Mẫu</span>';
+    }
+  };
+
+  if (fileInput.files && fileInput.files[0]) {
+    const file = fileInput.files[0];
+    payload.fileName = file.name;
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+      payload.fileData = evt.target.result;
+      save();
+    };
+    reader.readAsDataURL(file);
+  } else {
+    if (!fileUrl) {
+      showToast('error', 'Vui lòng chọn tệp tin hoặc nhập đường dẫn tài liệu!');
+      return;
+    }
+    save();
+  }
+}
+
+window.confirmDeleteDocument = async function(id, title) {
+  if (!confirm(`Bạn có chắc chắn muốn xóa biểu mẫu / quy chế "${title}"?`)) return;
+  try {
+    const res = await fetch(`/api/documents/admin/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.success) {
+      showToast('success', 'Đã xóa tài liệu thành công!');
+      loadAdminDocuments();
+    } else {
+      showToast('error', data.message || 'Không thể xóa');
+    }
+  } catch (err) {
+    showToast('error', 'Lỗi: ' + err.message);
+  }
+};
 </script>
 </body>
 </html>

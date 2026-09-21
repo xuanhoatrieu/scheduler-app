@@ -1710,6 +1710,401 @@ async function getStudentCurriculumSummary(pool, idSv) {
   }
 }
 
+/**
+ * Lấy dữ liệu thanh toán giờ giảng / duyệt tiền giảng của giảng viên
+ * Ưu tiên: bảng TG_Sukien_TC_DuyetTienGiang (dữ liệu chính thức từ cổng giangvien.tuaf.edu.vn)
+ * Fallback: nếu chưa có quyết toán đợt duyệt, tính toán ước tính theo TKB thực tế
+ */
+async function getLecturerTeachingPayment(pool, idCb, hocKy, namHoc) {
+  try {
+    const inputs = [
+      { name: 'idCb', type: sql.NVarChar(100), value: String(idCb) }
+    ];
+
+    let whereClause = 'tg.ID_cb = @idCb';
+    if (hocKy) {
+      inputs.push({ name: 'hocKy', type: sql.Int, value: parseInt(hocKy, 10) });
+      whereClause += ' AND tg.Hoc_ky = @hocKy';
+    }
+    if (namHoc) {
+      inputs.push({ name: 'namHocPattern', type: sql.NVarChar(50), value: `%${namHoc}%` });
+      whereClause += ' AND tg.Nam_hoc LIKE @namHocPattern';
+    }
+
+    const officialQuery = `
+      SELECT 
+        tg.ID,
+        tg.ID_lop_tc,
+        tg.ID_cb,
+        COALESCE(tg.Ten_mon, mh.Ten_mon, ltc.Ten_lop_hp) AS Ten_mon,
+        COALESCE(tg.Ma_lop_hp, ltc.Ten_lop_hp, mh.Ky_hieu) AS Ma_lop_hp,
+        COALESCE(tg.So_tin_chi, mtc.So_tin_chi, 0) AS So_tin_chi,
+        COALESCE(tg.So_sv, 0) AS So_sv,
+        COALESCE(tg.Tong_tiet_da_xep_lich, 0) AS Tong_tiet_da_xep_lich,
+        COALESCE(tg.So_gio_quy_doi, tg.Tong_tiet_da_xep_lich, 0) AS So_gio_quy_doi,
+        ISNULL(tg.hesolopdong, 1) AS hesolopdong,
+        ISNULL(tg.hesoChucDanh, 1) AS hesoChucDanh,
+        ISNULL(tg.hesoTH, 1) AS hesoTH,
+        ISNULL(tg.hesoCLC, 1) AS hesoCLC,
+        ISNULL(tg.hesoDuongXa, 1) AS hesoDuongXa,
+        ISNULL(tg.hesoKhacLT, 1) AS hesoKhacLT,
+        ISNULL(tg.hesoKhacTH, 1) AS hesoKhacTH,
+        tg.CheckDuyet,
+        tg.Date_duyet,
+        tg.CheckDuyetKhoa,
+        tg.Date_duyetKhoa,
+        tg.CheckDuyetBM,
+        tg.Date_duyetBM,
+        tg.CB_xac_nhan,
+        tg.Date_CB_xac_nhan,
+        tg.Ghi_chu,
+        tg.BoMon_phanhoi,
+        tg.Khoa_phanhoi,
+        tg.DaoTao_phanhoi,
+        tg.Hoc_ky,
+        tg.Nam_hoc,
+        1 AS isOfficial
+      FROM TG_Sukien_TC_DuyetTienGiang tg
+      LEFT JOIN PLAN_LopTinChi_TC ltc ON tg.ID_lop_tc = ltc.ID_lop_tc
+      LEFT JOIN PLAN_MonTinChi_TC mtc ON ltc.ID_mon_tc = mtc.ID_mon_tc
+      LEFT JOIN dmMonHoc mh ON mtc.ID_mon = mh.ID_mon
+      WHERE ${whereClause}
+      ORDER BY tg.Hoc_ky DESC, tg.ID_lop_tc`;
+
+    const officialRes = await safeQuery(pool, officialQuery, inputs, { username: 'lecturer-teaching-payment' });
+
+    if (officialRes.recordset && officialRes.recordset.length > 0) {
+      return officialRes.recordset;
+    }
+
+    // Fallback: Nếu kỳ này chưa có quyết toán trong TG_Sukien_TC_DuyetTienGiang, thống kê từ TKB thực tế
+    const fallbackInputs = [
+      { name: 'idCb', type: sql.NVarChar(100), value: String(idCb) }
+    ];
+    let fallbackWhere = 'COALESCE(sk.ID_cb, ltc.ID_cb) = @idCb AND ISNULL(ltc.Huy_lop, 0) = 0';
+    if (hocKy && namHoc) {
+      const kyDangKys = await findAllKyDangKy(pool, hocKy, namHoc, 'ALL');
+      if (kyDangKys.length > 0) {
+        fallbackWhere += ` AND mtc.Ky_dang_ky IN (${kyDangKys.join(',')})`;
+      }
+    }
+
+    const fallbackQuery = `
+      SELECT 
+        ltc.ID_lop_tc,
+        @idCb AS ID_cb,
+        mh.Ten_mon,
+        ltc.Ten_lop_hp AS Ma_lop_hp,
+        ISNULL(mtc.So_tin_chi, 0) AS So_tin_chi,
+        (SELECT COUNT(DISTINCT ds.ID_sv) FROM STU_DanhSachLopTinChi ds WHERE ds.ID_lop_tc = ltc.ID_lop_tc AND ISNULL(ds.Huy_dang_ky, 0) = 0) AS So_sv,
+        SUM(ISNULL(sk.So_tiet, 0)) AS Tong_tiet_da_xep_lich,
+        SUM(ISNULL(sk.So_tiet, 0)) AS So_gio_quy_doi,
+        1 AS hesolopdong,
+        1 AS hesoChucDanh,
+        1 AS hesoTH,
+        1 AS hesoCLC,
+        1 AS hesoDuongXa,
+        1 AS hesoKhacLT,
+        1 AS hesoKhacTH,
+        0 AS CheckDuyet,
+        NULL AS Date_duyet,
+        0 AS CheckDuyetKhoa,
+        NULL AS Date_duyetKhoa,
+        0 AS CheckDuyetBM,
+        NULL AS Date_duyetBM,
+        0 AS CB_xac_nhan,
+        NULL AS Date_CB_xac_nhan,
+        N'Ước tính theo thời khóa biểu thực tế (Chưa có quyết toán đợt duyệt từ Phòng Đào tạo)' AS Ghi_chu,
+        NULL AS BoMon_phanhoi,
+        NULL AS Khoa_phanhoi,
+        NULL AS DaoTao_phanhoi,
+        ${hocKy ? parseInt(hocKy, 10) : 1} AS Hoc_ky,
+        '${namHoc || ''}' AS Nam_hoc,
+        0 AS isOfficial
+      FROM PLAN_LopTinChi_TC ltc
+      JOIN PLAN_SukiensTinChi_TC sk ON sk.ID_lop_tc = ltc.ID_lop_tc
+      JOIN PLAN_MonTinChi_TC mtc ON ltc.ID_mon_tc = mtc.ID_mon_tc
+      JOIN dmMonHoc mh ON mtc.ID_mon = mh.ID_mon
+      WHERE ${fallbackWhere}
+      GROUP BY ltc.ID_lop_tc, mh.Ten_mon, ltc.Ten_lop_hp, mtc.So_tin_chi
+      ORDER BY mh.Ten_mon`;
+
+    const fallbackRes = await safeQuery(pool, fallbackQuery, fallbackInputs, { username: 'lecturer-payment-estimate' });
+    return fallbackRes.recordset || [];
+  } catch (e) {
+    console.error('❌ [tuafQueries] getLecturerTeachingPayment error:', e.message);
+    return [];
+  }
+}
+
+/**
+ * Lấy toàn bộ tổng hợp thanh toán giảng dạy theo Năm học (gồm HK1, HK2, Công việc khác & Quyết toán)
+ * Tích hợp trực tiếp 3 Stored Procedures chính thức của cổng Giảng viên TUAF
+ */
+async function getLecturerYearlyTeachingSummary(pool, idCb, schoolYear = '2025-2026') {
+  try {
+    const formattedId = String(idCb).trim();
+
+    // 1. Lấy dữ liệu tổng hợp vượt giờ / quyết toán năm từ p_KLGD_TongHopVuotGio_Get
+    let tongHopRow = null;
+    try {
+      const thReq = pool.request()
+        .input('IdCanBo', sql.NVarChar(50), formattedId)
+        .input('NamHoc', sql.NVarChar(50), schoolYear)
+        .input('IdDonVi', sql.Int, null)
+        .input('Start', sql.Int, 0)
+        .input('Length', sql.Int, 10)
+        .output('recordsTotal', sql.Int, 0);
+      const thRes = await thReq.execute('p_KLGD_TongHopVuotGio_Get');
+      if (thRes.recordset && thRes.recordset.length > 0) {
+        tongHopRow = thRes.recordset[0];
+      }
+    } catch (errTh) {
+      console.warn('⚠️ [tuafQueries] p_KLGD_TongHopVuotGio_Get error:', errTh.message);
+    }
+
+    // 2. Lấy chi tiết các lớp học phần giảng dạy trong năm từ p_KLGD_ThongTinGioGiang_Get
+    let rawClasses = [];
+    try {
+      const teachReq = pool.request()
+        .input('HocKy', sql.Int, 0) // 0: Lấy cả HK1 và HK2
+        .input('NamHoc', sql.NVarChar(50), schoolYear)
+        .input('DotHoc', sql.Int, 0)
+        .input('IdCanBo', sql.NVarChar(50), formattedId)
+        .input('IdHe', sql.Int, null)
+        .input('Start', sql.Int, 0)
+        .input('Length', sql.Int, 200)
+        .output('recordsTotal', sql.Int, 0);
+      const teachRes = await teachReq.execute('p_KLGD_ThongTinGioGiang_Get');
+      if (teachRes.recordset && teachRes.recordset.length > 0) {
+        rawClasses = teachRes.recordset;
+      }
+    } catch (errTeach) {
+      console.warn('⚠️ [tuafQueries] p_KLGD_ThongTinGioGiang_Get error:', errTeach.message);
+    }
+
+    // 3. Lấy chi tiết công việc khác từ p_KLGD_DuyetCongViecKhac_Get
+    let rawOtherTasks = [];
+    try {
+      const cvkReq = pool.request()
+        .input('IdCanBo', sql.NVarChar(50), formattedId)
+        .input('HocKy', sql.Int, 0)
+        .input('NamHoc', sql.NVarChar(50), schoolYear)
+        .input('TenCV', sql.NVarChar(50), null)
+        .input('LoaiCV', sql.NVarChar(50), null)
+        .input('Start', sql.Int, 0)
+        .input('Length', sql.Int, 100)
+        .output('recordsTotal', sql.Int, 0);
+      const cvkRes = await cvkReq.execute('p_KLGD_DuyetCongViecKhac_Get');
+      if (cvkRes.recordset && cvkRes.recordset.length > 0) {
+        rawOtherTasks = cvkRes.recordset;
+      }
+    } catch (errCvk) {
+      console.warn('⚠️ [tuafQueries] p_KLGD_DuyetCongViecKhac_Get error:', errCvk.message);
+    }
+
+    // Nếu chưa có lớp trong bảng duyệt chính thức của năm đó, kích hoạt Fallback từ TKB
+    let isOfficial = true;
+    if (rawClasses.length === 0) {
+      isOfficial = false;
+      const hk1ClassesFallback = await getLecturerTeachingPayment(pool, formattedId, 1, schoolYear);
+      const hk2ClassesFallback = await getLecturerTeachingPayment(pool, formattedId, 2, schoolYear);
+      rawClasses = [
+        ...hk1ClassesFallback.map(c => ({
+          IdLopTC: c.ID_lop_tc,
+          KyHieu: c.Ma_lop_hp,
+          TenLop: c.Ten_mon,
+          TenLopHP: c.Ma_lop_hp,
+          HocKy: 1,
+          NamHoc: schoolYear,
+          SoTinChi: c.So_tin_chi,
+          SoSinhVien: c.So_sv,
+          TongTietDaXepLich: c.Tong_tiet_da_xep_lich,
+          SoGioQuyDoi: c.So_gio_quy_doi,
+          HeSoSiSo: c.hesolopdong || 1,
+          Level: c.CheckDuyet ? 3 : 0,
+          LoaiLop: 'Lý thuyết'
+        })),
+        ...hk2ClassesFallback.map(c => ({
+          IdLopTC: c.ID_lop_tc,
+          KyHieu: c.Ma_lop_hp,
+          TenLop: c.Ten_mon,
+          TenLopHP: c.Ma_lop_hp,
+          HocKy: 2,
+          NamHoc: schoolYear,
+          SoTinChi: c.So_tin_chi,
+          SoSinhVien: c.So_sv,
+          TongTietDaXepLich: c.Tong_tiet_da_xep_lich,
+          SoGioQuyDoi: c.So_gio_quy_doi,
+          HeSoSiSo: c.hesolopdong || 1,
+          Level: c.CheckDuyet ? 3 : 0,
+          LoaiLop: 'Lý thuyết'
+        }))
+      ];
+    }
+
+    // Chuẩn hóa danh sách lớp học phần
+    const formatClassItem = (c) => {
+      const level = Number(c.Level) || 0;
+      let statusText = 'Chưa duyệt';
+      if (level >= 3) statusText = 'Đào tạo đã duyệt';
+      else if (level === 2) statusText = 'Khoa đã duyệt';
+      else if (level === 1) statusText = 'Bộ môn đã duyệt';
+
+      return {
+        id: c.ID || c.IdLopTC || Math.random().toString(),
+        idLopTc: c.IdLopTC,
+        courseCode: c.KyHieu || '',
+        courseName: c.TenLop || c.TenMon || 'Học phần',
+        classCode: c.TenLopHP || c.TenLop || '',
+        credits: Number(c.SoTinChi) || 0,
+        studentCount: Number(c.SoSinhVien) || 0,
+        scheduledPeriods: Number(c.TongTietDaXepLich) || Number(c.TongTietDaXepLG) || 0,
+        convertedHours: Number(c.SoGioQuyDoi) || 0,
+        classCoefficient: Number(c.HeSoSiSo) || 1,
+        courseCoefficient: Number(c.He_so_mon) || 1,
+        educationType: c.TenHe || '',
+        classType: c.LoaiLop || 'Lý thuyết',
+        semester: Number(c.HocKy) || 1,
+        schoolYear: c.NamHoc || schoolYear,
+        approvalLevel: level,
+        approvalStatusText: statusText,
+        feedback: c.NoiDung || null
+      };
+    };
+
+    const formattedClasses = rawClasses.map(formatClassItem);
+
+    // Tách bạch theo Học kỳ 1 và Học kỳ 2
+    const semester1Classes = formattedClasses.filter(c => c.semester === 1);
+    const semester2Classes = formattedClasses.filter(c => c.semester === 2);
+    const otherSemesterClasses = formattedClasses.filter(c => c.semester !== 1 && c.semester !== 2);
+
+    const calcGroupSummary = (arr) => ({
+      totalClasses: arr.length,
+      totalCredits: arr.reduce((sum, item) => sum + item.credits, 0),
+      totalPeriods: Math.round(arr.reduce((sum, item) => sum + item.scheduledPeriods, 0) * 10) / 10,
+      totalConvertedHours: Math.round(arr.reduce((sum, item) => sum + item.convertedHours, 0) * 100) / 100
+    });
+
+    const summaryHK1 = calcGroupSummary(semester1Classes);
+    const summaryHK2 = calcGroupSummary(semester2Classes);
+
+    // Chuẩn hóa công việc khác
+    const formattedOtherTasks = rawOtherTasks.map((t) => {
+      const level = Number(t.Level) || 0;
+      return {
+        id: t.Id || Math.random().toString(),
+        taskName: t.TenCongViec || 'Công việc chuyên môn',
+        taskType: t.LoaiCongViec || 'Hoạt động đào tạo',
+        semester: Number(t.HocKy) || 1,
+        schoolYear: t.NamHoc || schoolYear,
+        studentCount: Number(t.SoSinhVien) || 0,
+        unit: t.DonViTinh || 'Giờ',
+        baseHours: Math.round((Number(t.GioGoc) || 0) * 100) / 100,
+        coefficient: Number(t.HeSo) || 1,
+        convertedHours: Math.round((Number(t.GioQuyDoi) || 0) * 100) / 100,
+        approvalLevel: level,
+        approvalStatusText: level >= 2 ? 'Đã duyệt' : 'Chờ duyệt',
+        createdDate: t.strCreatedDate || ''
+      };
+    });
+
+    // 4. Xây dựng Bảng Quyết Toán Năm Học (Cộng trừ tất cả để ra con số cuối cùng)
+    const totalTeachingHours = Math.round((summaryHK1.totalConvertedHours + summaryHK2.totalConvertedHours + 
+      otherSemesterClasses.reduce((s, c) => s + c.convertedHours, 0)) * 100) / 100;
+    const totalOtherTaskHours = Math.round(formattedOtherTasks.reduce((s, t) => s + t.convertedHours, 0) * 100) / 100;
+
+    let standardHours = 300;
+    let exemptHours = 0;
+    let exemptPositionHours = 0;
+    let exemptMaternityHours = 0;
+    let homeroomHours = 0;
+    let excessHours = 0;
+    let unitPrice = 50000;
+    let lecturerTitle = '';
+    let academicDegree = '';
+    let position = '';
+    let department = '';
+
+    if (tongHopRow) {
+      standardHours = Number(tongHopRow.GioGDChuan) || 300;
+      exemptPositionHours = Number(tongHopRow.SoGioGiamChucVu) || 0;
+      exemptMaternityHours = Number(tongHopRow.GioThaiSan) || 0;
+      homeroomHours = Number(tongHopRow.GioGVCN) || 0;
+      exemptHours = Number(tongHopRow.SoGioDuocGiam) || (exemptPositionHours + exemptMaternityHours + homeroomHours);
+      excessHours = Number(tongHopRow.SoGioVuot) || 0;
+      unitPrice = Number(tongHopRow.DonGia || tongHopRow.DonGiaDaoTao) || 50000;
+      lecturerTitle = tongHopRow.ChucDanh || '';
+      academicDegree = tongHopRow.TrinhDo || '';
+      position = tongHopRow.ChucVu || '';
+      department = tongHopRow.TenDonVi || tongHopRow.Ten_khoa || '';
+    } else {
+      // Tính toán công thức chuẩn: (Tổng dạy + CV khác) - (Định mức chuẩn - Miễn giảm)
+      excessHours = Math.round(((totalTeachingHours + totalOtherTaskHours) - (standardHours - exemptHours)) * 100) / 100;
+    }
+
+    const totalPerformedHours = Math.round((totalTeachingHours + totalOtherTaskHours) * 100) / 100;
+    const requiredHoursAfterExempt = Math.max(0, Math.round((standardHours - exemptHours) * 100) / 100);
+    const estimatedAmount = Math.max(0, Math.round(excessHours * unitPrice));
+
+    const finalSummary = {
+      schoolYear,
+      isOfficial: isOfficial && (tongHopRow !== null),
+      lecturer: {
+        name: tongHopRow ? tongHopRow.HoTen : '',
+        code: tongHopRow ? tongHopRow.MaCB : '',
+        title: lecturerTitle,
+        degree: academicDegree,
+        position,
+        department
+      },
+      // Các chỉ số quyết toán tài chính (cộng trừ để ra con số cuối cùng)
+      settlement: {
+        standardHours,              // Định mức giờ giảng chuẩn (A)
+        exemptHours,                // Số giờ được miễn giảm (B)
+        exemptBreakdown: {
+          position: exemptPositionHours,
+          maternity: exemptMaternityHours,
+          homeroom: homeroomHours
+        },
+        requiredHoursAfterExempt,   // Định mức phải thực hiện sau giảm (A - B)
+        totalTeachingHours,         // Khối lượng giờ giảng dạy thực hiện (C = HK1 + HK2)
+        totalOtherTaskHours,        // Khối lượng giờ công việc khác thực hiện (D)
+        totalPerformedHours,        // Tổng giờ thực hiện cả năm (E = C + D)
+        excessHours,                // Số giờ vượt định mức đề nghị thanh toán (F = E - (A - B))
+        unitPrice,                  // Đơn giá thù lao (VNĐ/giờ)
+        estimatedAmount,            // Thành tiền dự kiến (F * đơn giá)
+        canPayment: excessHours > 0
+      }
+    };
+
+    return {
+      schoolYear,
+      summary: finalSummary,
+      teaching: {
+        semester1: {
+          summary: summaryHK1,
+          classes: semester1Classes
+        },
+        semester2: {
+          summary: summaryHK2,
+          classes: semester2Classes
+        },
+        otherSemesters: otherSemesterClasses
+      },
+      otherTasks: {
+        totalTasks: formattedOtherTasks.length,
+        totalConvertedHours: totalOtherTaskHours,
+        tasks: formattedOtherTasks
+      }
+    };
+  } catch (err) {
+    console.error('❌ [tuafQueries] getLecturerYearlyTeachingSummary error:', err.message);
+    throw err;
+  }
+}
+
 module.exports = {
   findStudentId,
   getStudentInfo,
@@ -1731,6 +2126,8 @@ module.exports = {
   getStudentCurriculumSummary,
   getLecturerSchedule,
   getLecturerExams,
+  getLecturerTeachingPayment,
+  getLecturerYearlyTeachingSummary,
   getStudentSurveyedCourses,
   getExemptCourseIds,
   isSurveyActive,

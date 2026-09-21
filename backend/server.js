@@ -16,6 +16,7 @@ const lecturerRoutes = require('./routes/lecturer');
 const inspectorRoutes = require('./routes/inspector');
 const newsRoutes = require('./routes/news');
 const adminRoutes = require('./routes/adminRoutes');
+const documentRoutes = require('./routes/documentRoutes');
 const { adminLocalGuard } = require('./middleware/adminAuth');
 
 const app = express();
@@ -120,6 +121,7 @@ app.use('/api', scheduleRoutes);
 app.use('/api/news', newsRoutes);
 app.use('/api/lecturer', lecturerRoutes);
 app.use('/api/inspector', inspectorRoutes);
+app.use('/api/documents', documentRoutes);
 
 // Health Check Route for Docker & Caddy
 app.get('/health', (req, res) => {

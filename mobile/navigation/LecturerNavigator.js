@@ -9,17 +9,45 @@ import ProfileScreen from '../screens/ProfileScreen';
 import ClassListScreen from '../screens/lecturer/ClassListScreen';
 import HomeroomScreen from '../screens/lecturer/HomeroomScreen';
 import TeachingScheduleScreen from '../screens/lecturer/TeachingScheduleScreen';
+import LecturerUtilitiesScreen from '../screens/lecturer/LecturerUtilitiesScreen';
+import TeachingPaymentScreen from '../screens/lecturer/TeachingPaymentScreen';
+import InspectorFeedbackScreen from '../screens/lecturer/InspectorFeedbackScreen';
+import AcademicDocumentsScreen from '../screens/lecturer/AcademicDocumentsScreen';
 import { Colors } from '../theme/colors';
 
 const Tab = createBottomTabNavigator();
 
 const TAB_ICONS = {
   TeachingSchedule: { active: 'calendar', inactive: 'calendar-outline' },
-  ClassList: { active: 'people', inactive: 'people-outline' },
+  Utilities: { active: 'apps', inactive: 'apps-outline' },
   Homeroom: { active: 'school', inactive: 'school-outline' },
   Notifications: { active: 'notifications', inactive: 'notifications-outline' },
   Profile: { active: 'person-circle', inactive: 'person-circle-outline' },
 };
+
+function UtilitiesTab({ user }) {
+  const [currentScreen, setCurrentScreen] = React.useState('hub');
+
+  if (currentScreen === 'TeachingHistory') {
+    return <ClassListScreen user={user} onBack={() => setCurrentScreen('hub')} />;
+  }
+  if (currentScreen === 'TeachingPayment') {
+    return <TeachingPaymentScreen onBack={() => setCurrentScreen('hub')} />;
+  }
+  if (currentScreen === 'InspectorFeedback') {
+    return <InspectorFeedbackScreen onBack={() => setCurrentScreen('hub')} />;
+  }
+  if (currentScreen === 'AcademicDocuments') {
+    return <AcademicDocumentsScreen onBack={() => setCurrentScreen('hub')} />;
+  }
+
+  return (
+    <LecturerUtilitiesScreen
+      user={user}
+      onNavigate={(screen) => setCurrentScreen(screen)}
+    />
+  );
+}
 
 export default function LecturerNavigator({ user, onLogout, onSwitchRole }) {
   const insets = useSafeAreaInsets();
@@ -62,10 +90,10 @@ export default function LecturerNavigator({ user, onLogout, onSwitchRole }) {
           {(props) => <TeachingScheduleScreen {...props} user={user} onSwitchRole={onSwitchRole} />}
         </Tab.Screen>
         <Tab.Screen
-          name="ClassList"
-          options={{ tabBarLabel: 'Lớp Học' }}
+          name="Utilities"
+          options={{ tabBarLabel: 'Tiện ích' }}
         >
-          {(props) => <ClassListScreen {...props} user={user} />}
+          {(props) => <UtilitiesTab {...props} user={user} />}
         </Tab.Screen>
         <Tab.Screen
           name="Homeroom"

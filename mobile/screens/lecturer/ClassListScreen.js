@@ -14,7 +14,7 @@ import {
 import { getClassStudents, getLecturerClasses } from '../../services/api';
 import { Colors } from '../../theme/colors';
 
-export default function ClassListScreen({ user }) {
+export default function ClassListScreen({ user, navigation, onBack }) {
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -75,9 +75,19 @@ export default function ClassListScreen({ user }) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>Lớp Học</Text>
-          <Text style={styles.headerSubtitle}>Các lớp đang phụ trách</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+          {(Boolean(onBack) || Boolean(navigation?.canGoBack?.())) && (
+            <TouchableOpacity
+              style={styles.backBtn}
+              onPress={() => { if (onBack) onBack(); else if (navigation?.goBack) navigation.goBack(); }}
+            >
+              <Ionicons name="arrow-back" size={22} color={Colors.textPrimary} />
+            </TouchableOpacity>
+          )}
+          <View style={{ marginLeft: (Boolean(onBack) || Boolean(navigation?.canGoBack?.())) ? 12 : 0, flex: 1 }}>
+            <Text style={styles.headerTitle}>Lịch Sử Giảng Dạy</Text>
+            <Text style={styles.headerSubtitle}>Danh mục lớp học phần & sĩ số sinh viên</Text>
+          </View>
         </View>
         <View style={styles.countBadge}>
           <Text style={styles.countText}>{classes.length}</Text>
@@ -223,10 +233,22 @@ const styles = StyleSheet.create({
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   loadingText: { marginTop: 12, color: Colors.textSecondary, fontSize: 14 },
   header: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 20, paddingTop: 16, paddingBottom: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     backgroundColor: Colors.surface,
-    borderBottomWidth: 1, borderBottomColor: Colors.borderLight,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderLight,
+  },
+  backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary },
   headerSubtitle: { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },

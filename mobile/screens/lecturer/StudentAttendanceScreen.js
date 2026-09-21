@@ -24,6 +24,9 @@ const STATUS_CONFIG = {
   late: { label: 'Muộn', color: '#e65100', bg: '#fff3e0', border: '#ffcc80' },
 };
 
+// Cờ điều khiển hiển thị nút Lưu điểm danh (tạm ẩn khi chưa chính thức vận hành tính năng này)
+const SHOW_SAVE_BUTTON = false;
+
 export default function StudentAttendanceScreen({ route, navigation, schedule, targetDate, onClose }) {
   const insets = useSafeAreaInsets();
   // Can be opened as a modal or navigation screen
@@ -236,7 +239,10 @@ export default function StudentAttendanceScreen({ route, navigation, schedule, t
           <FlatList
             data={filteredStudents}
             keyExtractor={item => item.studentCode}
-            contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 110 + insets.bottom }}
+            contentContainerStyle={{
+              paddingHorizontal: 16,
+              paddingBottom: (SHOW_SAVE_BUTTON ? 110 : 24) + insets.bottom,
+            }}
             renderItem={({ item, index }) => {
               const hasNote = Boolean(item.note);
               const isNoteOpen = activeNoteIdx === item.studentCode;
@@ -314,23 +320,25 @@ export default function StudentAttendanceScreen({ route, navigation, schedule, t
           />
         )}
 
-        {/* BOTTOM SAVE BAR */}
-        <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 12) + 8 }]}>
-          <TouchableOpacity
-            style={[styles.saveBtn, submitting && { opacity: 0.7 }]}
-            onPress={handleSave}
-            disabled={submitting}
-          >
-            {submitting ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <>
-                <Ionicons name="save-outline" size={20} color="#fff" />
-                <Text style={styles.saveBtnText}>Lưu Điểm Danh ({students.length} SV)</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
+        {/* BOTTOM SAVE BAR (Tạm ẩn khi chưa chính thức vận hành tính năng lưu điểm danh) */}
+        {SHOW_SAVE_BUTTON && (
+          <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 12) + 8 }]}>
+            <TouchableOpacity
+              style={[styles.saveBtn, submitting && { opacity: 0.7 }]}
+              onPress={handleSave}
+              disabled={submitting}
+            >
+              {submitting ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="save-outline" size={20} color="#fff" />
+                  <Text style={styles.saveBtnText}>Lưu Điểm Danh ({students.length} SV)</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

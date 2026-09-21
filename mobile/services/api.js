@@ -508,6 +508,54 @@ export const sendInspectorEmailReport = async (payload) => {
 };
 
 /**
+ * Lấy dữ liệu thanh toán giờ giảng / duyệt tiền giảng của Giảng viên
+ */
+export const getTeachingPayment = async (params = {}) => {
+  try {
+    const response = await api.get('/lecturer/teaching-payment', { params });
+    return response.data;
+  } catch (error) {
+    return { success: false, message: error.response?.data?.message || 'Không thể tải thanh toán giờ giảng!' };
+  }
+};
+
+/**
+ * Lấy nhật ký các buổi học bị Thanh tra ghi nhận lỗi của Giảng viên
+ */
+export const getInspectorLogs = async (params = {}) => {
+  try {
+    const response = await api.get('/lecturer/inspector-logs', { params });
+    return response.data;
+  } catch (error) {
+    return { success: false, message: error.response?.data?.message || 'Không thể tải phản hồi thanh tra!' };
+  }
+};
+
+/**
+ * Gửi giải trình cho sự kiện thanh tra
+ */
+export const submitInspectorExplanation = async (id, data) => {
+  try {
+    const response = await api.post(`/lecturer/inspector-logs/${id}/explanation`, data);
+    return response.data;
+  } catch (error) {
+    return { success: false, message: error.response?.data?.message || 'Không thể gửi giải trình!' };
+  }
+};
+
+/**
+ * Lấy danh sách biểu mẫu, quy chế nhà trường
+ */
+export const getAcademicDocuments = async (params = {}) => {
+  try {
+    const response = await api.get('/documents', { params });
+    return response.data;
+  } catch (error) {
+    return { success: false, message: error.response?.data?.message || 'Không thể tải danh sách biểu mẫu quy chế!' };
+  }
+};
+
+/**
  * Kiểm tra token JWT hiện tại với backend và đồng bộ lại thông tin user mới nhất
  */
 export const checkCurrentUser = async () => {

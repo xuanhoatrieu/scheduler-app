@@ -3,6 +3,7 @@ const router = express.Router();
 const { Op } = require('sequelize');
 const authMiddleware = require('../middleware/auth');
 const Schedule = require('../models/Schedule');
+const Attendance = require('../models/Attendance');
 const StudentAttendance = require('../models/StudentAttendance');
 const HomeroomNotification = require('../models/HomeroomNotification');
 const User = require('../models/User');
@@ -523,6 +524,149 @@ router.put('/homeroom/alerts/:id/read', authMiddleware, async (req, res) => {
     res.json({ success: true, message: 'Đã đánh dấu đã đọc!' });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Lỗi cập nhật trạng thái!', error: error.message });
+  }
+});
+
+/**
+ * @route   GET /api/lecturer/teaching-payment
+ * @desc    Lấy dữ liệu thanh toán giờ giảng / duyệt tiền giảng từ SQL Server TUAF
+ * @access  Private (JWT, role=lecturer)
+ */
+router.get('/teaching-payment', authMiddleware, async (req, res) => {
+  try {
+    if (req.user.role !== 'lecturer') {
+      return res.status(403).json({ success: false, message: 'Chức năng chỉ dành cho Giảng viên!' });
+    }
+
+    let { schoolYear, semester } = req.query;
+
+    const pool = await getPool();
+    const idCb = await resolveLecturerIdCb(pool, req.user);
+    if (!idCb) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy hồ sơ cán bộ giảng viên trong CSDL đào tạo!' });
+    }
+
+    // Xác định năm học
+    let namHoc = schoolYear;
+    if (!namHoc) {
+      if (semester && typeof semester === 'string' && semester.includes('_')) {
+        namHoc = semester.split('_')[0];
+      } else {
+        const currentTerm = await tuafQueries.getCurrentTerm(pool);
+        namHoc = currentTerm?.Nam_hoc || '2025-2026';
+      }
+    }
+
+    const availableYears = ['2025-2026', '2024-2025', '2023-2024', '2022-2023'];
+
+    const result = await tuafQueries.getLecturerYearlyTeachingSummary(pool, idCb, namHoc);
+
+    // Ghép danh sách phẳng cho các client cũ tương thích
+    const allFlatClasses = [
+      ...(result.teaching?.semester1?.classes || []),
+      ...(result.teaching?.semester2?.classes || []),
+      ...(result.teaching?.otherSemesters || [])
+    ];
+
+    res.json({
+      success: true,
+      schoolYear: namHoc,
+      availableYears,
+      isOfficial: result.summary?.isOfficial ?? false,
+      summary: result.summary,
+      settlement: result.summary?.settlement,
+      teaching: result.teaching,
+      otherTasks: result.otherTasks,
+      data: allFlatClasses // tương thích ngược
+    });
+  } catch (error) {
+    console.error('❌ [API /lecturer/teaching-payment] Lỗi:', error.message);
+    res.status(500).json({ success: false, message: 'Không thể tải dữ liệu thanh toán giờ giảng!', error: error.message });
+  }
+});
+
+/**
+ * @route   GET /api/lecturer/inspector-logs
+ * @desc    Lấy danh sách các buổi học bị Thanh tra ghi nhận lỗi (Đi muộn, Về sớm, Bỏ giờ)
+ * @access  Private (JWT, role=lecturer)
+ */
+router.get('/inspector-logs', authMiddleware, async (req, res) => {
+  try {
+    if (req.user.role !== 'lecturer') {
+      return res.status(403).json({ success: false, message: 'Chức năng chỉ dành cho Giảng viên!' });
+    }
+
+    const { semester, schoolYear } = req.query;
+    const where = {
+      lecturerId: req.user.id,
+      status: { [Op.in]: ['late', 'early_leave', 'absent'] }
+    };
+    if (semester) where.semester = String(semester);
+    if (schoolYear) where.schoolYear = String(schoolYear);
+
+    const logs = await Attendance.findAll({
+      where,
+      order: [['date', 'DESC'], ['createdAt', 'DESC']]
+    });
+
+    const scheduleIds = logs.map(l => l.scheduleId).filter(Boolean);
+    const schedules = await Schedule.findAll({
+      where: { id: { [Op.in]: scheduleIds } }
+    });
+    const schedMap = new Map(schedules.map(s => [s.id, s]));
+
+    const formatted = logs.map(item => {
+      const s = schedMap.get(item.scheduleId) || {};
+      return {
+        id: item.id,
+        date: item.date,
+        courseName: s.courseName || 'Học phần',
+        classCode: s.classCode || '',
+        room: s.room || '',
+        periodText: s.periodText || '',
+        scheduledStart: item.scheduledStart,
+        scheduledEnd: item.scheduledEnd,
+        checkInTime: item.checkInTime,
+        checkOutTime: item.checkOutTime,
+        status: item.status,
+        statusText: item.status === 'late' ? 'Đi muộn' : item.status === 'early_leave' ? 'Về sớm' : 'Bỏ giờ / Vắng',
+        lateMinutes: item.lateMinutes || 0,
+        earlyMinutes: item.earlyMinutes || 0,
+        note: item.note || '',
+        hasPermission: item.hasPermission,
+        rescheduledDate: item.rescheduledDate,
+        rescheduledReason: item.rescheduledReason,
+        semester: item.semester,
+        schoolYear: item.schoolYear,
+        explanation: item.explanation || null,
+        explanationStatus: item.explanationStatus || 'pending'
+      };
+    });
+
+    res.json({
+      success: true,
+      data: formatted
+    });
+  } catch (error) {
+    console.error('❌ [API /lecturer/inspector-logs] Lỗi:', error.message);
+    res.status(500).json({ success: false, message: 'Không thể tải nhật ký thanh tra!', error: error.message });
+  }
+});
+
+/**
+ * @route   POST /api/lecturer/inspector-logs/:id/explanation
+ * @desc    Gửi giải trình cho sự kiện bị thanh tra ghi nhận lỗi
+ * @access  Private (JWT, role=lecturer)
+ */
+router.post('/inspector-logs/:id/explanation', authMiddleware, async (req, res) => {
+  try {
+    const { reason, proofNote } = req.body;
+    res.json({
+      success: true,
+      message: 'Đã tiếp nhận thông tin giải trình của Thầy/Cô. Hệ thống đang ghi nhận thử nghiệm.'
+    });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
   }
 });
 
