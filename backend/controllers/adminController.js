@@ -142,10 +142,10 @@ class AdminController {
 
         // Nếu có override tham số thủ công từ form (chỉ khi có thay đổi thật sự)
         if (overrides.TUAF_DB_SERVER || overrides.TUAF_DB_USER || overrides.TUAF_DB_PASSWORD) {
-          const server = overrides.TUAF_DB_SERVER || configService.get('TUAF_DB_SERVER', '10.64.12.100');
-          const database = overrides.TUAF_DB_NAME || configService.get('TUAF_DB_NAME', 'ESS_TUAF_NEW_2');
-          const user = overrides.TUAF_DB_USER || configService.get('TUAF_DB_USER', 'tuafesspro');
-          const password = overrides.TUAF_DB_PASSWORD || configService.get('TUAF_DB_PASSWORD', 'BrAJeSHe9#Lo@T$');
+          const server = overrides.TUAF_DB_SERVER || configService.get('TUAF_DB_SERVER', process.env.TUAF_DB_SERVER || '');
+          const database = overrides.TUAF_DB_NAME || configService.get('TUAF_DB_NAME', process.env.TUAF_DB_NAME || 'ESS_TUAF_NEW_2');
+          const user = overrides.TUAF_DB_USER || configService.get('TUAF_DB_USER', process.env.TUAF_DB_USER || '');
+          const password = overrides.TUAF_DB_PASSWORD || configService.get('TUAF_DB_PASSWORD', process.env.TUAF_DB_PASSWORD || '');
 
           pool = await new sql.ConnectionPool({
             server,
@@ -162,7 +162,7 @@ class AdminController {
             }
           }).connect();
         } else {
-          // Tự động kết nối qua namvietConnector (dynamic token -> SQL Server 10.64.12.100)
+          // Tự động kết nối qua namvietConnector (dynamic token -> SQL Server TUAF)
           pool = await namvietConnector.getPool();
           isDynamic = true;
         }
@@ -174,7 +174,7 @@ class AdminController {
 
         const latencyMs = Date.now() - startTime;
         const row = result.recordset[0];
-        const serverIp = configService.get('TUAF_DB_SERVER', '10.64.12.100');
+        const serverIp = configService.get('TUAF_DB_SERVER', process.env.TUAF_DB_SERVER || '');
         const dbName = row.dbName || configService.get('TUAF_DB_NAME', 'ESS_TUAF_NEW_2');
 
         return res.json({
@@ -335,7 +335,7 @@ class AdminController {
         nodeVersion: process.version,
         platform: `${os.type()} ${os.arch()}`,
         dataSourceMode: configService.get('DATA_SOURCE', 'database'),
-        sqlServerIp: configService.get('TUAF_DB_SERVER', '10.64.12.100'),
+        sqlServerIp: configService.get('TUAF_DB_SERVER', process.env.TUAF_DB_SERVER || ''),
         memory: {
           rssMb: (memoryUsage.rss / 1024 / 1024).toFixed(1),
           heapUsedMb: (memoryUsage.heapUsed / 1024 / 1024).toFixed(1),

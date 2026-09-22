@@ -1,15 +1,11 @@
 /**
- * Middleware bảo vệ Admin Portal — Cho phép truy cập từ Mạng Nội Bộ (LAN) & Localhost
+ * Middleware bảo vệ Admin Portal — Yêu cầu xác thực Mật khẩu Quản trị viên (Admin Secret Key)
  * 
- * ✅ CHO PHÉP:
- *   - Localhost (127.0.0.1, ::1)
- *   - Dải mạng riêng Private LAN:
- *     + 10.0.0.0 – 10.255.255.255 (Mạng trường TUAF / Doanh nghiệp)
- *     + 192.168.0.0 – 192.168.255.255 (Mạng WiFi / Router gia đình)
- *     + 172.16.0.0 – 172.31.255.255 (Mạng Docker / Nội bộ)
- * 
- * 🚨 CHẶN TUYỆT ĐỐI:
- *   - Truy cập từ Internet bên ngoài qua Localtunnel, Ngrok, Public IP.
+ * ✅ NGUYÊN TẮC BẢO VỆ:
+ *   1. Mọi API Quản trị (/api/admin/*, /api/documents/admin/*) BẮT BUỘC phải có header x-admin-key hợp lệ.
+ *   2. Ngoại lệ duy nhất: Endpoint /api/admin/login để gửi mật khẩu xác thực.
+ *   3. Giao diện Web /admin: Cho phép tải giao diện để hiển thị màn hình Đăng Nhập Quản Trị Viên (Admin Gate),
+ *      nhưng toàn bộ API nạp dữ liệu bên dưới đều bị khóa chặt nếu chưa đăng nhập.
  */
 
 function cleanIp(ip) {
@@ -48,53 +44,43 @@ function isLanOrLocalIp(rawIp) {
   return false;
 }
 
-function isTrustedHost(host) {
-  if (!host) return true;
-  const h = host.split(':')[0].toLowerCase();
-  if (h === 'localhost' || h === '127.0.0.1') return true;
-  if (h === 'scheduler.tuaf.edu.vn' || h.endsWith('.tuaf.edu.vn')) return true;
-  return isLanOrLocalIp(h);
-}
-
 function adminLocalGuard(req, res, next) {
-  // 0. Cho phép nếu có Admin Passkey hợp lệ
+  // Cho phép endpoint xác thực login đi qua
+  if (req.path === '/login' || req.originalUrl === '/api/admin/login') {
+    return next();
+  }
+
   const secretKey = process.env.ADMIN_SECRET_KEY || 'tuafadmin2026';
   const providedKey = req.query.key || req.headers['x-admin-key'] || req.cookies?.admin_key;
+
+  // 1. Xác thực mật khẩu quản trị viên hợp lệ -> Cho phép
   if (providedKey && String(providedKey).trim() === secretKey) {
     return next();
   }
 
-  // Lấy IP client
-  const clientIp = req.headers['x-forwarded-for']
-    ? req.headers['x-forwarded-for'].split(',')[0].trim()
-    : req.socket.remoteAddress;
-
-  const isAllowed = isLanOrLocalIp(clientIp) || isLanOrLocalIp(req.ip);
-
-  // Chỉ chặn các tunnel lậu bên thứ 3 thật sự (localtunnel, ngrok...)
+  // 2. Chặn các tunnel lậu bên thứ 3 thật sự
   const forwardedHost = (req.headers['x-forwarded-host'] || '').toLowerCase();
   const isBannedTunnel = forwardedHost.includes('loca.lt') || 
                          forwardedHost.includes('ngrok') || 
                          forwardedHost.includes('trycloudflare.com');
-
   if (isBannedTunnel) {
-    console.warn(`🚨 [Admin Security] Chặn truy cập từ xa qua Public Tunnel: ${forwardedHost} (IP: ${clientIp})`);
     return res.status(403).json({
       success: false,
-      message: '❌ Bị từ chối: Giao diện quản trị Admin chỉ được phép truy cập từ Mạng nội bộ LAN hoặc Localhost.'
+      message: '❌ Bị từ chối: Không được phép truy cập qua Public Tunnel.'
     });
   }
 
-  // Cho phép nếu client IP thuộc LAN/Localhost hoặc truy cập qua domain chính thức trường TUAF
-  const reqHost = req.headers.host || '';
-  if (!isAllowed && !isTrustedHost(forwardedHost) && !isTrustedHost(reqHost)) {
-    console.warn(`🚨 [Admin Security] Chặn truy cập trái phép từ IP Internet ngoài: ${clientIp}`);
-    return res.status(403).json({
+  // 3. Mọi API Quản trị (/api/admin/*, /api/documents/admin/*): BẮT BUỘC phải có mật khẩu hợp lệ
+  const isApiRequest = req.originalUrl.startsWith('/api/admin') || 
+                       req.originalUrl.startsWith('/api/documents/admin');
+  if (isApiRequest) {
+    return res.status(401).json({
       success: false,
-      message: `❌ Bị từ chối: IP "${clientIp}" không thuộc dải mạng nội bộ (LAN / Localhost).`
+      message: '❌ Bị từ chối: Yêu cầu xác thực Mật khẩu Quản trị viên (x-admin-key).'
     });
   }
 
+  // 4. Trang Web /admin: Cho phép tải giao diện để hiển thị Form Đăng Nhập Quản Trị Viên (Admin Gate)
   next();
 }
 

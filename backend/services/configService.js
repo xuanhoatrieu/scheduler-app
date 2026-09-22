@@ -61,24 +61,24 @@ const DEFAULT_CONFIGS = [
     key: 'TUAF_DB_SERVER',
     category: 'database',
     label: 'SQL Server TUAF (IP / Host)',
-    description: 'Địa chỉ máy chủ SQL Server TUAF (Mạng nội bộ hoặc Fallback: 10.64.12.100)',
-    defaultValue: '10.64.12.100',
+    description: 'Địa chỉ máy chủ SQL Server TUAF (Mạng nội bộ)',
+    defaultValue: process.env.TUAF_DB_SERVER || '',
     isSecret: false
   },
   {
     key: 'TUAF_DB_NAME',
     category: 'database',
     label: 'Tên Database SQL Server',
-    description: 'Tên cơ sở dữ liệu trên máy chủ SQL Server (Mặc định: ESS_TUAF_NEW_2)',
-    defaultValue: 'ESS_TUAF_NEW_2',
+    description: 'Tên cơ sở dữ liệu trên máy chủ SQL Server',
+    defaultValue: process.env.TUAF_DB_NAME || 'ESS_TUAF_NEW_2',
     isSecret: false
   },
   {
     key: 'TUAF_DB_USER',
     category: 'database',
     label: 'Tài Khoản SQL Server',
-    description: 'Tên đăng nhập SQL Server TUAF (Mặc định: tuafesspro)',
-    defaultValue: 'tuafesspro',
+    description: 'Tên đăng nhập SQL Server TUAF',
+    defaultValue: process.env.TUAF_DB_USER || '',
     isSecret: false
   },
   {
@@ -86,7 +86,7 @@ const DEFAULT_CONFIGS = [
     category: 'database',
     label: 'Mật Khẩu SQL Server',
     description: 'Mật khẩu xác thực SQL Server TUAF',
-    defaultValue: 'BrAJeSHe9#Lo@T$',
+    defaultValue: process.env.TUAF_DB_PASSWORD || '',
     isSecret: true
   },
 

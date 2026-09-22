@@ -1225,10 +1225,14 @@ label {
           <h1 id="page-title">⚙️ Cấu Hình & Quản Lý Kết Nối</h1>
           <p id="page-desc">Chỉnh sửa tham số máy chủ SQL Server TUAF, NamViet API và kiểm thử kết nối trực tiếp.</p>
         </div>
-        <div class="header-right">
+        <div class="header-right" style="display: flex; gap: 10px; align-items: center;">
           <button id="btn-refresh-data" class="btn btn-secondary">
             <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
             Làm mới
+          </button>
+          <button id="btn-admin-logout" class="btn btn-outline" style="border-color: rgba(239, 68, 68, 0.4); color: #f87171; display: inline-flex; align-items: center; gap: 6px;" title="Đăng xuất khỏi phiên Quản trị">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+            Đăng xuất
           </button>
         </div>
       </header>
@@ -1337,8 +1341,8 @@ label {
               <div class="form-row">
                 <div class="form-group col-8">
                   <label for="cfg_TUAF_DB_SERVER">Địa Chỉ SQL Server IP / Host</label>
-                  <input type="text" id="cfg_TUAF_DB_SERVER" name="TUAF_DB_SERVER" class="form-control code-font" placeholder="10.64.12.100">
-                  <span class="form-hint">Địa chỉ IP nội bộ của trường TUAF (Mặc định: <strong>10.64.12.100</strong>)</span>
+                  <input type="text" id="cfg_TUAF_DB_SERVER" name="TUAF_DB_SERVER" class="form-control code-font" placeholder="Nhập địa chỉ IP SQL Server...">
+                  <span class="form-hint">Địa chỉ IP nội bộ / hostname của máy chủ SQL Server</span>
                 </div>
                 <div class="form-group col-4">
                   <label for="cfg_TUAF_DB_NAME">Tên Database</label>
@@ -1472,7 +1476,7 @@ label {
               <span class="node-title">SQL Server TUAF</span>
               <span class="node-badge checking">Checking...</span>
             </div>
-            <div class="node-detail code-font" id="node-sqlserver-detail">10.64.12.100:1433</div>
+            <div class="node-detail code-font" id="node-sqlserver-detail">SQL Server Port: 1433</div>
             <div class="node-footer">
               <button class="btn btn-xs btn-outline btn-test" data-target="sqlserver">Kiểm tra lại</button>
             </div>
@@ -1577,7 +1581,7 @@ label {
           </div>
           <div class="card-body">
             <div class="search-user-bar">
-              <input type="text" id="input-inspect-username" class="form-control code-font" placeholder="Nhập Mã sinh viên hoặc Tài khoản GV (VD: DTN245748004)...">
+              <input type="text" id="input-inspect-username" class="form-control code-font" placeholder="Nhập Mã sinh viên hoặc Mã cán bộ GV (VD: DTN24..., gv01)...">
               <button type="button" id="btn-inspect-user" class="btn btn-primary">
                 <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                 Tra cứu
@@ -1585,11 +1589,6 @@ label {
               <button type="button" id="btn-force-sync-user" class="btn btn-warning" disabled>
                 ⚡ Force Sync Ngay
               </button>
-            </div>
-            <div class="quick-tags">
-              <span>Thử nhanh:</span>
-              <button type="button" class="tag-btn" data-user="DTN245748004">DTN245748004 (Sinh viên)</button>
-              <button type="button" class="tag-btn" data-user="dtn225480201">dtn225480201</button>
             </div>
           </div>
         </div>
@@ -2197,26 +2196,153 @@ label {
     </div>
   </div>
 
+  <!-- Modal: Admin Security Gate -->
+  <div id="modal-admin-auth" class="modal-overlay" style="z-index: 99999; backdrop-filter: blur(16px); background: rgba(5, 8, 16, 0.92);">
+    <div class="modal-card" style="max-width: 440px; border: 1px solid rgba(59, 130, 246, 0.35); box-shadow: 0 25px 60px rgba(0,0,0,0.85); animation: scaleUp 0.3s ease forwards;">
+      <div class="modal-header" style="justify-content: center; flex-direction: column; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.06); padding: 32px 24px 16px;">
+        <div style="width: 64px; height: 64px; border-radius: 50%; background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.4); display: flex; align-items: center; justify-content: center; margin-bottom: 16px; font-size: 30px; box-shadow: 0 0 25px rgba(59, 130, 246, 0.25);">
+          🔒
+        </div>
+        <h2 style="font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 6px;">Bảo Mật Quản Trị Hệ Thống</h2>
+        <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5;">Vui lòng nhập mật khẩu quản trị viên để mở khóa bảng điều khiển trung tâm.</p>
+      </div>
+      <div class="modal-body" style="padding: 20px 24px 28px;">
+        <form id="form-admin-login" onsubmit="event.preventDefault(); handleAdminLogin();">
+          <div id="admin-login-error" class="alert-banner" style="display: none; background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.3); color: #fca5a5; margin-bottom: 16px; padding: 10px 14px; font-size: 13px; border-radius: 8px;">
+            Mật khẩu quản trị không chính xác!
+          </div>
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label for="admin-gate-pass" style="font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); font-weight: 600; display: block; margin-bottom: 8px;">Mật khẩu quản trị</label>
+            <input type="password" id="admin-gate-pass" class="form-control code-font" placeholder="Nhập mật khẩu quản trị..." required style="padding: 12px 16px; font-size: 15px; width: 100%; border-radius: 8px;" autofocus autocomplete="current-password">
+          </div>
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); cursor: pointer;">
+              <input type="checkbox" id="admin-remember-me" style="accent-color: var(--primary); width: 16px; height: 16px;">
+              Ghi nhớ trên thiết bị này
+            </label>
+          </div>
+          <button type="submit" id="btn-submit-admin-login" class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 14px; font-weight: 600; justify-content: center; border-radius: 8px;">
+            <span>Xác Thực & Mở Khóa</span>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <script>
 /**
  * TUAF SCHEDULER — ADMIN DASHBOARD JAVASCRIPT LOGIC
  * Safe DOM rendering • Asynchronous Testing • Real-time Monitoring • Hot-Reload Configs
  */
 
-// Quản trị viên Passkey (hỗ trợ truy cập từ xa ngoài mạng LAN)
+// Quản trị viên Authentication & Passkey State
 const urlParams = new URLSearchParams(window.location.search);
 const keyFromUrl = urlParams.get('key');
 if (keyFromUrl) {
-  localStorage.setItem('tuaf_admin_key', keyFromUrl.trim());
-} else if (!localStorage.getItem('tuaf_admin_key')) {
-  localStorage.setItem('tuaf_admin_key', 'tuafadmin2026');
+  sessionStorage.setItem('tuaf_admin_key', keyFromUrl.trim());
+  // Xóa param khỏi URL trên thanh địa chỉ để tránh lộ key
+  window.history.replaceState({}, document.title, window.location.pathname);
 }
 
-// Tự động thêm x-admin-key header vào tất cả các request fetch
+function getAdminKey() {
+  return sessionStorage.getItem('tuaf_admin_key') || localStorage.getItem('tuaf_admin_key') || '';
+}
+
+function setAdminKey(key, remember) {
+  sessionStorage.setItem('tuaf_admin_key', key);
+  if (remember) {
+    localStorage.setItem('tuaf_admin_key', key);
+  } else {
+    localStorage.removeItem('tuaf_admin_key');
+  }
+}
+
+function clearAdminKey() {
+  sessionStorage.removeItem('tuaf_admin_key');
+  localStorage.removeItem('tuaf_admin_key');
+}
+
+function showAdminLoginGate(errorMessage = '') {
+  const modal = document.getElementById('modal-admin-auth');
+  const errBox = document.getElementById('admin-login-error');
+  if (modal) {
+    modal.classList.add('active');
+    if (errorMessage) {
+      errBox.textContent = errorMessage;
+      errBox.style.display = 'block';
+    } else {
+      errBox.style.display = 'none';
+    }
+    const input = document.getElementById('admin-gate-pass');
+    if (input) {
+      input.value = '';
+      setTimeout(() => input.focus(), 150);
+    }
+  }
+}
+
+function hideAdminLoginGate() {
+  const modal = document.getElementById('modal-admin-auth');
+  if (modal) modal.classList.remove('active');
+}
+
+async function handleAdminLogin(e) {
+  if (e) e.preventDefault();
+  const input = document.getElementById('admin-gate-pass');
+  const remember = document.getElementById('admin-remember-me')?.checked;
+  const btn = document.getElementById('btn-submit-admin-login');
+  const errBox = document.getElementById('admin-login-error');
+  
+  const password = input ? input.value.trim() : '';
+  if (!password) {
+    errBox.textContent = 'Vui lòng nhập mật khẩu quản trị!';
+    errBox.style.display = 'block';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span>Đang xác thực...</span>';
+  errBox.style.display = 'none';
+
+  try {
+    const res = await originalFetch('/api/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password })
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      setAdminKey(data.key || password, remember);
+      hideAdminLoginGate();
+      showToast('success', 'Xác thực thành công! Chào mừng Quản trị viên.');
+      // Load initial dashboard data
+      loadConfigs();
+      loadHealthData();
+      checkAllNodes();
+    } else {
+      errBox.textContent = data.message || 'Mật khẩu quản trị không chính xác!';
+      errBox.style.display = 'block';
+    }
+  } catch (err) {
+    errBox.textContent = 'Lỗi kết nối tới máy chủ API: ' + err.message;
+    errBox.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<span>Xác Thực & Mở Khóa</span>';
+  }
+}
+
+function adminLogout() {
+  clearAdminKey();
+  showToast('info', 'Đã đăng xuất phiên Quản trị viên an toàn.');
+  showAdminLoginGate('Bạn đã đăng xuất. Vui lòng nhập lại mật khẩu quản trị.');
+}
+
+// Tự động thêm x-admin-key header vào tất cả các request fetch & bắt mã lỗi 401
 const originalFetch = window.fetch;
-window.fetch = function(url, options = {}) {
+window.fetch = async function(url, options = {}) {
   options.headers = options.headers || {};
-  const currentKey = localStorage.getItem('tuaf_admin_key');
+  const currentKey = getAdminKey();
   if (currentKey) {
     if (options.headers instanceof Headers) {
       options.headers.set('x-admin-key', currentKey);
@@ -2224,7 +2350,12 @@ window.fetch = function(url, options = {}) {
       options.headers['x-admin-key'] = currentKey;
     }
   }
-  return originalFetch(url, options);
+  const res = await originalFetch(url, options);
+  if (res.status === 401 && typeof url === 'string' && url.includes('/api/admin/') && !url.includes('/api/admin/login')) {
+    clearAdminKey();
+    showAdminLoginGate('Phiên làm việc hết hạn hoặc mật khẩu không hợp lệ. Vui lòng đăng nhập lại.');
+  }
+  return res;
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -2238,10 +2369,19 @@ document.addEventListener('DOMContentLoaded', () => {
   initInspectorsTab();
   initDocumentsTab();
 
-  // Tải dữ liệu và kiểm tra trạng thái tất cả các node ngay khi mở trang
-  loadConfigs();
-  loadHealthData();
-  checkAllNodes();
+  // Đăng xuất & Đăng nhập events
+  document.getElementById('btn-admin-logout')?.addEventListener('click', adminLogout);
+  document.getElementById('form-admin-login')?.addEventListener('submit', handleAdminLogin);
+
+  // Kiểm tra khóa quản trị đã có chưa
+  if (!getAdminKey()) {
+    showAdminLoginGate();
+  } else {
+    // Đã có khóa -> tải dữ liệu
+    loadConfigs();
+    loadHealthData();
+    checkAllNodes();
+  }
 
   // Nút làm mới tổng thể
   document.getElementById('btn-refresh-data')?.addEventListener('click', () => {

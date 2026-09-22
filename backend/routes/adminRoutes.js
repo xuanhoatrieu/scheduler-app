@@ -3,7 +3,24 @@ const router = express.Router();
 const adminController = require('../controllers/adminController');
 const { adminLocalGuard } = require('../middleware/adminAuth');
 
-// Toàn bộ Admin API phải đi qua Local Guard
+// 0. Xác thực Mật khẩu Quản trị viên (Public endpoint for Admin Login Gate)
+router.post('/login', (req, res) => {
+  const { password } = req.body;
+  const adminKey = process.env.ADMIN_SECRET_KEY || 'tuafadmin2026';
+  if (password && String(password).trim() === adminKey) {
+    return res.json({
+      success: true,
+      message: 'Xác thực quản trị viên thành công!',
+      key: adminKey
+    });
+  }
+  return res.status(401).json({
+    success: false,
+    message: 'Mật khẩu quản trị viên không chính xác!'
+  });
+});
+
+// Toàn bộ Admin API phải đi qua Local Guard (bắt buộc có secret key)
 router.use(adminLocalGuard);
 
 // 1. Quản lý cấu hình (Config Management)

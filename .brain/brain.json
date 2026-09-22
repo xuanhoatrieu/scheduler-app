@@ -57,15 +57,13 @@
   ],
   "infrastructure": {
     "server": {
-      "ip": "10.64.11.109",
-      "user": "moodle",
+      "environment": "Production Linux",
       "os": "Linux Ubuntu",
       "domain": "scheduler.tuaf.edu.vn"
     },
     "database": {
       "type": "PostgreSQL (Supabase container tuaf-supabase-db)",
-      "database_name": "scheduler",
-      "tuaf_sql_server": "10.64.12.100 (ESS_TUAF_NEW_2)"
+      "database_name": "scheduler"
     },
     "services": {
       "backend_api": "Docker container scheduler-api (port 5000)",

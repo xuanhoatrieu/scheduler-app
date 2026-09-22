@@ -179,7 +179,18 @@ const startServices = async () => {
       console.log(`🚀 Server is running on port ${PORT}`);
       console.log(`🎛️  Admin Web Dashboard:`);
       console.log(`   - Localhost: http://localhost:${PORT}/admin`);
-      console.log(`   - Mạng LAN:  http://10.64.220.241:${PORT}/admin`);
+      try {
+        const os = require('os');
+        const interfaces = os.networkInterfaces();
+        for (const iface of Object.values(interfaces)) {
+          for (const alias of iface || []) {
+            if (alias.family === 'IPv4' && !alias.internal) {
+              console.log(`   - Mạng LAN:  http://${alias.address}:${PORT}/admin`);
+              break;
+            }
+          }
+        }
+      } catch (e) {}
     });
   } catch (error) {
     console.error('❌ Failed to start Backend services:', error.message);

@@ -1,6 +1,6 @@
 # Hướng dẫn Production Deploy — TUAF Server
 
-> Dành cho dev các app khác (`ai-teacher-assistant`, `plantdoctor`, `tuaf-scheduler`...) deploy lên server `10.64.11.109` qua Caddy reverse proxy.
+> Dành cho dev các app khác (`ai-teacher-assistant`, `plantdoctor`, `tuaf-scheduler`...) deploy lên server nội bộ qua Caddy reverse proxy.
 
 ## Tổng quan kiến trúc
 
@@ -9,7 +9,7 @@
                    │
         IT Firewall (80, 443, 1443 open)
                    │
-            116.104.85.226
+            <SERVER_PUBLIC_IP>
                    │
             ┌──────▼──────┐
             │  tuaf-caddy │  ← reverse proxy duy nhất (port 80/443)
@@ -347,7 +347,7 @@ jobs:
 
 ```bash
 # 1. SSH lên server
-ssh moodle@10.64.11.109
+ssh <SSH_USER>@<SERVER_IP>
 
 # 2. Login GHCR (1 lần duy nhất)
 echo $GHCR_PAT | docker login ghcr.io -u <username> --password-stdin
@@ -419,9 +419,9 @@ docker exec tuaf-caddy caddy validate --config /etc/caddy/Caddyfile
 docker compose -f /home/moodle/ai-for-tuaf-university/docker/docker-compose.yml restart caddy
 ```
 
-DNS bắt buộc trỏ subdomain về `116.104.85.226`:
+DNS bắt buộc trỏ subdomain về `<SERVER_PUBLIC_IP>`:
 ```
-teacher.tuaf.edu.vn   A   116.104.85.226
+teacher.tuaf.edu.vn   A   <SERVER_PUBLIC_IP>
 ```
 
 → Caddy tự xin cert Let's Encrypt cho subdomain mới (~30 giây). URL `https://teacher.tuaf.edu.vn/` sẵn sàng.
@@ -557,7 +557,7 @@ Admin server backup `tuaf-supabase-db` định kỳ — bao gồm cả DB của 
 [ ] Redis: chọn DB index chưa dùng
 [ ] .env riêng cho production (gitignore)
 [ ] Báo subdomain + container_name + internal port để Caddy mở
-[ ] DNS A record: <app>.tuaf.edu.vn → 116.104.85.226
+[ ] DNS A record: <app>.tuaf.edu.vn → <SERVER_PUBLIC_IP>
 ```
 
 ## Troubleshooting
