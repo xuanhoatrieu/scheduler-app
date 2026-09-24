@@ -180,9 +180,16 @@ export default function FinanceScreen({ user }) {
               {/* Overpayment Refund & Debt Row */}
               <View style={styles.gridRowLast}>
                 <View style={styles.gridCol}>
-                  <Text style={styles.gridLabel}>Nhà trường hoàn trả</Text>
-                  <Text style={[styles.gridValBold, { color: Colors.accentPurple }]}>
-                    + {formatMoney(summary.totalRefund || 0)}đ
+                  <Text style={styles.gridLabel}>
+                    {summary.totalSurplus > 0 ? 'Đang nộp thừa / Dư' : 'Nhà trường hoàn trả'}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.gridValBold,
+                      { color: summary.totalSurplus > 0 ? Colors.success : Colors.accentPurple },
+                    ]}
+                  >
+                    {summary.totalSurplus > 0 ? `+ ${formatMoney(summary.totalSurplus)}đ` : `+ ${formatMoney(summary.totalRefund || 0)}đ`}
                   </Text>
                 </View>
                 <View style={styles.gridCol}>
@@ -207,17 +214,32 @@ export default function FinanceScreen({ user }) {
 
           {financeData.length > 0 ? (
             financeData.map((finance, idx) => {
-              const isPaidFull = finance.debtTuition === 0;
+              const isOverallSettled = summary && summary.totalDebt === 0;
+              const isOverpaid = finance.debtTuition < 0;
+              const isPaidFull = finance.debtTuition === 0 || isOverpaid;
               const isUnpaid = finance.debtTuition > 0 && (finance.paidTuition === 0 || !finance.paidTuition);
 
               let statusLabel = '✓ Đã nộp đủ';
               let statusColor = Colors.success;
-              if (isUnpaid) {
-                statusLabel = '⏳ Chưa thanh toán';
-                statusColor = Colors.danger;
+              if (isOverpaid) {
+                statusLabel = `✓ Nộp thừa ${formatMoney(Math.abs(finance.debtTuition))}đ`;
+                statusColor = Colors.success;
+              } else if (isUnpaid) {
+                if (isOverallSettled) {
+                  statusLabel = '✓ Đã cấn trừ đủ';
+                  statusColor = Colors.success;
+                } else {
+                  statusLabel = '⏳ Chưa thanh toán';
+                  statusColor = Colors.danger;
+                }
               } else if (!isPaidFull) {
-                statusLabel = '🟡 Đã nộp 1 phần';
-                statusColor = Colors.warning;
+                if (isOverallSettled) {
+                  statusLabel = '✓ Đã cấn trừ đủ';
+                  statusColor = Colors.success;
+                } else {
+                  statusLabel = `🟡 Còn thiếu ${formatMoney(finance.debtTuition)}đ`;
+                  statusColor = Colors.warning;
+                }
               }
 
               const isExpanded = expandedSemester === finance.semester;
@@ -302,14 +324,14 @@ export default function FinanceScreen({ user }) {
                             </View>
 
                             <View style={styles.semGridCol}>
-                              <Text style={styles.bdLabel}>Còn nợ hiện tại</Text>
+                              <Text style={styles.bdLabel}>{finance.debtTuition < 0 ? 'Nộp thừa' : 'Còn thiếu'}</Text>
                               <Text
                                 style={[
                                   styles.bdValue,
-                                  { color: finance.debtTuition > 0 ? Colors.danger : Colors.success },
+                                  { color: finance.debtTuition > 0 ? (isOverallSettled ? Colors.success : Colors.danger) : Colors.success },
                                 ]}
                               >
-                                {formatMoney(finance.debtTuition)}đ
+                                {finance.debtTuition < 0 ? `+${formatMoney(Math.abs(finance.debtTuition))}đ` : `${formatMoney(finance.debtTuition)}đ`}
                               </Text>
                             </View>
                           </View>

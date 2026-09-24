@@ -147,14 +147,16 @@ class DatabaseStrategy extends ScheduleStrategy {
       await user.save();
     }
 
-    // READ tất cả điểm + học phí + CTĐT + Tin tức thông báo + Miễn giảm
-    const [rawAllGrades, rawAllFinance, rawCurriculum, rawNews, rawExemptions, rawSummaryTerms] = await Promise.all([
+    // READ tất cả điểm + học phí + CTĐT + Tin tức thông báo + Miễn giảm + Công nợ Nam Việt + Công nợ lũy kế
+    const [rawAllGrades, rawAllFinance, rawCurriculum, rawNews, rawExemptions, rawSummaryTerms, rawNamVietFinance, rawCumulative] = await Promise.all([
       tuafQueries.getAllStudentGrades(pool, entityId),
       tuafQueries.getAllStudentFinance(pool, entityId),
       tuafQueries.getStudentCurriculum(pool, entityId),
       tuafQueries.getSchoolNews(pool, user.role),
       tuafQueries.getStudentExemptions(pool, entityId),
-      tuafQueries.getStudentFinanceSummaryByTerm(pool, entityId)
+      tuafQueries.getStudentFinanceSummaryByTerm(pool, entityId),
+      tuafQueries.getStudentNamVietFinance(pool, entityId),
+      tuafQueries.getStudentCumulativeFinance(pool, entityId)
     ]);
 
     // Cache Tin Tức Thông Báo từ Nhà trường
@@ -205,33 +207,70 @@ class DatabaseStrategy extends ScheduleStrategy {
       }
     }
 
-    // Nhóm học phí theo kỳ và cache (bao gồm cả biên lai, miễn giảm, và tổng hợp công nợ)
+    // Helper chuẩn hóa năm học (sửa lỗi các biên lai bị ghi năm học 0-1)
+    const normalizeSchoolYear = (schoolYear, date, hocKy) => {
+      if (schoolYear && schoolYear.includes('-') && schoolYear !== '0-1') {
+        return schoolYear;
+      }
+      if (date) {
+        const d = new Date(date);
+        if (!isNaN(d.getTime())) {
+          const year = d.getFullYear();
+          const month = d.getMonth() + 1;
+          if (month >= 8) {
+            return `${year}-${year + 1}`;
+          } else {
+            return `${year - 1}-${year}`;
+          }
+        }
+      }
+      return schoolYear || '';
+    };
+
+    // Nhóm học phí theo kỳ và cache (bao gồm cả công nợ Nam Việt, biên lai, miễn giảm, và tổng hợp công nợ)
     const financeByKey = {};
     
+    // Ghi nhận kỳ từ Stored Procedure Nam Việt (chuẩn xác nhất theo tín chỉ)
+    for (const r of (rawNamVietFinance || [])) {
+      const cleanYear = normalizeSchoolYear(r.nam_hoc, null, r.Hoc_ky);
+      const semester = `HocKy${r.Hoc_ky}`;
+      const key = `${semester}|${cleanYear}`;
+      if (!financeByKey[key]) financeByKey[key] = { receipts: [], exemptions: [], summaryTerm: null, namVietRow: null };
+      if (financeByKey[key].namVietRow) {
+        financeByKey[key].namVietRow.So_tien_phai_nop = (financeByKey[key].namVietRow.So_tien_phai_nop || 0) + (r.So_tien_phai_nop || 0);
+        financeByKey[key].namVietRow.So_tien_mien_giam = (financeByKey[key].namVietRow.So_tien_mien_giam || 0) + (r.So_tien_mien_giam || 0);
+        financeByKey[key].namVietRow.So_tien_nop = (financeByKey[key].namVietRow.So_tien_nop || 0) + (r.So_tien_nop || 0);
+        financeByKey[key].namVietRow.So_tien_da_nop = (financeByKey[key].namVietRow.So_tien_da_nop || 0) + (r.So_tien_da_nop || 0);
+        financeByKey[key].namVietRow.Thieu_thua = (financeByKey[key].namVietRow.Thieu_thua || 0) + (r.Thieu_thua || 0);
+      } else {
+        financeByKey[key].namVietRow = { ...r, nam_hoc: cleanYear };
+      }
+    }
+
     // Ghi nhận kỳ từ biên lai
     for (const r of (rawAllFinance || [])) {
+      const cleanYear = normalizeSchoolYear(r.Nam_hoc, r.Ngay_thu, r.Hoc_ky);
       const semester = `HocKy${r.Hoc_ky}`;
-      const schoolYear = r.Nam_hoc;
-      const key = `${semester}|${schoolYear}`;
-      if (!financeByKey[key]) financeByKey[key] = { receipts: [], exemptions: [], summaryTerm: null };
+      const key = `${semester}|${cleanYear}`;
+      if (!financeByKey[key]) financeByKey[key] = { receipts: [], exemptions: [], summaryTerm: null, namVietRow: null };
       financeByKey[key].receipts.push(r);
     }
 
     // Ghi nhận kỳ từ bảng miễn giảm
     for (const r of (rawExemptions || [])) {
+      const cleanYear = normalizeSchoolYear(r.Nam_hoc, null, r.Hoc_ky);
       const semester = `HocKy${r.Hoc_ky}`;
-      const schoolYear = r.Nam_hoc;
-      const key = `${semester}|${schoolYear}`;
-      if (!financeByKey[key]) financeByKey[key] = { receipts: [], exemptions: [], summaryTerm: null };
+      const key = `${semester}|${cleanYear}`;
+      if (!financeByKey[key]) financeByKey[key] = { receipts: [], exemptions: [], summaryTerm: null, namVietRow: null };
       financeByKey[key].exemptions.push(r);
     }
 
-    // Ghi nhận kỳ từ bảng tổng hợp công nợ
+    // Ghi nhận kỳ từ bảng tổng hợp công nợ theo kỳ
     for (const r of (rawSummaryTerms || [])) {
+      const cleanYear = normalizeSchoolYear(r.Nam_hoc, null, r.Hoc_ky);
       const semester = `HocKy${r.Hoc_ky}`;
-      const schoolYear = r.Nam_hoc;
-      const key = `${semester}|${schoolYear}`;
-      if (!financeByKey[key]) financeByKey[key] = { receipts: [], exemptions: [], summaryTerm: null };
+      const key = `${semester}|${cleanYear}`;
+      if (!financeByKey[key]) financeByKey[key] = { receipts: [], exemptions: [], summaryTerm: null, namVietRow: null };
       financeByKey[key].summaryTerm = r;
     }
 
@@ -506,16 +545,16 @@ class DatabaseStrategy extends ScheduleStrategy {
    * Gom nhóm biên lai, miễn giảm, và công nợ tổng hợp thành đối tượng chi tiết
    */
   _aggregateFinanceGroup(group) {
-    const { receipts = [], exemptions = [], summaryTerm = null } = group || {};
+    const { receipts = [], exemptions = [], summaryTerm = null, namVietRow = null } = group || {};
 
-    let totalTuition = summaryTerm ? summaryTerm.So_tien_phai_nop : 0;
-    let discountTuition = summaryTerm ? summaryTerm.So_tien_mien_giam : 0;
-    let paidTuition = summaryTerm ? summaryTerm.So_tien_da_nop : 0;
-    let refundTuition = summaryTerm ? summaryTerm.So_tien_tra_lai : 0;
-    let debtTuition = summaryTerm ? summaryTerm.Thieu_thua : 0;
+    let totalTuition = namVietRow ? (namVietRow.So_tien_phai_nop || 0) : (summaryTerm ? (summaryTerm.So_tien_phai_nop || 0) : 0);
+    let discountTuition = namVietRow ? (namVietRow.So_tien_mien_giam || 0) : (summaryTerm ? (summaryTerm.So_tien_mien_giam || 0) : 0);
+    let paidTuition = namVietRow ? (namVietRow.So_tien_da_nop || 0) : (summaryTerm ? (summaryTerm.So_tien_da_nop || 0) : 0);
+    let refundTuition = namVietRow ? (namVietRow.So_tien_tra_lai || 0) : (summaryTerm ? (summaryTerm.So_tien_tra_lai || 0) : 0);
+    let debtTuition = namVietRow ? (namVietRow.Thieu_thua || 0) : (summaryTerm ? (summaryTerm.Thieu_thua || 0) : 0);
 
-    // Nếu không có summaryTerm, tính toán từ exemptions và receipts
-    if (!summaryTerm) {
+    // Tính toán từ receipts và exemptions nếu không có dữ liệu chốt từ Stored Procedure / bảng tổng hợp
+    if (!namVietRow && !summaryTerm) {
       for (const r of receipts) {
         const isRefund = r.Thu_chi === false || (r.Noi_dung && r.Noi_dung.toLowerCase().includes('hoàn'));
         if (isRefund) {
@@ -538,11 +577,17 @@ class DatabaseStrategy extends ScheduleStrategy {
         }
       }
 
-      if (debtTuition !== 0) {
-        debtTuition = Math.max(0, totalTuition - discountTuition - paidTuition + refundTuition);
-      }
+      debtTuition = totalTuition - discountTuition - paidTuition + refundTuition;
     } else {
-      // Nếu có summaryTerm nhưng So_tien_mien_giam = 0 và Thieu_thua = 0, kiểm tra nếu là miễn giảm 100%
+      // Đảm bảo số tiền đã nộp được tính đủ từ receipts nếu receipts có tiền thực tế
+      if (receipts.length > 0) {
+        const receiptTotal = receipts.reduce((sum, r) => sum + (r.Thu_chi !== false ? (r.So_tien || 0) : 0), 0);
+        if (receiptTotal > paidTuition) {
+          paidTuition = receiptTotal;
+          debtTuition = (namVietRow ? (namVietRow.So_tien_nop || totalTuition - discountTuition) : (totalTuition - discountTuition)) - paidTuition;
+        }
+      }
+
       if (discountTuition === 0 && debtTuition === 0 && paidTuition === 0 && totalTuition > 0) {
         discountTuition = totalTuition;
       }

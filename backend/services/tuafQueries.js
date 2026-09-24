@@ -739,6 +739,45 @@ async function getStudentFinanceSummaryByTerm(pool, idSv) {
 }
 
 /**
+ * Lấy tổng hợp công nợ lũy kế toàn khóa của 1 SV (ACC_TongHopCongNoHocPhi)
+ */
+async function getStudentCumulativeFinance(pool, idSv) {
+  try {
+    const result = await safeQuery(pool,
+      `SELECT TOP 1
+        So_tien_phai_nop AS totalTuition,
+        So_tien_mien_giam AS discountTuition,
+        So_tien_nop AS mustPayTuition,
+        So_tien_da_nop AS paidTuition,
+        So_tien_tra_lai AS refundTuition,
+        Thieu_thua AS balance,
+        Ngay_tong_hop AS updatedDate
+       FROM ACC_TongHopCongNoHocPhi
+       WHERE ID_sv = @idSv`,
+      [{ name: 'idSv', type: sql.UniqueIdentifier, value: idSv }],
+      { username: 'student-finance-cumulative' }
+    );
+    return result.recordset[0] || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Lấy chi tiết công nợ học phí các kỳ theo chuẩn phần mềm Nam Việt (ACC_TongHopHocPhiSinhVien_HienThi)
+ */
+async function getStudentNamVietFinance(pool, idSv) {
+  try {
+    const result = await pool.request()
+      .input('ID_sv', sql.UniqueIdentifier, idSv)
+      .execute('ACC_TongHopHocPhiSinhVien_HienThi');
+    return result.recordset || [];
+  } catch (e) {
+    return [];
+  }
+}
+
+/**
  * Lấy danh sách thông báo / tin tức chính thức từ Nhà trường (tblNews)
  */
 async function getSchoolNews(pool, role = 'student') {
@@ -1199,9 +1238,15 @@ async function getHomeroomStudentsFinance(pool, idLop, hocKy, namHoc) {
     const mustPay = hasKy ? (row.kyMustPay || 0) : (row.allMustPay || 0);
     const paid = hasKy ? (row.kyPaid || 0) : (row.allPaid || 0);
     const exemption = hasKy ? (row.kyExemption || 0) : (row.allExemption || 0);
-    const balance = hasKy ? (row.kyBalance || 0) : (row.allBalance || 0);
+    let balance = hasKy ? (row.kyBalance || 0) : (row.allBalance || 0);
 
-    // QUY TẮC KẾ TOÁN TUAF:
+    // QUY TẮC KẾ TOÁN BÙ TRỪ TUAF:
+    // Nếu bảng tổng hợp công nợ lũy kế toàn trường cnAll ghi nhận sinh viên đã nộp đủ hoặc nộp thừa (allBalance <= 0),
+    // thì sinh viên KHÔNG bị coi là nợ dù ở kỳ cũ cnKy chưa kết chuyển bù trừ công nợ.
+    if (row.allBalance != null && row.allBalance <= 0 && balance > 0) {
+      balance = row.allBalance;
+    }
+
     // Thieu_thua > 0: Sinh viên CÒN THIẾU TIỀN (NỢ)
     // Thieu_thua < 0: Sinh viên NỘP THỪA
     // Thieu_thua = 0: ĐÃ NỘP ĐỦ / KHÔNG NỢ
@@ -2120,6 +2165,8 @@ module.exports = {
   getAllStudentFinance,
   getStudentExemptions,
   getStudentFinanceSummaryByTerm,
+  getStudentCumulativeFinance,
+  getStudentNamVietFinance,
   getSchoolNews,
   getStudentDRL,
   getStudentCurriculum,

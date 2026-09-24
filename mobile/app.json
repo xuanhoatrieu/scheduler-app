@@ -2,7 +2,7 @@
   "expo": {
     "name": "TUAF Schedule",
     "slug": "tuaf-schedule",
-    "version": "1.0.35",
+    "version": "1.1.3",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -46,7 +46,7 @@
     },
     "android": {
       "package": "com.xuanhoatrieu.tuafschedule",
-      "versionCode": 35,
+      "versionCode": 36,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -54,7 +54,7 @@
     },
     "ios": {
       "bundleIdentifier": "com.xuanhoatrieu.tuafschedule",
-      "buildNumber": "1",
+      "buildNumber": "36",
       "supportsTablet": false,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false

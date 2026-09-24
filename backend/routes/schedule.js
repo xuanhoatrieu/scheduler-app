@@ -353,21 +353,45 @@ router.get('/finance', authMiddleware, async (req, res) => {
       await handleForceSync(req.user, req);
     }
 
+    const whereClause = {
+      userId: req.user.id,
+      semester: formattedSemester
+    };
+    if (req.query.schoolYear) {
+      whereClause.schoolYear = req.query.schoolYear;
+    }
+
     const finance = await Finance.findOne({
-      where: {
-        userId: req.user.id,
-        semester: formattedSemester
-      }
+      where: whereClause,
+      order: [['schoolYear', 'DESC']]
     });
+
+    // Tính tổng hợp công nợ toàn khóa để kiểm tra sinh viên có thực sự nợ hay không (cấn trừ liên kỳ)
+    const allFinances = await Finance.findAll({ where: { userId: req.user.id } });
+    const totalMustPay = allFinances.reduce((sum, f) => sum + (f.mustPayTuition !== undefined && f.mustPayTuition !== null ? f.mustPayTuition : (f.totalTuition || 0)), 0);
+    const totalPaid = allFinances.reduce((sum, f) => sum + (f.paidTuition || 0), 0);
+    const totalRefund = allFinances.reduce((sum, f) => sum + (f.refundTuition || 0), 0);
+    const netBalance = totalMustPay - totalPaid + totalRefund;
+    const overallDebt = Math.max(0, netBalance);
+    const overallSurplus = netBalance < 0 ? Math.abs(netBalance) : 0;
+
+    let responseData = finance ? finance.toJSON() : {
+      totalTuition: 0,
+      paidTuition: 0,
+      debtTuition: 0,
+      invoiceDetails: []
+    };
+
+    // Nếu toàn khóa sinh viên đã hết nợ hoặc nộp thừa (overallDebt === 0), không để thẻ Dashboard hiển thị nợ
+    if (overallDebt === 0 && responseData.debtTuition > 0) {
+      responseData.debtTuition = 0;
+    }
+    responseData.overallDebt = overallDebt;
+    responseData.overallSurplus = overallSurplus;
 
     res.json({
       success: true,
-      data: finance || {
-        totalTuition: 0,
-        paidTuition: 0,
-        debtTuition: 0,
-        invoiceDetails: []
-      },
+      data: responseData,
       lastSyncedAt: req.user.lastSyncedAt
     });
   } catch (error) {
@@ -675,7 +699,12 @@ router.get('/finance/all', authMiddleware, async (req, res) => {
     const totalMustPay = processedFinances.reduce((sum, f) => sum + f.mustPayTuition, 0);
     const totalPaid = processedFinances.reduce((sum, f) => sum + f.paidTuition, 0);
     const totalRefund = processedFinances.reduce((sum, f) => sum + f.refundTuition, 0);
-    const totalDebt = processedFinances.reduce((sum, f) => sum + f.debtTuition, 0);
+
+    // QUY TẮC CÔNG NỢ TOÀN KHÓA (CÓ CẤN TRỪ LIÊN KỲ):
+    // Phải nộp lũy kế - Đã nộp lũy kế + Đã hoàn trả
+    const netBalance = totalMustPay - totalPaid + totalRefund;
+    const totalDebt = Math.max(0, netBalance);
+    const totalSurplus = netBalance < 0 ? Math.abs(netBalance) : 0;
 
     res.json({
       success: true,
@@ -687,6 +716,8 @@ router.get('/finance/all', authMiddleware, async (req, res) => {
         totalPaid,
         totalRefund,
         totalDebt,
+        totalSurplus,
+        netBalance,
         totalSemesters: processedFinances.length
       },
       lastSyncedAt: req.user.lastSyncedAt

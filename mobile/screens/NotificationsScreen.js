@@ -144,14 +144,15 @@ const generatePersonalNotifications = (schedule, exams, grades, finance) => {
   }
 
   // 3. Nợ học phí
-  if (finance && finance.debtTuition > 0) {
+  const actualDebt = finance?.overallDebt !== undefined ? finance.overallDebt : (finance?.debtTuition || 0);
+  if (actualDebt > 0) {
     notifications.push({
       id: 'finance_debt',
       type: 'finance',
       icon: 'wallet',
       color: Colors.danger,
       title: '💰 Còn nợ học phí',
-      body: `Bạn còn nợ ${finance.debtTuition.toLocaleString('vi-VN')}đ. Vui lòng nộp để tránh bị cấm thi.`,
+      body: `Bạn còn nợ ${actualDebt.toLocaleString('vi-VN')}đ. Vui lòng nộp để tránh bị cấm thi.`,
       time: 'Quan trọng',
       priority: 0.5,
     });

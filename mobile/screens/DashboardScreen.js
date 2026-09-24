@@ -247,9 +247,11 @@ export default function DashboardScreen({ user, onLogout }) {
                     <View style={styles.divider} />
                     
                     <View style={styles.tuitionRow}>
-                      <Text style={styles.tuitionLblBold}>Học phí còn nợ:</Text>
+                      <Text style={styles.tuitionLblBold}>
+                        {financeData.overallSurplus > 0 ? 'Đang nộp thừa / Dư:' : 'Học phí còn nợ:'}
+                      </Text>
                       <Text style={[styles.tuitionValBold, { color: financeData.debtTuition > 0 ? '#ef4444' : '#2e7d32' }]}>
-                        {financeData.debtTuition.toLocaleString()}đ
+                        {financeData.overallSurplus > 0 ? `+${financeData.overallSurplus.toLocaleString()}đ` : `${financeData.debtTuition.toLocaleString()}đ`}
                       </Text>
                     </View>
                   </View>
