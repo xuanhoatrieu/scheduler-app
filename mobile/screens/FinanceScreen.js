@@ -180,27 +180,26 @@ export default function FinanceScreen({ user }) {
               {/* Overpayment Refund & Debt Row */}
               <View style={styles.gridRowLast}>
                 <View style={styles.gridCol}>
-                  <Text style={styles.gridLabel}>
-                    {summary.totalSurplus > 0 ? 'Đang nộp thừa / Dư' : 'Nhà trường hoàn trả'}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.gridValBold,
-                      { color: summary.totalSurplus > 0 ? Colors.success : Colors.accentPurple },
-                    ]}
-                  >
-                    {summary.totalSurplus > 0 ? `+ ${formatMoney(summary.totalSurplus)}đ` : `+ ${formatMoney(summary.totalRefund || 0)}đ`}
+                  <Text style={styles.gridLabel}>Nhà trường hoàn trả</Text>
+                  <Text style={[styles.gridValBold, { color: Colors.accentPurple }]}>
+                    + {formatMoney(summary.totalRefund || 0)}đ
                   </Text>
                 </View>
                 <View style={styles.gridCol}>
-                  <Text style={styles.gridLabel}>Còn nợ hiện tại</Text>
+                  <Text style={styles.gridLabel}>
+                    {summary.totalSurplus > 0
+                      ? 'Đang nộp thừa'
+                      : (summary.totalDebt > 0 ? 'Còn nợ học phí' : 'Tình trạng')}
+                  </Text>
                   <Text
                     style={[
                       styles.gridValBold,
                       { color: summary.totalDebt > 0 ? Colors.danger : Colors.success },
                     ]}
                   >
-                    {formatMoney(summary.totalDebt)}đ
+                    {summary.totalSurplus > 0
+                      ? `+ ${formatMoney(summary.totalSurplus)}đ`
+                      : (summary.totalDebt > 0 ? `- ${formatMoney(summary.totalDebt)}đ` : '✓ Đã nộp đủ (0đ)')}
                   </Text>
                 </View>
               </View>

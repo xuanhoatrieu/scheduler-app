@@ -470,15 +470,15 @@ async function inspectUser(username) {
     if (fin && fin.totalSurplus > 0) {
       setText('res-num-finance', `+${Number(fin.totalSurplus).toLocaleString('vi-VN')}đ`);
       if (numFinanceEl) numFinanceEl.style.color = '#10b981';
-      if (lblFinanceEl) lblFinanceEl.textContent = 'Học phí nộp thừa';
+      if (lblFinanceEl) lblFinanceEl.textContent = 'Đang nộp thừa';
     } else if (fin && fin.totalDebt > 0) {
-      setText('res-num-finance', `${Number(fin.totalDebt).toLocaleString('vi-VN')}đ`);
+      setText('res-num-finance', `-${Number(fin.totalDebt).toLocaleString('vi-VN')}đ`);
       if (numFinanceEl) numFinanceEl.style.color = '#ef4444';
-      if (lblFinanceEl) lblFinanceEl.textContent = 'Học phí nợ';
+      if (lblFinanceEl) lblFinanceEl.textContent = 'Còn nợ học phí';
     } else {
       setText('res-num-finance', '0đ');
       if (numFinanceEl) numFinanceEl.style.color = '#10b981';
-      if (lblFinanceEl) lblFinanceEl.textContent = 'Học phí đã đủ';
+      if (lblFinanceEl) lblFinanceEl.textContent = '✓ Đã nộp đủ';
     }
 
     setText('count-sub-sched', s.totalSchedules);

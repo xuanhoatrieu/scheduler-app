@@ -595,7 +595,7 @@ export default function HomeroomScreen({ user }) {
                         <View style={{ alignItems: 'flex-end' }}>
                           {stu.status === 'debt' && (
                             <View style={styles.debtTag}>
-                              <Text style={styles.debtTagText}>Nợ: {formatCurrency(stu.debtAmount || Math.abs(stu.balance || 0))}</Text>
+                              <Text style={styles.debtTagText}>Nợ: -{formatCurrency(stu.debtAmount || Math.abs(stu.balance || 0))}</Text>
                             </View>
                           )}
                           {stu.status === 'settled' && (
