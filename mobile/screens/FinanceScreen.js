@@ -215,31 +215,26 @@ export default function FinanceScreen({ user }) {
           {financeData.length > 0 ? (
             financeData.map((finance, idx) => {
               const isOverallSettled = summary && summary.totalDebt === 0;
-              const isOverpaid = finance.debtTuition < 0;
-              const isPaidFull = finance.debtTuition === 0 || isOverpaid;
-              const isUnpaid = finance.debtTuition > 0 && (finance.paidTuition === 0 || !finance.paidTuition);
+              const hasSurplus = (finance.surplusTuition && finance.surplusTuition > 0) || (finance.status === 'surplus') || finance.debtTuition < 0;
+              const surplusVal = finance.surplusTuition || Math.abs(finance.rawDebtTuition || (finance.debtTuition < 0 ? finance.debtTuition : 0));
+              const isOffset = finance.status === 'offset';
+              const isDebt = finance.debtTuition > 0 && !isOverallSettled;
 
-              let statusLabel = '✓ Đã nộp đủ';
+              let statusLabel = finance.badge || '✓ Đã nộp đủ';
               let statusColor = Colors.success;
-              if (isOverpaid) {
-                statusLabel = `✓ Nộp thừa ${formatMoney(Math.abs(finance.debtTuition))}đ`;
+
+              if (hasSurplus && surplusVal > 0) {
+                statusLabel = finance.badge || `✓ Nộp thừa ${formatMoney(surplusVal)}đ`;
                 statusColor = Colors.success;
-              } else if (isUnpaid) {
-                if (isOverallSettled) {
-                  statusLabel = '✓ Đã cấn trừ đủ';
-                  statusColor = Colors.success;
-                } else {
-                  statusLabel = '⏳ Chưa thanh toán';
-                  statusColor = Colors.danger;
-                }
-              } else if (!isPaidFull) {
-                if (isOverallSettled) {
-                  statusLabel = '✓ Đã cấn trừ đủ';
-                  statusColor = Colors.success;
-                } else {
-                  statusLabel = `🟡 Còn thiếu ${formatMoney(finance.debtTuition)}đ`;
-                  statusColor = Colors.warning;
-                }
+              } else if (isOffset) {
+                statusLabel = '✓ Đã cấn trừ đủ';
+                statusColor = Colors.success;
+              } else if (isDebt) {
+                statusLabel = `🟡 Còn thiếu ${formatMoney(finance.debtTuition)}đ`;
+                statusColor = Colors.warning;
+              } else if (isOverallSettled && finance.paidTuition < (finance.mustPayTuition || finance.totalTuition)) {
+                statusLabel = '✓ Đã cấn trừ đủ';
+                statusColor = Colors.success;
               }
 
               const isExpanded = expandedSemester === finance.semester;
@@ -324,14 +319,14 @@ export default function FinanceScreen({ user }) {
                             </View>
 
                             <View style={styles.semGridCol}>
-                              <Text style={styles.bdLabel}>{finance.debtTuition < 0 ? 'Nộp thừa' : 'Còn thiếu'}</Text>
+                              <Text style={styles.bdLabel}>{hasSurplus && surplusVal > 0 ? 'Nộp thừa' : (isDebt ? 'Còn thiếu' : 'Trạng thái')}</Text>
                               <Text
                                 style={[
-                                  styles.bdValue,
-                                  { color: finance.debtTuition > 0 ? (isOverallSettled ? Colors.success : Colors.danger) : Colors.success },
-                                ]}
+                                   styles.bdValue,
+                                   { color: isDebt ? Colors.danger : Colors.success },
+                                 ]}
                               >
-                                {finance.debtTuition < 0 ? `+${formatMoney(Math.abs(finance.debtTuition))}đ` : `${formatMoney(finance.debtTuition)}đ`}
+                                {hasSurplus && surplusVal > 0 ? `+${formatMoney(surplusVal)}đ` : (isDebt ? `${formatMoney(finance.debtTuition)}đ` : (isOffset ? '0đ (Đã cấn trừ)' : '0đ (Đã đủ)'))}
                               </Text>
                             </View>
                           </View>

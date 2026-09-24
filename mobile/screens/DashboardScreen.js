@@ -248,10 +248,10 @@ export default function DashboardScreen({ user, onLogout }) {
                     
                     <View style={styles.tuitionRow}>
                       <Text style={styles.tuitionLblBold}>
-                        {financeData.overallSurplus > 0 ? 'Đang nộp thừa / Dư:' : 'Học phí còn nợ:'}
+                        {financeData.overallSurplus > 0 ? 'Đang nộp thừa / Dư:' : (financeData.overallDebt > 0 ? 'Học phí còn nợ:' : 'Nghĩa vụ học phí:')}
                       </Text>
-                      <Text style={[styles.tuitionValBold, { color: financeData.debtTuition > 0 ? '#ef4444' : '#2e7d32' }]}>
-                        {financeData.overallSurplus > 0 ? `+${financeData.overallSurplus.toLocaleString()}đ` : `${financeData.debtTuition.toLocaleString()}đ`}
+                      <Text style={[styles.tuitionValBold, { color: financeData.overallDebt > 0 ? '#ef4444' : '#2e7d32' }]}>
+                        {financeData.overallSurplus > 0 ? `+${financeData.overallSurplus.toLocaleString()}đ` : (financeData.overallDebt > 0 ? `${financeData.overallDebt.toLocaleString()}đ` : '✓ Đã hoàn thành')}
                       </Text>
                     </View>
                   </View>

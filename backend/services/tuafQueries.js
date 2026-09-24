@@ -739,6 +739,35 @@ async function getStudentFinanceSummaryByTerm(pool, idSv) {
 }
 
 /**
+ * Chuẩn hóa số dư NamViet / TUAF:
+ * - Trong CSDL NamViet/TUAF: Số Âm (-) là THỪA TIỀN, Số Dương (+) là THIẾU TIỀN (NỢ)
+ * - Tách thành debtAmount (>= 0) và surplusAmount (>= 0) để không bao giờ xuất hiện số âm ra bên ngoài
+ */
+function parseNamVietBalance(rawThieuThua) {
+  const value = Number(rawThieuThua) || 0;
+  const isDebt = value > 0;
+  const isSurplus = value < 0;
+  const isSettled = value === 0;
+  const debtAmount = isDebt ? value : 0;
+  const surplusAmount = isSurplus ? Math.abs(value) : 0;
+  const status = isDebt ? 'debt' : (isSurplus ? 'surplus' : 'completed');
+  const statusText = isDebt 
+    ? `Còn nợ ${debtAmount.toLocaleString('vi-VN')}đ` 
+    : (isSurplus ? `Đang nộp thừa ${surplusAmount.toLocaleString('vi-VN')}đ` : 'Đã nộp đủ');
+
+  return {
+    rawBalance: value,
+    isDebt,
+    isSurplus,
+    isSettled,
+    debtAmount,
+    surplusAmount,
+    status,
+    statusText
+  };
+}
+
+/**
  * Lấy tổng hợp công nợ lũy kế toàn khóa của 1 SV (ACC_TongHopCongNoHocPhi)
  */
 async function getStudentCumulativeFinance(pool, idSv) {
@@ -757,7 +786,14 @@ async function getStudentCumulativeFinance(pool, idSv) {
       [{ name: 'idSv', type: sql.UniqueIdentifier, value: idSv }],
       { username: 'student-finance-cumulative' }
     );
-    return result.recordset[0] || null;
+    const row = result.recordset[0];
+    if (!row) return null;
+
+    const normalized = parseNamVietBalance(row.balance);
+    return {
+      ...row,
+      ...normalized
+    };
   } catch (e) {
     return null;
   }
@@ -1240,26 +1276,32 @@ async function getHomeroomStudentsFinance(pool, idLop, hocKy, namHoc) {
     const exemption = hasKy ? (row.kyExemption || 0) : (row.allExemption || 0);
     let balance = hasKy ? (row.kyBalance || 0) : (row.allBalance || 0);
 
+    // Chuẩn hóa nợ lũy kế chốt toàn trường (sổ cái chốt của phòng Tài vụ)
+    const allNorm = parseNamVietBalance(row.allBalance);
+    const kyNorm = parseNamVietBalance(row.kyBalance);
+
+    let status = 'settled';
+    let debtAmount = 0;
+    let surplusAmount = 0;
+
     // QUY TẮC KẾ TOÁN BÙ TRỪ TUAF:
     // Nếu bảng tổng hợp công nợ lũy kế toàn trường cnAll ghi nhận sinh viên đã nộp đủ hoặc nộp thừa (allBalance <= 0),
     // thì sinh viên KHÔNG bị coi là nợ dù ở kỳ cũ cnKy chưa kết chuyển bù trừ công nợ.
-    if (row.allBalance != null && row.allBalance <= 0 && balance > 0) {
-      balance = row.allBalance;
-    }
-
-    // Thieu_thua > 0: Sinh viên CÒN THIẾU TIỀN (NỢ)
-    // Thieu_thua < 0: Sinh viên NỘP THỪA
-    // Thieu_thua = 0: ĐÃ NỘP ĐỦ / KHÔNG NỢ
-    let status = 'settled';
-    if (balance > 0) {
-      status = 'debt'; // Còn nợ
-      debtCount++;
-      totalDebtAmount += balance;
-    } else if (balance < 0) {
-      status = 'surplus'; // Nộp thừa
-      surplusCount++;
+    if (allNorm.isSettled || allNorm.isSurplus) {
+      if (allNorm.isSurplus) {
+        status = 'surplus';
+        surplusAmount = allNorm.surplusAmount;
+        surplusCount++;
+      } else {
+        status = 'settled';
+        settledCount++;
+      }
     } else {
-      settledCount++;
+      // Toàn khóa sinh viên đang nợ thực tế
+      status = 'debt';
+      debtAmount = allNorm.debtAmount;
+      debtCount++;
+      totalDebtAmount += debtAmount;
     }
 
     totalPaidAmount += paid;
@@ -1275,10 +1317,11 @@ async function getHomeroomStudentsFinance(pool, idLop, hocKy, namHoc) {
       mustPay,
       paid,
       exemption,
-      balance,
-      debtAmount: balance > 0 ? balance : 0,
-      surplusAmount: balance < 0 ? Math.abs(balance) : 0,
+      rawBalance: row.allBalance,
+      debtAmount,
+      surplusAmount,
       status,
+      statusText: allNorm.statusText,
       isTermData: hasKy
     };
   });
@@ -2190,6 +2233,7 @@ module.exports = {
   getHomeroomClasses,
   getHomeroomStudentsRegistration,
   getHomeroomStudentsFinance,
+  parseNamVietBalance,
   getInspectorClassesByDate
 };
 

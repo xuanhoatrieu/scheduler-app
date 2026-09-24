@@ -382,12 +382,37 @@ router.get('/finance', authMiddleware, async (req, res) => {
       invoiceDetails: []
     };
 
-    // Nếu toàn khóa sinh viên đã hết nợ hoặc nộp thừa (overallDebt === 0), không để thẻ Dashboard hiển thị nợ
-    if (overallDebt === 0 && responseData.debtTuition > 0) {
-      responseData.debtTuition = 0;
+    let termDebt = responseData.debtTuition || 0;
+    let termSurplus = 0;
+    let termStatus = 'completed';
+    let termBadge = '✓ Đã nộp đủ';
+
+    if (termDebt < 0) {
+      termSurplus = Math.abs(termDebt);
+      termDebt = 0;
+      termStatus = 'surplus';
+      termBadge = `✓ Nộp thừa ${termSurplus.toLocaleString('vi-VN')}đ`;
+    } else if (termDebt > 0) {
+      if (overallDebt === 0) {
+        termDebt = 0;
+        termStatus = 'offset';
+        termBadge = '✓ Đã cấn trừ đủ';
+      } else {
+        termStatus = 'debt';
+        termBadge = `Còn thiếu ${termDebt.toLocaleString('vi-VN')}đ`;
+      }
     }
+
+    responseData.rawDebtTuition = responseData.debtTuition;
+    responseData.debtTuition = termDebt;
+    responseData.surplusTuition = termSurplus;
     responseData.overallDebt = overallDebt;
     responseData.overallSurplus = overallSurplus;
+    responseData.status = overallDebt > 0 ? 'debt' : (overallSurplus > 0 ? 'surplus' : 'completed');
+    responseData.statusText = overallDebt > 0 
+      ? `Còn nợ ${overallDebt.toLocaleString('vi-VN')}đ` 
+      : (overallSurplus > 0 ? `Đang nộp thừa ${overallSurplus.toLocaleString('vi-VN')}đ` : 'Đã nộp đủ');
+    responseData.badge = termBadge;
 
     res.json({
       success: true,
@@ -705,10 +730,62 @@ router.get('/finance/all', authMiddleware, async (req, res) => {
     const netBalance = totalMustPay - totalPaid + totalRefund;
     const totalDebt = Math.max(0, netBalance);
     const totalSurplus = netBalance < 0 ? Math.abs(netBalance) : 0;
+    const isOverallSettled = totalDebt === 0;
+
+    // Chuẩn hóa từng kỳ: Tách bạch rõ ràng nợ / thừa / đã cấn trừ, không để số âm lọt ra ngoài
+    const enrichedFinances = processedFinances.map(f => {
+      const rawDebt = f.debtTuition || 0;
+      const isOverpaid = rawDebt < 0;
+      const surplusAmount = isOverpaid ? Math.abs(rawDebt) : 0;
+
+      let termDebt = 0;
+      let status = 'completed';
+      let badge = '✓ Đã nộp đủ';
+      let note = '';
+
+      if (isOverpaid) {
+        status = 'surplus';
+        badge = `✓ Nộp thừa ${surplusAmount.toLocaleString('vi-VN')}đ`;
+        note = 'Số dư thừa lưu trên hệ thống';
+      } else if (rawDebt > 0) {
+        if (isOverallSettled) {
+          // Sinh viên có nợ cục bộ ở kỳ này nhưng tổng thể toàn khóa đã hết nợ (được cấn trừ)
+          status = 'offset';
+          termDebt = 0;
+          badge = '✓ Đã cấn trừ đủ';
+          note = 'Đã bù trừ từ các kỳ sau';
+        } else {
+          status = 'debt';
+          termDebt = rawDebt;
+          badge = `Còn thiếu ${termDebt.toLocaleString('vi-VN')}đ`;
+          note = 'Chưa thanh toán đủ';
+        }
+      }
+
+      return {
+        ...f,
+        rawDebtTuition: rawDebt,
+        debtTuition: termDebt,
+        surplusTuition: surplusAmount,
+        status,
+        badge,
+        note
+      };
+    });
+
+    let summaryStatus = 'completed';
+    let summaryStatusText = 'Đã hoàn thành nghĩa vụ học phí';
+    if (totalDebt > 0) {
+      summaryStatus = 'debt';
+      summaryStatusText = `Còn nợ ${totalDebt.toLocaleString('vi-VN')}đ`;
+    } else if (totalSurplus > 0) {
+      summaryStatus = 'surplus';
+      summaryStatusText = `Đang nộp thừa ${totalSurplus.toLocaleString('vi-VN')}đ`;
+    }
 
     res.json({
       success: true,
-      data: processedFinances,
+      data: enrichedFinances,
       summary: {
         totalTuition,
         totalDiscount,
@@ -718,7 +795,9 @@ router.get('/finance/all', authMiddleware, async (req, res) => {
         totalDebt,
         totalSurplus,
         netBalance,
-        totalSemesters: processedFinances.length
+        status: summaryStatus,
+        statusText: summaryStatusText,
+        totalSemesters: enrichedFinances.length
       },
       lastSyncedAt: req.user.lastSyncedAt
     });
