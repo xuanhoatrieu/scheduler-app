@@ -579,12 +579,12 @@ class DatabaseStrategy extends ScheduleStrategy {
 
       debtTuition = totalTuition - discountTuition - paidTuition + refundTuition;
     } else {
-      // Đảm bảo số tiền đã nộp được tính đủ từ receipts nếu receipts có tiền thực tế
-      if (receipts.length > 0) {
+      // Khi không có dữ liệu chốt từ Stored Procedure NamViet (chỉ có summaryTerm), mới dùng receipts để kiểm tra bù đắp
+      if (!namVietRow && summaryTerm && receipts.length > 0) {
         const receiptTotal = receipts.reduce((sum, r) => sum + (r.Thu_chi !== false ? (r.So_tien || 0) : 0), 0);
         if (receiptTotal > paidTuition) {
           paidTuition = receiptTotal;
-          debtTuition = (namVietRow ? (namVietRow.So_tien_nop || totalTuition - discountTuition) : (totalTuition - discountTuition)) - paidTuition;
+          debtTuition = (totalTuition - discountTuition) - paidTuition;
         }
       }
 
