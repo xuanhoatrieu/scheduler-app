@@ -1318,6 +1318,7 @@ async function getHomeroomStudentsFinance(pool, idLop, hocKy, namHoc) {
       paid,
       exemption,
       rawBalance: row.allBalance,
+      balance: surplusAmount > 0 ? surplusAmount : debtAmount,
       debtAmount,
       surplusAmount,
       status,

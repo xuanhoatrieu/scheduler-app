@@ -2847,7 +2847,22 @@ async function inspectUser(username) {
     setText('res-num-schedules', s.totalSchedules);
     setText('res-num-exams', s.totalExams);
     setText('res-num-grades', s.totalGrades);
-    setText('res-num-finance', data.data.finance ? `${Number(data.data.finance.debtTuition || 0).toLocaleString('vi-VN')}đ` : '0đ');
+    const fin = data.data.finance;
+    const numFinanceEl = document.getElementById('res-num-finance');
+    const lblFinanceEl = numFinanceEl?.nextElementSibling;
+    if (fin && fin.totalSurplus > 0) {
+      setText('res-num-finance', `+${Number(fin.totalSurplus).toLocaleString('vi-VN')}đ`);
+      if (numFinanceEl) numFinanceEl.style.color = '#10b981';
+      if (lblFinanceEl) lblFinanceEl.textContent = 'Học phí nộp thừa';
+    } else if (fin && fin.totalDebt > 0) {
+      setText('res-num-finance', `${Number(fin.totalDebt).toLocaleString('vi-VN')}đ`);
+      if (numFinanceEl) numFinanceEl.style.color = '#ef4444';
+      if (lblFinanceEl) lblFinanceEl.textContent = 'Học phí nợ';
+    } else {
+      setText('res-num-finance', '0đ');
+      if (numFinanceEl) numFinanceEl.style.color = '#10b981';
+      if (lblFinanceEl) lblFinanceEl.textContent = 'Học phí đã đủ';
+    }
 
     setText('count-sub-sched', s.totalSchedules);
     setText('count-sub-exams', s.totalExams);

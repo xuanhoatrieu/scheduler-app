@@ -378,13 +378,39 @@ class AdminController {
         return res.status(404).json({ success: false, message: `Không tìm thấy tài khoản "${username}" trong Database` });
       }
 
-      const [schedules, exams, grades, finance, curriculum] = await Promise.all([
+      const allFinances = await Finance.findAll({
+        where: { userId: user.id },
+        order: [['schoolYear', 'ASC'], ['semester', 'ASC']]
+      });
+
+      const totalMustPay = allFinances.reduce((sum, f) => sum + (f.mustPayTuition !== undefined && f.mustPayTuition !== null ? f.mustPayTuition : (f.totalTuition || 0)), 0);
+      const totalPaid = allFinances.reduce((sum, f) => sum + (f.paidTuition || 0), 0);
+      const totalRefund = allFinances.reduce((sum, f) => sum + (f.refundTuition || 0), 0);
+      const netBalance = totalMustPay - totalPaid + totalRefund;
+      const totalDebt = Math.max(0, netBalance);
+      const totalSurplus = netBalance < 0 ? Math.abs(netBalance) : 0;
+
+      const financeSummary = allFinances.length > 0 ? {
+        totalMustPay,
+        totalPaid,
+        totalRefund,
+        netBalance,
+        totalDebt,
+        totalSurplus,
+        debtTuition: totalDebt,
+        surplusTuition: totalSurplus,
+        status: totalDebt > 0 ? 'debt' : (totalSurplus > 0 ? 'surplus' : 'completed'),
+        statusText: totalDebt > 0 ? `Còn nợ ${totalDebt.toLocaleString('vi-VN')}đ` : (totalSurplus > 0 ? `Nộp thừa ${totalSurplus.toLocaleString('vi-VN')}đ` : 'Đã hoàn thành')
+      } : null;
+
+      const [schedules, exams, grades, curriculum] = await Promise.all([
         Schedule.findAll({ where: { userId: user.id }, limit: 50, order: [['dayOfWeek', 'ASC']] }),
         Exam.findAll({ where: { userId: user.id }, limit: 50 }),
         Grade.findAll({ where: { userId: user.id }, limit: 100 }),
-        Finance.findOne({ where: { userId: user.id } }),
         Curriculum.findAll({ where: { userId: user.id }, limit: 100 })
       ]);
+
+      const finance = financeSummary;
 
       return res.json({
         success: true,

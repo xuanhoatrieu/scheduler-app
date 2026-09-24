@@ -595,7 +595,7 @@ export default function HomeroomScreen({ user }) {
                         <View style={{ alignItems: 'flex-end' }}>
                           {stu.status === 'debt' && (
                             <View style={styles.debtTag}>
-                              <Text style={styles.debtTagText}>Nợ: {formatCurrency(Math.abs(stu.balance))}</Text>
+                              <Text style={styles.debtTagText}>Nợ: {formatCurrency(stu.debtAmount || Math.abs(stu.balance || 0))}</Text>
                             </View>
                           )}
                           {stu.status === 'settled' && (
@@ -605,7 +605,7 @@ export default function HomeroomScreen({ user }) {
                           )}
                           {stu.status === 'surplus' && (
                             <View style={styles.surplusTag}>
-                              <Text style={styles.surplusTagText}>Dư: {formatCurrency(Math.abs(stu.balance))}</Text>
+                              <Text style={styles.surplusTagText}>Dư: +{formatCurrency(stu.surplusAmount || Math.abs(stu.balance || 0))}</Text>
                             </View>
                           )}
                         </View>
