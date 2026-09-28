@@ -28,11 +28,15 @@ const getStartTimeByPeriod = (periodText) => {
   if (firstPeriod === 4) return '09:55';
   if (firstPeriod === 5) return '10:50';
   
-  if (firstPeriod === 6) return '13:00';
-  if (firstPeriod === 7) return '13:55';
-  if (firstPeriod === 8) return '14:50';
-  if (firstPeriod === 9) return '15:55';
-  if (firstPeriod === 10) return '16:50';
+  if (firstPeriod === 6) return '13:15';
+  if (firstPeriod === 7) return '14:10';
+  if (firstPeriod === 8) return '15:15';
+  if (firstPeriod === 9) return '16:10';
+  if (firstPeriod === 10) return '17:05';
+  if (firstPeriod === 11) return '18:00';
+  if (firstPeriod === 12) return '18:50';
+  if (firstPeriod === 13) return '19:40';
+  if (firstPeriod === 14) return '20:30';
   
   return '07:00';
 };
@@ -52,9 +56,10 @@ const parseStudyTime = (studyTime) => {
   if (parts.length < 2) return null;
 
   const parseDate = (str) => {
-    const m = str.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    const m = str.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?/);
     if (!m) return null;
-    return new Date(parseInt(m[3]), parseInt(m[2]) - 1, parseInt(m[1]));
+    const year = m[3] ? parseInt(m[3], 10) : new Date().getFullYear();
+    return new Date(year, parseInt(m[2], 10) - 1, parseInt(m[1], 10));
   };
 
   const start = parseDate(parts[0]);
@@ -78,7 +83,7 @@ const generatePersonalNotifications = (schedule, exams, grades, finance) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  // 1. Lịch đi học hôm nay (30m và 15m)
+  // 1. Lịch đi học hôm nay (trước 15m)
   if (schedule && schedule.length > 0) {
     const dayOfWeekIndex = today.getDay();
     const currentDayOfWeek = dayOfWeekIndex === 0 ? 8 : dayOfWeekIndex + 1;
@@ -92,29 +97,17 @@ const generatePersonalNotifications = (schedule, exams, grades, finance) => {
       const room = classItem.room || 'Chưa xếp';
       const courseName = classItem.courseName;
 
-      const time30m = subtractMinutesFromTime(startTime, 30);
       const time15m = subtractMinutesFromTime(startTime, 15);
-
-      notifications.push({
-        id: `class_reminder_30m_${classItem.id || classItem.courseName}_${startTime}`,
-        type: 'reminder',
-        icon: 'alarm-outline',
-        color: Colors.accentPurple,
-        title: '🚨 Nhắc lịch học [Trước 30 phút]',
-        body: `Môn "${courseName}" sẽ bắt đầu lúc ${startTime} tại phòng ${room}. Chuẩn bị sách vở và di chuyển đến trường nào!`,
-        time: `Lúc ${time30m}`,
-        priority: 0.1,
-      });
 
       notifications.push({
         id: `class_reminder_15m_${classItem.id || classItem.courseName}_${startTime}`,
         type: 'reminder',
-        icon: 'alert-circle',
-        color: Colors.danger,
-        title: '⏰ Nhắc lịch học [Khẩn cấp - 15 phút]',
-        body: `Chỉ còn 15 phút nữa là bắt đầu môn "${courseName}" tại phòng ${room} (giờ học: ${startTime}). Khẩn trương di chuyển thôi!`,
+        icon: 'alarm-outline',
+        color: Colors.accentPurple,
+        title: '⏰ Nhắc lịch học [Trước 15 phút]',
+        body: `Môn "${courseName}" sẽ bắt đầu lúc ${startTime} tại phòng ${room}. Chuẩn bị sách vở và vào lớp thôi!`,
         time: `Lúc ${time15m}`,
-        priority: 0.2,
+        priority: 0.1,
       });
     });
   }

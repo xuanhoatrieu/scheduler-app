@@ -169,16 +169,18 @@ const getPeriodTimeStr = (periodText) => {
 
   const startTimes = {
     1: '07:00', 2: '07:55', 3: '08:50', 4: '09:55', 5: '10:50',
-    6: '13:00', 7: '13:55', 8: '14:50', 9: '15:55', 10: '16:50'
+    6: '13:15', 7: '14:10', 8: '15:15', 9: '16:10', 10: '17:05',
+    11: '18:00', 12: '18:50', 13: '19:40', 14: '20:30'
   };
 
   const endTimes = {
     1: '07:50', 2: '08:45', 3: '09:40', 4: '10:45', 5: '11:40',
-    6: '13:50', 7: '14:45', 8: '15:40', 9: '16:45', 10: '17:40'
+    6: '14:05', 7: '15:00', 8: '16:05', 9: '17:00', 10: '17:55',
+    11: '18:45', 12: '19:35', 13: '20:25', 14: '21:15'
   };
 
   const startStr = startTimes[startPeriod] || '07:00';
-  const endStr = endTimes[endPeriod] || '11:40';
+  const endStr = endTimes[endPeriod] || '17:55';
 
   return `${startStr} - ${endStr} (Tiết ${periodText})`;
 };
@@ -277,7 +279,7 @@ export default function ScheduleScreen({ user }) {
     
     if (res.success) {
       setScheduleData(res.data || []);
-      // Tự động kích hoạt chuông và thông báo màn hình khóa 30m & 15m cho TKB
+      // Tự động kích hoạt chuông và thông báo màn hình khóa trước 15m cho TKB
       scheduleClassReminders(res.data || []);
     } else {
       setScheduleData([]);
@@ -451,13 +453,20 @@ export default function ScheduleScreen({ user }) {
           byPeriod[period].push(item);
         }
 
-        let periods = Object.entries(byPeriod).map(([studyTime, items]) => ({
-          studyTime,
-          status: getPeriodStatus(studyTime, currentSem?.schoolYear),
-          dateRange: formatDateRange(studyTime, currentSem?.schoolYear),
-          daysUntil: getDaysUntil(studyTime, currentSem?.schoolYear),
-          items,
-        }));
+        let periods = Object.entries(byPeriod).map(([studyTime, items]) => {
+          items.sort((a, b) => {
+            const pA = parseInt((a.periodText || '1').split('-')[0]) || 1;
+            const pB = parseInt((b.periodText || '1').split('-')[0]) || 1;
+            return pA - pB;
+          });
+          return {
+            studyTime,
+            status: getPeriodStatus(studyTime, currentSem?.schoolYear),
+            dateRange: formatDateRange(studyTime, currentSem?.schoolYear),
+            daysUntil: getDaysUntil(studyTime, currentSem?.schoolYear),
+            items,
+          };
+        });
 
         const order = { active: 0, upcoming: 1, past: 2, unknown: 3 };
         periods.sort((a, b) => order[a.status] - order[b.status]);
@@ -469,14 +478,28 @@ export default function ScheduleScreen({ user }) {
 
         // Chỉ đưa môn vào danh sách nếu có ít nhất 1 giai đoạn thỏa mãn bộ lọc
         if (periods.length > 0) {
+          let minStartPeriod = 999;
+          // Ưu tiên tính minStartPeriod từ giai đoạn đang học (active) trước nếu có
+          const activePeriods = periods.filter(p => p.status === 'active');
+          const targetPeriods = activePeriods.length > 0 ? activePeriods : periods;
+          for (const p of targetPeriods) {
+            for (const it of p.items) {
+              const pStart = parseInt((it.periodText || '1').split('-')[0]) || 1;
+              if (pStart < minStartPeriod) minStartPeriod = pStart;
+            }
+          }
           courses.push({
             courseName,
             periods,
             credits: courseItems[0]?.credits,
-            hasActive: periods.some(p => p.status === 'active')
+            hasActive: periods.some(p => p.status === 'active'),
+            minStartPeriod
           });
         }
       }
+
+      // Sắp xếp các môn học trong ngày theo thứ tự tiết học tăng dần (sáng trước, chiều sau)
+      courses.sort((a, b) => a.minStartPeriod - b.minStartPeriod);
 
       if (courses.length > 0) {
         result.push({ day: parseInt(day), courses });

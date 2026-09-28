@@ -198,9 +198,18 @@ router.get('/schedule', authMiddleware, async (req, res) => {
       }
     }
 
+    const sortSchedules = (list) => {
+      return [...list].sort((a, b) => {
+        if (a.dayOfWeek !== b.dayOfWeek) return a.dayOfWeek - b.dayOfWeek;
+        const pA = parseInt((a.periodText || '1').split('-')[0]) || 1;
+        const pB = parseInt((b.periodText || '1').split('-')[0]) || 1;
+        return pA - pB;
+      });
+    };
+
     res.json({
       success: true,
-      data: schedules,
+      data: sortSchedules(schedules),
       trainingSystem: req.user.role === 'student' ? 'ALL' : trainingSystem,
       lastSyncedAt: req.user.lastSyncedAt
     });
@@ -240,25 +249,44 @@ router.get('/exams', authMiddleware, async (req, res) => {
     }
 
     let exams = await Exam.findAll({
-      where: whereClause,
-      order: [['examDate', 'ASC']]
+      where: whereClause
     });
 
     if (exams.length === 0 && req.query.forceSync !== 'true') {
       try {
         await handleForceSync(req.user, req);
         exams = await Exam.findAll({
-          where: whereClause,
-          order: [['examDate', 'ASC']]
+          where: whereClause
         });
       } catch (e) {
         console.warn('⚠️ Tự động nạp Lịch thi SQL Server:', e.message);
       }
     }
 
+    const sortExams = (list) => {
+      return [...list].sort((a, b) => {
+        const parseD = (str) => {
+          if (!str) return 0;
+          const parts = str.split(/[\/\-]/);
+          if (parts.length === 3) {
+            if (parts[2].length === 4) {
+              return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0])).getTime();
+            }
+            if (parts[0].length === 4) {
+              return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])).getTime();
+            }
+          }
+          return 0;
+        };
+        const diff = parseD(a.examDate) - parseD(b.examDate);
+        if (diff !== 0) return diff;
+        return (a.startTime || a.examTime || '').localeCompare(b.startTime || b.examTime || '');
+      });
+    };
+
     res.json({
       success: true,
-      data: exams,
+      data: sortExams(exams),
       trainingSystem: req.user.role === 'student' ? 'ALL' : trainingSystem,
       lastSyncedAt: req.user.lastSyncedAt
     });

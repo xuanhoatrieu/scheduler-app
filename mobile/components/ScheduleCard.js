@@ -21,9 +21,34 @@ const DAY_COLORS = {
   8: '#f44336'  // Red
 };
 
+const getPeriodTimeStr = (periodText) => {
+  if (!periodText) return '';
+  const parts = periodText.split('-');
+  const startPeriod = parseInt(parts[0]) || 1;
+  const endPeriod = parseInt(parts[1]) || startPeriod;
+
+  const startTimes = {
+    1: '07:00', 2: '07:55', 3: '08:50', 4: '09:55', 5: '10:50',
+    6: '13:15', 7: '14:10', 8: '15:15', 9: '16:10', 10: '17:05',
+    11: '18:00', 12: '18:50', 13: '19:40', 14: '20:30'
+  };
+
+  const endTimes = {
+    1: '07:50', 2: '08:45', 3: '09:40', 4: '10:45', 5: '11:40',
+    6: '14:05', 7: '15:00', 8: '16:05', 9: '17:00', 10: '17:55',
+    11: '18:45', 12: '19:35', 13: '20:25', 14: '21:15'
+  };
+
+  const startStr = startTimes[startPeriod] || '07:00';
+  const endStr = endTimes[endPeriod] || '17:55';
+
+  return `${startStr} - ${endStr}`;
+};
+
 export default function ScheduleCard({ item }) {
   const dayColor = DAY_COLORS[item.dayOfWeek] || '#607d8b';
   const dayLabel = DAY_NAMES[item.dayOfWeek] || `Thứ ${item.dayOfWeek}`;
+  const periodTime = item.periodText ? getPeriodTimeStr(item.periodText) : '';
 
   return (
     <View style={styles.card}>
@@ -31,9 +56,12 @@ export default function ScheduleCard({ item }) {
       <View style={[styles.timeColumn, { backgroundColor: dayColor + '15' }]}>
         <Text style={[styles.dayBadge, { color: dayColor }]}>{dayLabel}</Text>
         <View style={[styles.periodBadge, { backgroundColor: dayColor }]}>
-          <Text style={styles.periodText}>{item.studyTime}</Text>
+          <Text style={styles.periodText}>{item.periodText ? `Tiết ${item.periodText}` : item.studyTime}</Text>
         </View>
-        <Text style={styles.creditsText}>{item.credits} Tín chỉ</Text>
+        {periodTime ? (
+          <Text style={styles.periodTimeText}>{periodTime}</Text>
+        ) : null}
+        <Text style={styles.creditsText}>{item.credits ? `${item.credits} Tín chỉ` : item.studyTime}</Text>
       </View>
 
       {/* Cột thông tin bên phải */}
@@ -107,6 +135,13 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 11,
     fontWeight: 'bold',
+  },
+  periodTimeText: {
+    fontSize: 10,
+    color: '#4B5563',
+    fontWeight: '600',
+    marginBottom: 4,
+    textAlign: 'center',
   },
   creditsText: {
     fontSize: 11,

@@ -371,16 +371,16 @@ class DatabaseStrategy extends ScheduleStrategy {
     if (p === 3) return '08:50';
     if (p === 4) return '09:55';
     if (p === 5) return '10:50';
-    if (p === 6) return '13:00';
-    if (p === 7) return '13:55';
-    if (p === 8) return '14:50';
-    if (p === 9) return '15:55';
-    if (p === 10) return '16:50';
-    if (p === 11) return '17:40';
-    if (p === 12) return '18:30';
-    if (p === 13) return '19:20';
-    if (p === 14) return '20:10';
-    if (p === 15) return '21:00';
+    if (p === 6) return '13:15';
+    if (p === 7) return '14:10';
+    if (p === 8) return '15:15';
+    if (p === 9) return '16:10';
+    if (p === 10) return '17:05';
+    if (p === 11) return '18:00';
+    if (p === 12) return '18:50';
+    if (p === 13) return '19:40';
+    if (p === 14) return '20:30';
+    if (p === 15) return '21:15';
     return '07:00';
   }
 
@@ -404,11 +404,24 @@ class DatabaseStrategy extends ScheduleStrategy {
   }
 
   _formatExamFormat(format) {
-    if (format === 1 || format === '1') return 'Tự luận';
-    if (format === 2 || format === '2') return 'Trắc nghiệm máy';
-    if (format === 3 || format === '3') return 'Vấn đáp';
-    if (format === 4 || format === '4') return 'Tiểu luận / Đồ án';
-    return String(format || 'Thi viết');
+    const map = {
+      1: 'Thi viết 60p',
+      2: 'Thi viết 90p',
+      3: 'Trắc nghiệm máy',
+      4: 'Trắc nghiệm viết',
+      5: 'Bài tiểu luận',
+      6: 'Vấn đáp',
+      7: 'Bài tập lớn',
+      8: 'Vấn đáp máy',
+      9: 'Video clip',
+      10: 'Báo cáo',
+      11: 'Thuyết trình',
+      12: 'Thực hành máy',
+      13: 'Trắc nghiệm + Viết',
+      14: 'Lý thuyết + Thực hành',
+      15: 'Thi viết 120p'
+    };
+    return map[format] || map[String(format)] || String(format || 'Thi viết');
   }
 
   _formatExamTime(tuTiet, soTiet, caThi, gioThi) {

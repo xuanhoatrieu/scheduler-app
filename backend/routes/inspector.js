@@ -200,7 +200,7 @@ const getClassesHandler = async (req, res) => {
         room: schedule.room,
         periodText: schedule.periodText,
         scheduledStart: periodTimes?.scheduledStart || '07:00',
-        scheduledEnd: periodTimes?.scheduledEnd || '17:40',
+        scheduledEnd: periodTimes?.scheduledEnd || '17:55',
         date: dateStr,
         attendance: att ? {
           id: att.id,
@@ -266,7 +266,7 @@ router.post('/attendance', authMiddleware, requireRole('inspector', 'admin'), as
 
     const periodTimes = parsePeriodToTime(schedule.periodText);
     const scheduledStart = periodTimes?.scheduledStart || '07:00';
-    const scheduledEnd = periodTimes?.scheduledEnd || '17:40';
+    const scheduledEnd = periodTimes?.scheduledEnd || '17:55';
 
     let finalStatus = explicitStatus;
     let finalLate = explicitLate != null ? explicitLate : 0;
@@ -473,7 +473,7 @@ router.get('/dashboard/today', authMiddleware, requireRole('inspector', 'admin')
         room: schedule.room,
         periodText: schedule.periodText,
         scheduledStart: periodTimes?.scheduledStart || '07:00',
-        scheduledEnd: periodTimes?.scheduledEnd || '17:40',
+        scheduledEnd: periodTimes?.scheduledEnd || '17:55',
         checkInTime: att?.checkInTime ? new Date(att.checkInTime).toTimeString().slice(0, 5) : null,
         checkOutTime: att?.checkOutTime ? new Date(att.checkOutTime).toTimeString().slice(0, 5) : null,
         status: att?.status || 'pending',

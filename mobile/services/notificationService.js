@@ -21,7 +21,7 @@ export const initNotifications = async () => {
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
         name: 'Lịch Thi & Lịch Học',
-        description: 'Thông báo nhắc nhở trước giờ thi và giờ học (30 phút & 15 phút)',
+        description: 'Thông báo nhắc nhở trước giờ thi và giờ học (15 phút)',
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
         sound: 'default',
@@ -93,11 +93,11 @@ const parseExamDateTime = (dateStr, timeStr, startTimeStr) => {
     } else if (timeStr.includes('Ca 2') || timeStr.includes('Tiết 4')) {
       timeSource = '09:55';
     } else if (timeStr.includes('Ca 3') || timeStr.includes('Tiết 6')) {
-      timeSource = '13:00';
+      timeSource = '13:15';
     } else if (timeStr.includes('Ca 4') || timeStr.includes('Tiết 9')) {
-      timeSource = '15:55';
+      timeSource = '16:10';
     } else if (timeStr.includes('Tiết 11') || timeStr.includes('Tiết 13')) {
-      timeSource = '17:40';
+      timeSource = '18:00';
     }
   }
 
@@ -139,33 +139,7 @@ export const scheduleExamReminders = async (exams) => {
       const roomText = exam.room ? ` • Phòng: ${exam.room}` : '';
       const safeId = sanitizeNotifId(exam.id || exam.courseCode || exam.courseName);
 
-      // 1. Nhắc trước 30 phút
-      const trigger30m = examTimestamp - 30 * 60 * 1000;
-      if (trigger30m > now) {
-        const notifId = `exam_30m_${safeId}`;
-        try {
-          await Notifications.scheduleNotificationAsync({
-            identifier: notifId,
-            content: {
-              title: '🚨 Nhắc lịch thi [Trước 30 phút]',
-              body: `Môn "${exam.courseName || ''}" thi lúc ${timeDisplay}${roomText}${sbdText}. Hãy chuẩn bị di chuyển đến phòng thi!`,
-              sound: true,
-              priority: Notifications.AndroidNotificationPriority?.HIGH || 'high',
-              channelId: CHANNEL_ID,
-              data: { type: 'exam', examId: exam.id },
-            },
-            trigger: {
-              type: 'date',
-              date: new Date(trigger30m),
-              channelId: CHANNEL_ID,
-            },
-          });
-        } catch (err) {
-          console.warn('⚠️ Lỗi hẹn giờ thông báo thi 30m:', err.message);
-        }
-      }
-
-      // 2. Nhắc khẩn cấp trước 15 phút
+      // Nhắc nhở trước 15 phút
       const trigger15m = examTimestamp - 15 * 60 * 1000;
       if (trigger15m > now) {
         const notifId = `exam_15m_${safeId}`;
@@ -173,7 +147,7 @@ export const scheduleExamReminders = async (exams) => {
           await Notifications.scheduleNotificationAsync({
             identifier: notifId,
             content: {
-              title: '⏰ LỊCH THI KHẨN CẤP [Còn 15 phút]',
+              title: '⏰ Nhắc lịch thi [Trước 15 phút]',
               body: `Chỉ còn 15 phút nữa là bắt đầu thi môn "${exam.courseName || ''}"${roomText}${sbdText}. Khẩn trương vào phòng thi!`,
               sound: true,
               priority: Notifications.AndroidNotificationPriority?.MAX || 'max',
@@ -209,14 +183,14 @@ const getClassStartTime = (periodText) => {
   if (p === 3) return '08:50';
   if (p === 4) return '09:55';
   if (p === 5) return '10:50';
-  if (p === 6) return '13:00';
-  if (p === 7) return '13:55';
-  if (p === 8) return '14:50';
-  if (p === 9) return '15:55';
-  if (p === 10) return '16:50';
-  if (p === 11) return '17:40';
-  if (p === 12) return '18:30';
-  if (p === 13) return '19:20';
+  if (p === 6) return '13:15';
+  if (p === 7) return '14:10';
+  if (p === 8) return '15:15';
+  if (p === 9) return '16:10';
+  if (p === 10) return '17:05';
+  if (p === 11) return '18:00';
+  if (p === 12) return '18:50';
+  if (p === 13) return '19:40';
   return '07:00';
 };
 
@@ -295,33 +269,7 @@ export const scheduleClassReminders = async (schedule) => {
         const safeClassId = sanitizeNotifId(classItem.id || classItem.courseName);
         const safeTime = startTimeStr.replace(':', '_');
 
-        // 1. Nhắc trước 30 phút
-        const trigger30m = classStartTime - 30 * 60 * 1000;
-        if (trigger30m > nowTime) {
-          const notifId = `class_30m_${safeClassId}_${dateKey}_${safeTime}`;
-          try {
-            await Notifications.scheduleNotificationAsync({
-              identifier: notifId,
-              content: {
-                title: '🚨 Nhắc lịch học [Trước 30 phút]',
-                body: `Môn "${classItem.courseName || ''}" sẽ bắt đầu lúc ${startTimeStr}${roomStr}. Chuẩn bị sách vở và di chuyển đến trường nào!`,
-                sound: true,
-                priority: Notifications.AndroidNotificationPriority?.HIGH || 'high',
-                channelId: CHANNEL_ID,
-                data: { type: 'class', classId: classItem.id },
-              },
-              trigger: {
-                type: 'date',
-                date: new Date(trigger30m),
-                channelId: CHANNEL_ID,
-              },
-            });
-          } catch (err) {
-            console.warn('⚠️ Lỗi hẹn giờ thông báo học 30m:', err.message);
-          }
-        }
-
-        // 2. Nhắc khẩn cấp trước 15 phút
+        // Nhắc nhở trước 15 phút
         const trigger15m = classStartTime - 15 * 60 * 1000;
         if (trigger15m > nowTime) {
           const notifId = `class_15m_${safeClassId}_${dateKey}_${safeTime}`;
@@ -329,7 +277,7 @@ export const scheduleClassReminders = async (schedule) => {
             await Notifications.scheduleNotificationAsync({
               identifier: notifId,
               content: {
-                title: '⏰ Nhắc lịch học [Khẩn cấp - 15 phút]',
+                title: '⏰ Nhắc lịch học [Trước 15 phút]',
                 body: `Chỉ còn 15 phút nữa là bắt đầu môn "${classItem.courseName || ''}"${roomStr} (giờ học: ${startTimeStr}). Khẩn trương vào lớp thôi!`,
                 sound: true,
                 priority: Notifications.AndroidNotificationPriority?.MAX || 'max',

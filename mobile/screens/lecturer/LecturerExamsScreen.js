@@ -163,19 +163,28 @@ export default function LecturerExamsScreen({ user }) {
     return DAY_NAMES[d.getDay()] || '';
   };
 
-  // Tìm kiếm tức thì
+  // Tìm kiếm tức thì và sắp xếp theo ngày thi tăng dần
   const filteredExams = useMemo(() => {
     if (!Array.isArray(examData)) return [];
-    if (!searchQuery.trim()) return examData;
-    const q = searchQuery.toLowerCase().trim();
-    return examData.filter(item => {
-      if (!item) return false;
-      const name = (item.courseName || '').toLowerCase();
-      const code = (item.courseCode || '').toLowerCase();
-      const cls = (item.className || '').toLowerCase();
-      const room = (item.room || '').toLowerCase();
-      const proctors = (item.proctors || '').toLowerCase();
-      return name.includes(q) || code.includes(q) || cls.includes(q) || room.includes(q) || proctors.includes(q);
+    let list = examData;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = examData.filter(item => {
+        if (!item) return false;
+        const name = (item.courseName || '').toLowerCase();
+        const code = (item.courseCode || '').toLowerCase();
+        const cls = (item.className || '').toLowerCase();
+        const room = (item.room || '').toLowerCase();
+        const proctors = (item.proctors || '').toLowerCase();
+        return name.includes(q) || code.includes(q) || cls.includes(q) || room.includes(q) || proctors.includes(q);
+      });
+    }
+
+    return [...list].sort((a, b) => {
+      const dA = parseExamDate(a.examDate) || new Date(9999, 0, 1);
+      const dB = parseExamDate(b.examDate) || new Date(9999, 0, 1);
+      if (dA.getTime() !== dB.getTime()) return dA - dB;
+      return (a.startTime || a.examTime || '').localeCompare(b.startTime || b.examTime || '');
     });
   }, [examData, searchQuery]);
 

@@ -77,7 +77,7 @@ export default function ExamsScreen({ user }) {
       const res = await getExams(forceSync, sem.semester, sem.schoolYear, 'ALL');
       if (res.success && Array.isArray(res.data)) {
         setExamData(res.data);
-        // Tự động lên lịch nhắc nhở 30 phút và 15 phút ra màn hình khóa có chuông
+        // Tự động lên lịch nhắc nhở 15 phút ra màn hình khóa có chuông
         scheduleExamReminders(res.data);
       } else {
         setExamData([]);
@@ -174,18 +174,27 @@ export default function ExamsScreen({ user }) {
     return DAY_NAMES[examDate.getDay()] || '';
   };
 
-  // Lọc tìm kiếm
+  // Lọc tìm kiếm và sắp xếp theo ngày thi tăng dần
   const filteredExams = useMemo(() => {
     if (!Array.isArray(examData)) return [];
-    if (!searchQuery.trim()) return examData;
-    const q = searchQuery.toLowerCase().trim();
-    return examData.filter(item => {
-      if (!item) return false;
-      const name = (item.courseName || '').toLowerCase();
-      const code = (item.courseCode || '').toLowerCase();
-      const room = (item.room || '').toLowerCase();
-      const sbd = (item.seatNumber || '').toLowerCase();
-      return name.includes(q) || code.includes(q) || room.includes(q) || sbd.includes(q);
+    let list = examData;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = examData.filter(item => {
+        if (!item) return false;
+        const name = (item.courseName || '').toLowerCase();
+        const code = (item.courseCode || '').toLowerCase();
+        const room = (item.room || '').toLowerCase();
+        const sbd = (item.seatNumber || '').toLowerCase();
+        return name.includes(q) || code.includes(q) || room.includes(q) || sbd.includes(q);
+      });
+    }
+
+    return [...list].sort((a, b) => {
+      const dA = parseExamDate(a.examDate) || new Date(9999, 0, 1);
+      const dB = parseExamDate(b.examDate) || new Date(9999, 0, 1);
+      if (dA.getTime() !== dB.getTime()) return dA - dB;
+      return (a.startTime || a.examTime || '').localeCompare(b.startTime || b.examTime || '');
     });
   }, [examData, searchQuery]);
 
@@ -370,7 +379,7 @@ export default function ExamsScreen({ user }) {
                 <View style={styles.heroNotifBanner}>
                   <Ionicons name="notifications" size={14} color="#2563EB" />
                   <Text style={styles.heroNotifBannerText}>
-                    Đã kích hoạt chuông & thông báo màn hình khóa trước 30m & 15m
+                    Đã kích hoạt chuông & thông báo màn hình khóa trước 15 phút
                   </Text>
                 </View>
               </View>
@@ -500,7 +509,7 @@ export default function ExamsScreen({ user }) {
                 <View style={{ flex: 1 }} />
                 <View style={styles.alarmIndicator}>
                   <Ionicons name="alarm" size={13} color="#10B981" />
-                  <Text style={styles.alarmText}>Nhắc 30m & 15m</Text>
+                  <Text style={styles.alarmText}>Nhắc trước 15m</Text>
                 </View>
               </View>
             </View>
