@@ -15,7 +15,7 @@ import { getSchedule, getScheduleSemesters } from '../../services/api';
 import { Colors, getDayColor } from '../../theme/colors';
 import StudentAttendanceScreen from './StudentAttendanceScreen';
 import LecturerExamsScreen from './LecturerExamsScreen';
-import { scheduleClassReminders } from '../../services/notificationService';
+import { syncReminders } from '../../services/reminderSync';
 
 const DAY_NAMES = {
   0: 'Chưa xếp thứ / Khác',
@@ -153,8 +153,8 @@ export default function TeachingScheduleScreen({ user, onSwitchRole }) {
     const res = await getSchedule(forceSync, semParam, yearParam, activeSys);
     if (res.success) {
       setSchedules(res.data || []);
-      // Tự động kích hoạt chuông và thông báo màn hình khóa 30m & 15m cho lịch dạy
-      scheduleClassReminders(res.data || []);
+      // Thông báo lập theo kỳ hiện tại + MỌI hệ đào tạo (không theo hệ/kỳ đang xem)
+      syncReminders({ force: forceSync });
     } else {
       setSchedules([]);
     }

@@ -1206,6 +1206,11 @@ label {
           <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
           <span>Biểu mẫu & Quy chế</span>
         </button>
+
+        <button class="nav-item" data-tab="tab-announcements" id="nav-announcements">
+          <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+          <span>Đẩy Thông báo</span>
+        </button>
       </nav>
 
       <div class="sidebar-footer">
@@ -1973,6 +1978,174 @@ label {
         </div>
       </section>
 
+      <!-- TAB: ĐẨY THÔNG BÁO -->
+      <section id="tab-announcements" class="tab-pane">
+        <style>
+          .ann-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr); gap: 20px; align-items: start; }
+          @media (max-width: 1100px) { .ann-grid { grid-template-columns: 1fr; } }
+          .ann-audience { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+          .ann-aud-btn { display: flex; flex-direction: column; gap: 2px; text-align: left; padding: 10px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-color); background: rgba(255,255,255,0.03); color: var(--text-secondary); cursor: pointer; transition: all .18s ease; font-family: var(--font-sans); }
+          .ann-aud-btn strong { color: #e2e8f0; font-size: 13px; }
+          .ann-aud-btn small { font-size: 11px; color: var(--text-muted); }
+          .ann-aud-btn:hover { border-color: rgba(99,102,241,.5); transform: translateY(-1px); }
+          .ann-aud-btn.active { border-color: var(--indigo); background: linear-gradient(135deg, rgba(99,102,241,.22), rgba(6,182,212,.12)); box-shadow: 0 0 0 3px rgba(99,102,241,.15); }
+          .ann-panel { margin-top: 12px; padding: 12px; border: 1px dashed var(--border-color); border-radius: var(--radius-md); background: rgba(0,0,0,.15); }
+          .ann-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+          .ann-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: var(--radius-full); border: 1px solid var(--border-color); background: rgba(255,255,255,.04); color: #cbd5e1; font-size: 12px; cursor: pointer; user-select: none; transition: all .15s ease; }
+          .ann-chip.on { background: rgba(99,102,241,.25); border-color: var(--indigo); color: #fff; }
+          .ann-chip .x { opacity: .7; font-weight: 700; }
+          .ann-results { max-height: 200px; overflow-y: auto; margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+          .ann-result { display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; border-radius: var(--radius-sm); background: rgba(255,255,255,.03); cursor: pointer; font-size: 13px; color: #e2e8f0; border: 1px solid transparent; }
+          .ann-result:hover { border-color: rgba(59,130,246,.5); background: rgba(59,130,246,.12); }
+          .ann-counter { float: right; font-weight: 500; color: var(--text-muted); font-size: 11px; }
+          .ann-counter.over { color: var(--danger); }
+          .ann-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; margin-top: 16px; }
+          .ann-phone { border-radius: 26px; padding: 18px 14px 22px; background: radial-gradient(120% 80% at 20% 0%, #1e3a8a 0%, #0f172a 55%, #020617 100%); border: 1px solid rgba(255,255,255,.08); box-shadow: var(--shadow-lg); }
+          .ann-phone-time { text-align: center; color: #e2e8f0; font-size: 34px; font-weight: 300; letter-spacing: 1px; margin-bottom: 14px; }
+          .ann-banner { background: rgba(30,41,59,.82); backdrop-filter: blur(12px); border-radius: 16px; padding: 10px 12px; border: 1px solid rgba(255,255,255,.08); animation: annSlide .35s ease; }
+          .ann-banner-head { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #94a3b8; margin-bottom: 4px; }
+          .ann-banner-head img { width: 16px; height: 16px; border-radius: 4px; }
+          .ann-banner-title { color: #f8fafc; font-weight: 700; font-size: 13px; word-break: break-word; }
+          .ann-banner-body { color: #cbd5e1; font-size: 12.5px; margin-top: 2px; white-space: pre-line; word-break: break-word; display: -webkit-box; -webkit-line-clamp: 4; line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+          @keyframes annSlide { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+          .ann-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 14px; }
+          .ann-stat { padding: 10px 12px; border-radius: var(--radius-md); background: rgba(255,255,255,.04); border: 1px solid var(--border-color); }
+          .ann-stat b { display: block; font-size: 22px; font-family: var(--font-mono); color: #fff; }
+          .ann-stat span { font-size: 11px; color: var(--text-muted); }
+          .ann-note { font-size: 12px; color: var(--text-secondary); margin-top: 10px; line-height: 1.5; }
+          .ann-note.warn { color: #fbbf24; }
+          .ann-pill { display: inline-block; padding: 2px 8px; border-radius: var(--radius-full); font-size: 11px; font-weight: 700; margin-right: 4px; }
+          .ann-pill.ok { background: rgba(16,185,129,.15); color: #34d399; }
+          .ann-pill.wait { background: rgba(245,158,11,.15); color: #fbbf24; }
+          .ann-pill.bad { background: rgba(239,68,68,.15); color: #f87171; }
+          .ann-pill.urgent { background: rgba(239,68,68,.2); color: #fca5a5; }
+        </style>
+
+        <div class="ann-grid">
+          <!-- Soạn thông báo -->
+          <div class="card glass-card">
+            <div class="card-header">
+              <div class="card-title">
+                <span class="icon">📢</span>
+                <h3>Soạn Thông Báo Đẩy</h3>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="form-group">
+                <label>Đối tượng nhận</label>
+                <div class="ann-audience" id="ann-audience">
+                  <button type="button" class="ann-aud-btn active" data-type="students" id="ann-aud-students"><strong>🎓 Toàn bộ sinh viên</strong><small>Mọi SV đã dùng app</small></button>
+                  <button type="button" class="ann-aud-btn" data-type="cohorts" id="ann-aud-cohorts"><strong>📚 Theo Khóa</strong><small>SV đang học của khóa</small></button>
+                  <button type="button" class="ann-aud-btn" data-type="classes" id="ann-aud-classes"><strong>🏫 Theo Lớp</strong><small>Lớp hành chính</small></button>
+                  <button type="button" class="ann-aud-btn" data-type="lecturers" id="ann-aud-lecturers"><strong>👩‍🏫 Giảng viên</strong><small>Toàn bộ giảng viên</small></button>
+                  <button type="button" class="ann-aud-btn" data-type="users" id="ann-aud-users"><strong>👤 Tài khoản cụ thể</strong><small>MSSV / mã cán bộ</small></button>
+                  <button type="button" class="ann-aud-btn" data-type="all" id="ann-aud-all"><strong>🏛️ Toàn trường</strong><small>SV + giảng viên</small></button>
+                </div>
+
+                <div class="ann-panel" id="ann-panel-cohorts" hidden>
+                  <div class="ann-chips" id="ann-cohort-chips"><span class="form-hint">⏳ Đang tải danh sách Khóa...</span></div>
+                </div>
+
+                <div class="ann-panel" id="ann-panel-classes" hidden>
+                  <input type="text" id="ann-class-search" class="form-control" maxlength="30" placeholder="Gõ tên lớp để tìm (VD: CNTY 58, K56)..." autocomplete="off">
+                  <div class="ann-results" id="ann-class-results"></div>
+                  <div class="ann-chips" id="ann-class-selected" style="margin-top: 10px;"></div>
+                </div>
+
+                <div class="ann-panel" id="ann-panel-users" hidden>
+                  <textarea id="ann-usernames" class="form-control code-font" rows="3" placeholder="Mỗi tài khoản cách nhau bởi dấu phẩy hoặc xuống dòng. VD: DTN245748005, DTN245748006"></textarea>
+                  <span class="form-hint">Tối đa 1000 tài khoản. Chỉ gửi được cho sinh viên / giảng viên đã từng đăng nhập app.</span>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group col-8">
+                  <label for="ann-title">Tiêu đề <span class="ann-counter" id="ann-title-count">0/120</span></label>
+                  <input type="text" id="ann-title" class="form-control" maxlength="120" placeholder="VD: Lịch nghỉ lễ Quốc khánh 2/9">
+                </div>
+                <div class="form-group col-4">
+                  <label for="ann-sender">Đơn vị gửi</label>
+                  <input type="text" id="ann-sender" class="form-control" maxlength="60" value="Nhà trường">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="ann-body">Nội dung <span class="ann-counter" id="ann-body-count">0/2000</span></label>
+                <textarea id="ann-body" class="form-control" rows="7" maxlength="2000" placeholder="Nội dung đầy đủ hiển thị trong mục Thông báo của app. Banner đẩy chỉ hiện ~180 ký tự đầu."></textarea>
+              </div>
+
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 500;">
+                <input type="checkbox" id="ann-urgent">
+                <span>⚡ Khẩn cấp — gửi ngay cả trong giờ yên lặng 22:00–06:30</span>
+              </label>
+              <span class="form-hint">Mặc định: gửi trong giờ yên lặng sẽ tự dời tới 06:30 sáng (vẫn có ngay trong hộp thư app).</span>
+
+              <div class="ann-actions">
+                <button type="button" class="btn btn-secondary" id="btn-ann-preview">🔍 Xem trước số người nhận</button>
+                <button type="button" class="btn btn-primary" id="btn-ann-send">🚀 Gửi thông báo</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Xem trước -->
+          <div class="card glass-card">
+            <div class="card-header">
+              <div class="card-title">
+                <span class="icon">📱</span>
+                <h3>Xem Trước Trên Điện Thoại</h3>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="ann-phone">
+                <div class="ann-phone-time" id="ann-phone-time">09:41</div>
+                <div class="ann-banner" id="ann-banner">
+                  <div class="ann-banner-head"><img src="/admin/logo.png" alt=""><span>TUAF Schedule • bây giờ</span></div>
+                  <div class="ann-banner-title" id="ann-banner-title">Tiêu đề thông báo</div>
+                  <div class="ann-banner-body" id="ann-banner-body">Nội dung sẽ hiển thị tại đây...</div>
+                </div>
+              </div>
+              <div class="ann-stats" id="ann-stats" hidden>
+                <div class="ann-stat"><b id="ann-stat-recipients">0</b><span>Người nhận (có trong hộp thư)</span></div>
+                <div class="ann-stat"><b id="ann-stat-device">0</b><span>Có thiết bị nhận push</span></div>
+                <div class="ann-stat"><b id="ann-stat-students">0</b><span>Sinh viên</span></div>
+                <div class="ann-stat"><b id="ann-stat-lecturers">0</b><span>Giảng viên</span></div>
+              </div>
+              <div class="ann-note" id="ann-preview-note">Bấm “Xem trước số người nhận” để kiểm tra trước khi gửi.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lịch sử -->
+        <div class="card glass-card" style="margin-top: 20px;">
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="card-title">
+              <span class="icon">🗂️</span>
+              <h3>Lịch Sử Đã Gửi</h3>
+            </div>
+            <button type="button" id="btn-ann-refresh" class="btn btn-secondary btn-sm">🔄 Làm mới</button>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive" style="overflow-x: auto;">
+              <table class="data-table" style="width: 100%;">
+                <thead>
+                  <tr>
+                    <th style="width: 140px;">Thời gian</th>
+                    <th>Tiêu đề</th>
+                    <th>Đối tượng</th>
+                    <th style="text-align: right;">Người nhận</th>
+                    <th>Trạng thái push</th>
+                    <th style="text-align: right;">Đã đọc</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-announcements">
+                  <tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">Chưa tải dữ liệu.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- TAB 5: LIVE LOGS -->
       <section id="tab-logs" class="tab-pane">
         <div class="card glass-card">
@@ -2431,6 +2604,10 @@ function initTabs() {
     'tab-documents': {
       title: '📁 Biểu Mẫu & Quy Chế Đào Tạo',
       desc: 'Đăng tải các biểu mẫu, hướng dẫn, quy định và tài liệu dùng chung cho Giảng viên & Sinh viên.'
+    },
+    'tab-announcements': {
+      title: '📢 Đẩy Thông Báo',
+      desc: 'Gửi thông báo tới sinh viên, lớp, khóa, toàn trường hoặc giảng viên qua push và hộp thư trong app.'
     }
   };
 
@@ -4391,5 +4568,6 @@ window.handleUploadDocument = handleUploadDocument;
 window.loadAdminDocuments = loadAdminDocuments;
 window.initDocumentsTab = initDocumentsTab;
 </script>
+<script src="/admin/js/announcements.js"></script>
 </body>
 </html>

@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import axios from 'axios';
+import { clearAllNotifications } from './notificationService';
 
 // Địa chỉ máy chủ API production chính thức
 const API_BASE_URL = 'https://scheduler.tuaf.edu.vn/api';
@@ -575,20 +576,114 @@ export const checkCurrentUser = async () => {
   }
 };
 
+// ═══════════════════════════════════════
+// PUSH NOTIFICATION (Expo Push Token)
+// ═══════════════════════════════════════
+
+/** Khóa lưu trạng thái push trên máy */
+export const PUSH_KEYS = {
+  token: 'push_token_v1', // Expo Push Token của máy (không bí mật)
+  owner: 'push_owner_v1', // tài khoản (username|role) mà server đang gắn với token này
+  unregisterPending: 'push_unregister_pending_v1', // gỡ token lúc đăng xuất bị lỗi mạng → thử lại sau
+};
+
+/** Gắn token của máy với tài khoản đang đăng nhập */
+export const registerPushDevice = async (token, platform) => {
+  try {
+    await api.post('/devices/register', { token, platform });
+    return { success: true };
+  } catch (error) {
+    console.warn('⚠️ [API] Không đăng ký được push:', error.response?.status || error.message);
+    return { success: false };
+  }
+};
+
+/** Gỡ token khỏi server (không cần phiên còn hạn) */
+export const unregisterPushDevice = async (token) => {
+  try {
+    await api.post('/devices/unregister', { token }, { timeout: 8000 });
+    return { success: true };
+  } catch (error) {
+    return { success: false };
+  }
+};
+
+/** Báo server: máy đã lập lại lịch nhắc local thành công */
+export const reportRemindersSynced = async (token) => {
+  try {
+    await api.post('/devices/synced', { token }, { timeout: 10000 });
+    return { success: true };
+  } catch (error) {
+    return { success: false };
+  }
+};
+
+// ═══════════════════════════════════════
+// THÔNG BÁO TỪ NHÀ TRƯỜNG (Admin gửi)
+// Không lưu cache trên máy: hộp thư là dữ liệu riêng của từng tài khoản.
+// ═══════════════════════════════════════
+
+/** Hộp thư thông báo của tài khoản đang đăng nhập */
+export const getAnnouncements = async () => {
+  try {
+    const response = await api.get('/announcements', { params: { limit: 50 } });
+    const { data, unread } = response.data || {};
+    return { success: true, data: Array.isArray(data) ? data : [], unread: Number(unread) || 0 };
+  } catch (error) {
+    return { success: false, data: [], unread: 0 };
+  }
+};
+
+/** Đánh dấu một thông báo đã đọc */
+export const markAnnouncementRead = async (id) => {
+  try {
+    await api.post(`/announcements/${encodeURIComponent(id)}/read`);
+    return { success: true };
+  } catch (error) {
+    return { success: false };
+  }
+};
+
 /**
  * Đăng xuất, xóa toàn bộ bộ nhớ cache & tokens
  */
 export const logout = async () => {
+  // 0. Gỡ token push khỏi server TRƯỚC khi xóa JWT → server không còn gửi thông báo của
+  //    tài khoản này tới máy. Lỗi mạng → ghi nhớ để thử lại (App.js) khi chưa ai đăng nhập.
+  try {
+    const pushToken = await AsyncStorage.getItem(PUSH_KEYS.token);
+    await AsyncStorage.removeItem(PUSH_KEYS.owner);
+    if (pushToken) {
+      const res = await unregisterPushDevice(pushToken);
+      if (!res.success) await AsyncStorage.setItem(PUSH_KEYS.unregisterPending, pushToken);
+    }
+  } catch (e) {
+    console.warn('⚠️ Lỗi gỡ push khi đăng xuất:', e.message);
+  }
+
+  // 1. Hủy toàn bộ thông báo (hẹn giờ + đã hiển thị + badge) của tài khoản đang đăng xuất
+  try {
+    await clearAllNotifications();
+  } catch (e) {
+    console.warn('⚠️ Lỗi xóa thông báo khi đăng xuất:', e.message);
+  }
+
   try {
     await SecureStore.deleteItemAsync('jwt_token');
   } catch (e) {
     // Key may not exist — ignore
   }
-  const keys = [
-    'user_profile', 'cached_schedule', 'cached_exams', 'cached_grades',
-    'cached_finance', 'cached_grades_all', 'cached_finance_all',
-    'cached_curriculum', 'cached_lecturer_classes', 'cached_inspector_today',
-  ];
-  await AsyncStorage.multiRemove(keys);
+
+  // 2. Xóa MỌI bộ nhớ đệm dữ liệu cá nhân. Cache lưu theo tên động
+  //    (cached_schedule_1_2026_DHCQ, cached_exams_..._ALL, ...) nên phải xóa theo tiền tố,
+  //    nếu không tài khoản sau sẽ đọc được lịch của tài khoản trước khi mất mạng.
+  const fixedKeys = ['user_profile'];
+  try {
+    const allKeys = await AsyncStorage.getAllKeys();
+    const cacheKeys = allKeys.filter((k) => k.startsWith('cached_'));
+    await AsyncStorage.multiRemove([...fixedKeys, ...cacheKeys]);
+  } catch (e) {
+    await AsyncStorage.multiRemove(fixedKeys).catch(() => {});
+  }
 };
 

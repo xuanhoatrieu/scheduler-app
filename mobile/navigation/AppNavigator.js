@@ -11,6 +11,7 @@ import NotificationsScreen from '../screens/NotificationsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import ScheduleScreen from '../screens/ScheduleScreen';
 import { Colors } from '../theme/colors';
+import { flushPendingNavigation, navigationRef } from './navigationRef';
 
 const Tab = createBottomTabNavigator();
 
@@ -28,7 +29,7 @@ export default function AppNavigator({ user, onLogout }) {
   const tabHeight = 56 + bottomPadding;
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef} onReady={flushPendingNavigation}>
       <Tab.Navigator
         screenOptions={({ route }) => ({
           headerShown: false,

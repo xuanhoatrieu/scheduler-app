@@ -84,11 +84,15 @@ eas submit -p android
 Apple App Store yêu cầu tài khoản **Apple Developer Program** để đóng gói và ký mã nguồn (`.ipa`):
 
 ```bash
-# 1. Build bản sản xuất iOS App Package (.ipa)
+# Cách 1: Build và tự động submit lên App Store Connect / TestFlight trong 1 lệnh duy nhất:
+eas build -p ios --profile production --auto-submit
+
+# Hoặc Cách 2: Tách rời thành 2 bước (Build trước -> Submit sau):
+# Bước 1: Đóng gói bản sản xuất (.ipa)
 eas build -p ios --profile production
 
-# 2. (Tùy chọn) Tự động đẩy bản build mới nhất lên App Store Connect / TestFlight:
-eas submit -p ios
+# Bước 2: Đẩy bản build mới nhất lên App Store Connect:
+eas submit -p ios --latest
 ```
 
 

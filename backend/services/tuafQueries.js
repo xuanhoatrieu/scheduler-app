@@ -2194,7 +2194,95 @@ async function getLecturerYearlyTeachingSummary(pool, idCb, schoolYear = '2025-2
   }
 }
 
+// ═══════════════════════════════════════
+// ĐỐI TƯỢNG NHẬN THÔNG BÁO (Admin gửi theo Khóa / Lớp hành chính)
+// ═══════════════════════════════════════
+
+/** Tạo danh sách tham số @p0,@p1... cho mệnh đề IN (giá trị luôn đi qua parameter) */
+function buildInParams(prefix, values, type) {
+  const inputs = values.map((value, i) => ({ name: `${prefix}${i}`, type, value }));
+  return { placeholders: inputs.map(p => `@${p.name}`).join(','), inputs };
+}
+
+/** Các Khóa đang có sinh viên đang học (Trang_thai = 0) */
+async function getActiveCohorts(pool) {
+  const result = await safeQuery(pool,
+    `SELECT l.Khoa_hoc AS cohort, COUNT(DISTINCT ds.ID_sv) AS studentCount
+     FROM STU_Lop l
+     JOIN STU_DanhSach ds ON ds.ID_lop = l.ID_lop AND ISNULL(ds.Trang_thai, 0) = 0
+     WHERE l.Khoa_hoc IS NOT NULL AND l.Khoa_hoc > 0
+     GROUP BY l.Khoa_hoc
+     ORDER BY l.Khoa_hoc DESC`,
+    [],
+    { username: 'admin-announcement' }
+  );
+  return result.recordset.map(r => ({ cohort: Number(r.cohort), studentCount: Number(r.studentCount) || 0 }));
+}
+
+/** Tìm lớp hành chính theo mã/tên lớp (tối đa 30 lớp) */
+async function searchAdminClasses(pool, keyword) {
+  const result = await safeQuery(pool,
+    `SELECT TOP 30 l.ID_lop AS idLop, LTRIM(RTRIM(COALESCE(l.Ma_lop, ''))) AS classCode,
+            LTRIM(RTRIM(COALESCE(l.Ten_lop, ''))) AS className, l.Khoa_hoc AS cohort,
+            (SELECT COUNT(*) FROM STU_DanhSach ds WHERE ds.ID_lop = l.ID_lop AND ISNULL(ds.Trang_thai, 0) = 0) AS activeStudents
+     FROM STU_Lop l
+     WHERE l.Ma_lop LIKE @kw OR l.Ten_lop LIKE @kw
+     ORDER BY l.Khoa_hoc DESC, l.Ten_lop`,
+    [{ name: 'kw', type: sql.NVarChar(60), value: `%${keyword}%` }],
+    { username: 'admin-announcement' }
+  );
+  return result.recordset.map(r => ({ ...r, idLop: Number(r.idLop), cohort: r.cohort == null ? null : Number(r.cohort), activeStudents: Number(r.activeStudents) || 0 }));
+}
+
+/** Nhãn hiển thị của các lớp hành chính theo ID_lop */
+async function getAdminClassesByIds(pool, classIds) {
+  if (!classIds.length) return [];
+  const { placeholders, inputs } = buildInParams('lop', classIds, sql.Int);
+  const result = await safeQuery(pool,
+    `SELECT ID_lop AS idLop, LTRIM(RTRIM(COALESCE(Ten_lop, Ma_lop, ''))) AS className
+     FROM STU_Lop WHERE ID_lop IN (${placeholders})`,
+    inputs,
+    { username: 'admin-announcement' }
+  );
+  return result.recordset.map(r => ({ idLop: Number(r.idLop), className: r.className }));
+}
+
+/**
+ * Mã sinh viên ĐANG HỌC (Trang_thai = 0) thuộc các Khóa hoặc các lớp hành chính.
+ * @param {{ cohorts?: number[], classIds?: number[] }} filter — đã được kiểm tra hợp lệ ở tầng trên
+ * @returns {Promise<string[]>}
+ */
+async function getActiveStudentCodes(pool, { cohorts = [], classIds = [] } = {}) {
+  let where;
+  let inputs;
+  if (cohorts.length) {
+    const p = buildInParams('kh', cohorts, sql.Int);
+    where = `l.Khoa_hoc IN (${p.placeholders})`;
+    inputs = p.inputs;
+  } else if (classIds.length) {
+    const p = buildInParams('lop', classIds, sql.Int);
+    where = `l.ID_lop IN (${p.placeholders})`;
+    inputs = p.inputs;
+  } else {
+    return [];
+  }
+  const result = await safeQuery(pool,
+    `SELECT DISTINCT LTRIM(RTRIM(sv.Ma_sv)) AS maSv
+     FROM STU_DanhSach ds
+     JOIN STU_Lop l ON ds.ID_lop = l.ID_lop
+     JOIN STU_HoSoSinhVien sv ON ds.ID_sv = sv.ID_sv
+     WHERE ISNULL(ds.Trang_thai, 0) = 0 AND sv.Ma_sv IS NOT NULL AND ${where}`,
+    inputs,
+    { username: 'admin-announcement' }
+  );
+  return result.recordset.map(r => r.maSv).filter(Boolean);
+}
+
 module.exports = {
+  getActiveCohorts,
+  searchAdminClasses,
+  getAdminClassesByIds,
+  getActiveStudentCodes,
   findStudentId,
   getStudentInfo,
   findLecturerId,

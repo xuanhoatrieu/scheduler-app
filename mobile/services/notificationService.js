@@ -1,16 +1,52 @@
 import * as Notifications from 'expo-notifications';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+
+let activeOwner = null;
+
+/**
+ * Có hiển thị thông báo này khi app đang mở không?
+ * - Push ẩn (không title/body, chỉ để app tự cập nhật lịch nhắc) → không hiện.
+ * - Thông báo gắn tài khoản khác với tài khoản đang đăng nhập → không hiện.
+ */
+export const shouldPresentNotification = (notification) => {
+  const content = (notification && notification.request && notification.request.content) || {};
+  const data = content.data || {};
+  if (!content.title && !content.body) return false;
+  if (data.owner && data.owner !== activeOwner) return false;
+  return true;
+};
+
+/**
+ * Người dùng bấm vào thông báo Nhà trường → có mở hộp thư "Nhà Trường" không?
+ * - Push gắn tài khoản KHÁC tài khoản đang đăng nhập → không.
+ * - App vừa mở từ trạng thái tắt (chưa khôi phục tài khoản, owner = null) → có; hộp thư
+ *   chỉ tải dữ liệu của chính tài khoản đăng nhập nên không lộ thông báo của người khác.
+ */
+export const isAnnouncementTapFor = (response, owner) => {
+  const data = (response && response.notification && response.notification.request
+    && response.notification.request.content && response.notification.request.content.data) || {};
+  if (data.kind !== 'announcement') return false;
+  return !owner || data.owner === owner;
+};
 
 // Cấu hình cách hiển thị thông báo khi ứng dụng đang mở (foreground)
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
+  handleNotification: async (notification) => {
+    const show = shouldPresentNotification(notification);
+    return {
+      shouldShowAlert: show,
+      shouldShowBanner: show,
+      shouldShowList: show,
+      shouldPlaySound: show,
+      shouldSetBadge: show,
+    };
+  },
 });
 
 const CHANNEL_ID = 'exam_and_schedule_reminders';
+// Lưu "chủ" của các thông báo đang nằm trong hệ điều hành (username|role)
+const OWNER_STORAGE_KEY = 'notif_owner_v2';
 
 /**
  * Khởi tạo kênh thông báo (Notification Channel) trên Android
@@ -55,254 +91,132 @@ export const requestNotificationPermissions = async () => {
   }
 };
 
-/**
- * Chuyển đổi ngày và giờ thi sang đối tượng Date chính xác
- */
-const parseExamDateTime = (dateStr, timeStr, startTimeStr) => {
-  if (!dateStr) return null;
+// ═══════════════════════════════════════
+// CHỦ SỞ HỮU THÔNG BÁO (cô lập giữa các tài khoản)
+// ═══════════════════════════════════════
 
-  let year, month, day;
-  // Parse format DD/MM/YYYY hoặc YYYY-MM-DD
-  const dmyMatch = dateStr.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
-  if (dmyMatch) {
-    day = parseInt(dmyMatch[1], 10);
-    month = parseInt(dmyMatch[2], 10) - 1;
-    year = parseInt(dmyMatch[3], 10);
-  } else {
-    const ymdMatch = dateStr.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
-    if (ymdMatch) {
-      year = parseInt(ymdMatch[1], 10);
-      month = parseInt(ymdMatch[2], 10) - 1;
-      day = parseInt(ymdMatch[3], 10);
-    } else {
-      return null;
+/** Khóa chủ sở hữu của một tài khoản: mỗi cặp (username, vai trò) là một chủ riêng */
+export const ownerKeyOf = (user) => (user && user.username ? `${user.username}|${user.role || ''}` : null);
+
+export const getActiveOwner = () => activeOwner;
+
+/** Xóa sạch: hủy lịch hẹn, gỡ thông báo đã hiện trong Notification Center, xóa badge */
+const wipeSystemNotifications = async () => {
+  try { await Notifications.cancelAllScheduledNotificationsAsync(); } catch (e) { console.warn('⚠️ Lỗi hủy thông báo hẹn giờ:', e.message); }
+  try { await Notifications.dismissAllNotificationsAsync(); } catch (e) { console.warn('⚠️ Lỗi gỡ thông báo đã hiển thị:', e.message); }
+  try { await Notifications.setBadgeCountAsync(0); } catch (e) { /* một số máy không hỗ trợ badge */ }
+};
+
+/**
+ * Xóa toàn bộ thông báo của tài khoản hiện tại (gọi khi đăng xuất / hết phiên).
+ */
+export const clearAllNotifications = async () => {
+  activeOwner = null;
+  await wipeSystemNotifications();
+  try { await AsyncStorage.removeItem(OWNER_STORAGE_KEY); } catch (e) { /* ignore */ }
+};
+
+/**
+ * Khai báo tài khoản đang dùng app (đăng nhập, đổi vai trò, mở lại app).
+ * Nếu khác chủ trước đó (kể cả bản cũ chưa lưu chủ) → xóa sạch mọi thông báo cũ.
+ */
+export const setActiveOwner = async (owner) => {
+  let stored = null;
+  try { stored = await AsyncStorage.getItem(OWNER_STORAGE_KEY); } catch (e) { /* ignore */ }
+  activeOwner = owner || null;
+  if (stored !== activeOwner) {
+    await wipeSystemNotifications();
+    try {
+      if (activeOwner) await AsyncStorage.setItem(OWNER_STORAGE_KEY, activeOwner);
+      else await AsyncStorage.removeItem(OWNER_STORAGE_KEY);
+    } catch (e) { /* ignore */ }
+  }
+};
+
+/**
+ * Dùng cho tác vụ nền (push ẩn đánh thức app khi UI chưa chạy): khôi phục chủ trong bộ nhớ
+ * CHỈ KHI trùng chủ đã lưu. Không bao giờ xóa hay đổi chủ — khác chủ → trả false, không làm gì.
+ */
+export const restoreActiveOwner = async (owner) => {
+  if (!owner) return false;
+  if (activeOwner) return activeOwner === owner;
+  let stored = null;
+  try { stored = await AsyncStorage.getItem(OWNER_STORAGE_KEY); } catch (e) { /* ignore */ }
+  if (stored !== owner) return false;
+  activeOwner = owner;
+  return true;
+};
+
+/**
+ * Thay thế TOÀN BỘ lịch nhắc hẹn giờ bằng kế hoạch mới (không cộng dồn).
+ * Dừng ngay nếu trong lúc chạy tài khoản đã đổi.
+ * @param {string} owner
+ * @param {Array<{ id, fireAt: Date, title, body, data }>} plan - từ reminderPlanner.planReminders
+ */
+export const replaceScheduledReminders = async (owner, plan) => {
+  if (!owner || owner !== activeOwner) return false;
+  const hasPermission = await requestNotificationPermissions();
+  if (!hasPermission) return false;
+  if (owner !== activeOwner) return false;
+
+  await Notifications.cancelAllScheduledNotificationsAsync();
+
+  for (const item of plan || []) {
+    if (owner !== activeOwner) {
+      // Tài khoản đổi giữa chừng → không để lại lịch của chủ cũ
+      await Notifications.cancelAllScheduledNotificationsAsync();
+      return false;
     }
-  }
-
-  // Xác định giờ bắt đầu: ưu tiên startTimeStr (ví dụ: '07:30', '13:00')
-  let hours = 7;
-  let minutes = 0;
-
-  let timeSource = startTimeStr || '';
-  if (!timeSource && timeStr) {
-    const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})/);
-    if (timeMatch) {
-      timeSource = `${timeMatch[1]}:${timeMatch[2]}`;
-    } else if (timeStr.includes('Ca 1') || timeStr.includes('Tiết 1')) {
-      timeSource = '07:00';
-    } else if (timeStr.includes('Ca 2') || timeStr.includes('Tiết 4')) {
-      timeSource = '09:55';
-    } else if (timeStr.includes('Ca 3') || timeStr.includes('Tiết 6')) {
-      timeSource = '13:15';
-    } else if (timeStr.includes('Ca 4') || timeStr.includes('Tiết 9')) {
-      timeSource = '16:10';
-    } else if (timeStr.includes('Tiết 11') || timeStr.includes('Tiết 13')) {
-      timeSource = '18:00';
-    }
-  }
-
-  if (timeSource) {
-    const parts = timeSource.split(':');
-    hours = parseInt(parts[0], 10) || 7;
-    minutes = parseInt(parts[1], 10) || 0;
-  }
-
-  return new Date(year, month, day, hours, minutes, 0, 0);
-};
-
-/**
- * Chuẩn hóa ID thông báo để tránh ký tự đặc biệt gây lỗi native
- */
-const sanitizeNotifId = (id) => String(id || 'item').replace(/[^a-zA-Z0-9_-]/g, '_');
-
-/**
- * Lên lịch thông báo chuông và màn hình khóa trước giờ thi 30 phút và 15 phút
- */
-export const scheduleExamReminders = async (exams) => {
-  try {
-    if (!exams || !Array.isArray(exams) || exams.length === 0) return;
-
-    const hasPermission = await requestNotificationPermissions();
-    if (!hasPermission) return;
-
-    const now = new Date().getTime();
-
-    for (const exam of exams) {
-      if (!exam || !exam.examDate) continue;
-
-      const examDateTime = parseExamDateTime(exam.examDate, exam.examTime, exam.startTime);
-      if (!examDateTime) continue;
-
-      const examTimestamp = examDateTime.getTime();
-      const timeDisplay = exam.startTime || (exam.examTime ? exam.examTime.replace(/Tiết.*?\((.*?)\)/, '$1') : '07:30');
-      const sbdText = exam.seatNumber ? ` • SBD: ${exam.seatNumber}` : '';
-      const roomText = exam.room ? ` • Phòng: ${exam.room}` : '';
-      const safeId = sanitizeNotifId(exam.id || exam.courseCode || exam.courseName);
-
-      // Nhắc nhở trước 15 phút
-      const trigger15m = examTimestamp - 15 * 60 * 1000;
-      if (trigger15m > now) {
-        const notifId = `exam_15m_${safeId}`;
-        try {
-          await Notifications.scheduleNotificationAsync({
-            identifier: notifId,
-            content: {
-              title: '⏰ Nhắc lịch thi [Trước 15 phút]',
-              body: `Chỉ còn 15 phút nữa là bắt đầu thi môn "${exam.courseName || ''}"${roomText}${sbdText}. Khẩn trương vào phòng thi!`,
-              sound: true,
-              priority: Notifications.AndroidNotificationPriority?.MAX || 'max',
-              channelId: CHANNEL_ID,
-              data: { type: 'exam', examId: exam.id },
-            },
-            trigger: {
-              type: 'date',
-              date: new Date(trigger15m),
-              channelId: CHANNEL_ID,
-            },
-          });
-        } catch (err) {
-          console.warn('⚠️ Lỗi hẹn giờ thông báo thi 15m:', err.message);
-        }
-      }
-    }
-  } catch (globalErr) {
-    console.warn('⚠️ [notificationService] scheduleExamReminders gặp lỗi ngoại lệ:', globalErr.message);
-  }
-};
-
-/**
- * Lấy giờ bắt đầu của tiết học tại TUAF
- */
-const getClassStartTime = (periodText) => {
-  if (!periodText) return '07:00';
-  const m = String(periodText).match(/(\d+)/);
-  if (!m) return '07:00';
-  const p = parseInt(m[1], 10);
-  if (p === 1) return '07:00';
-  if (p === 2) return '07:55';
-  if (p === 3) return '08:50';
-  if (p === 4) return '09:55';
-  if (p === 5) return '10:50';
-  if (p === 6) return '13:15';
-  if (p === 7) return '14:10';
-  if (p === 8) return '15:15';
-  if (p === 9) return '16:10';
-  if (p === 10) return '17:05';
-  if (p === 11) return '18:00';
-  if (p === 12) return '18:50';
-  if (p === 13) return '19:40';
-  return '07:00';
-};
-
-/**
- * Phân tích khoảng thời gian học (studyTime)
- */
-const parseClassStudyRange = (studyTime) => {
-  if (!studyTime || typeof studyTime !== 'string') return null;
-  const parts = studyTime.split(/[-–—]|->|đến|to/).map(s => s.trim());
-  if (parts.length < 2) return null;
-
-  const parseD = (str) => {
-    const m = str.match(/(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{4}))?/);
-    if (!m) return null;
-    const day = parseInt(m[1], 10);
-    const month = parseInt(m[2], 10) - 1;
-    const year = m[3] ? parseInt(m[3], 10) : new Date().getFullYear();
-    return new Date(year, month, day);
-  };
-
-  const start = parseD(parts[0]);
-  const end = parseD(parts[1]);
-  if (!start || !end) return null;
-  end.setHours(23, 59, 59, 999);
-  return { start, end };
-};
-
-/**
- * Lên lịch thông báo chuông và màn hình khóa cho LỊCH HỌC (TKB) trong 7 ngày tới
- * Tự động nhắc nhở trước 30 phút và 15 phút
- */
-export const scheduleClassReminders = async (schedule) => {
-  try {
-    if (!schedule || !Array.isArray(schedule) || schedule.length === 0) return;
-
-    const hasPermission = await requestNotificationPermissions();
-    if (!hasPermission) return;
-
-    const now = new Date();
-    const nowTime = now.getTime();
-
-    // Quét 7 ngày tới (từ hôm nay đến 7 ngày sau)
-    for (let offset = 0; offset < 7; offset++) {
-      const targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
-      targetDate.setHours(0, 0, 0, 0);
-
-      const dayOfWeek = targetDate.getDay() === 0 ? 8 : targetDate.getDay() + 1; // 2: Thứ 2, ..., 8: CN
-
-      // Lọc các môn học diễn ra vào thứ này
-      const classesOnDay = schedule.filter(item => {
-        if (!item || item.dayOfWeek !== dayOfWeek) return false;
-        const range = parseClassStudyRange(item.studyTime);
-        if (range) {
-          if (targetDate < range.start || targetDate > range.end) return false;
-        }
-        return true;
+    try {
+      await Notifications.scheduleNotificationAsync({
+        identifier: item.id,
+        content: {
+          title: item.title,
+          body: item.body,
+          sound: true,
+          priority: Notifications.AndroidNotificationPriority?.MAX || 'max',
+          data: { ...(item.data || {}), owner },
+        },
+        trigger: {
+          type: 'date',
+          date: item.fireAt,
+          channelId: CHANNEL_ID,
+        },
       });
-
-      for (const classItem of classesOnDay) {
-        if (!classItem) continue;
-        const startTimeStr = getClassStartTime(classItem.periodText);
-        const [h, m] = startTimeStr.split(':').map(Number);
-
-        const classStartTime = new Date(
-          targetDate.getFullYear(),
-          targetDate.getMonth(),
-          targetDate.getDate(),
-          h,
-          m,
-          0,
-          0
-        ).getTime();
-
-        const dateKey = `${targetDate.getFullYear()}_${targetDate.getMonth() + 1}_${targetDate.getDate()}`;
-        const roomStr = classItem.room ? ` • Phòng ${classItem.room}` : '';
-        const safeClassId = sanitizeNotifId(classItem.id || classItem.courseName);
-        const safeTime = startTimeStr.replace(':', '_');
-
-        // Nhắc nhở trước 15 phút
-        const trigger15m = classStartTime - 15 * 60 * 1000;
-        if (trigger15m > nowTime) {
-          const notifId = `class_15m_${safeClassId}_${dateKey}_${safeTime}`;
-          try {
-            await Notifications.scheduleNotificationAsync({
-              identifier: notifId,
-              content: {
-                title: '⏰ Nhắc lịch học [Trước 15 phút]',
-                body: `Chỉ còn 15 phút nữa là bắt đầu môn "${classItem.courseName || ''}"${roomStr} (giờ học: ${startTimeStr}). Khẩn trương vào lớp thôi!`,
-                sound: true,
-                priority: Notifications.AndroidNotificationPriority?.MAX || 'max',
-                channelId: CHANNEL_ID,
-                data: { type: 'class', classId: classItem.id },
-              },
-              trigger: {
-                type: 'date',
-                date: new Date(trigger15m),
-                channelId: CHANNEL_ID,
-              },
-            });
-          } catch (err) {
-            console.warn('⚠️ Lỗi hẹn giờ thông báo học 15m:', err.message);
-          }
-        }
-      }
+    } catch (err) {
+      console.warn('⚠️ Lỗi hẹn giờ thông báo:', err.message);
     }
-  } catch (globalErr) {
-    console.warn('⚠️ [notificationService] scheduleClassReminders gặp lỗi ngoại lệ:', globalErr.message);
+  }
+  return true;
+};
+
+/**
+ * Hiện thông báo NGAY (dùng cho sự kiện vừa xảy ra, ví dụ có điểm mới).
+ */
+export const presentNow = async (owner, { title, body, data }) => {
+  if (!owner || owner !== activeOwner) return false;
+  const hasPermission = await requestNotificationPermissions();
+  if (!hasPermission || owner !== activeOwner) return false;
+  try {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title,
+        body,
+        sound: true,
+        priority: Notifications.AndroidNotificationPriority?.MAX || 'max',
+        data: { ...(data || {}), owner },
+      },
+      trigger: Platform.OS === 'android' ? { channelId: CHANNEL_ID } : null,
+    });
+    return true;
+  } catch (err) {
+    console.warn('⚠️ Lỗi hiển thị thông báo:', err.message);
+    return false;
   }
 };
 
 /**
- * Hủy toàn bộ thông báo đã lên lịch
+ * Hủy toàn bộ thông báo đã lên lịch (giữ lại để tương thích)
  */
 export const cancelAllReminders = async () => {
   try {

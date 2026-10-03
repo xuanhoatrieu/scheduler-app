@@ -6,6 +6,9 @@ const Grade = require('../models/Grade');
 const Finance = require('../models/Finance');
 const { decrypt } = require('../utils/security');
 const strategyManager = require('../strategies/StrategyManager');
+const { notificationCenter, isPushEnabled } = require('./pushJobs');
+const notificationRepo = require('../services/notificationRepo');
+const { diffGradeRows, scheduleFingerprint } = require('../services/notificationRules');
 
 /**
  * Hàm thực thi đồng bộ dữ liệu tự động
@@ -86,6 +89,19 @@ const runDatabaseBulkSync = async () => {
   // 5. Cache vào PG cho từng user đã đăng ký
   const strategy = strategyManager.getStrategy();
   let syncedCount = 0;
+  const pushOn = isPushEnabled();
+  const runAt = new Date();
+  let gradeNotified = 0;
+  let scheduleChanged = 0;
+
+  // SQL Server trả RỖNG cho cả trường gần như chắc chắn là lỗi truy vấn / dữ liệu chưa mở:
+  // giữ nguyên cache cũ, không so sánh → tránh xóa lịch của mọi người rồi hôm sau báo "điểm mới" hàng loạt.
+  const keepSchedules = allSchedules.length === 0;
+  const keepExams = allExams.length === 0;
+  const keepGrades = allGrades.length === 0;
+  if (keepSchedules || keepExams || keepGrades) {
+    console.warn(`⏰ [Cron] SQL Server trả rỗng toàn trường (TKB=${allSchedules.length}, thi=${allExams.length}, điểm=${allGrades.length}) → giữ nguyên cache phần rỗng.`);
+  }
 
   for (const [maSv, user] of Object.entries(userMap)) {
     try {
@@ -111,29 +127,41 @@ const runDatabaseBulkSync = async () => {
       }));
 
       // Cache schedule
-      await Schedule.destroy({ where: { userId: user.id, semester: formattedSemester, schoolYear: formattedSchoolYear } });
-      if (scheduleList.length > 0) await Schedule.bulkCreate(scheduleList);
+      if (!keepSchedules) {
+        await Schedule.destroy({ where: { userId: user.id, semester: formattedSemester, schoolYear: formattedSchoolYear } });
+        if (scheduleList.length > 0) await Schedule.bulkCreate(scheduleList);
+      }
 
       // Cache exams
-      await Exam.destroy({ where: { userId: user.id, semester: formattedSemester, schoolYear: formattedSchoolYear } });
-      if (userExams.length > 0) {
-        await Exam.bulkCreate(userExams.map(r => ({
-          courseName: r.courseName || '',
-          examDate: r.Ngay_thi ? new Date(r.Ngay_thi).toLocaleDateString('vi-VN') : '',
-          examTime: r.Ca_thi ? `Ca ${r.Ca_thi}` : '',
-          room: r.Phong || '',
-          seatNumber: r.So_bao_danh || '',
-          examFormat: r.Hinh_thuc || '',
-          semester: formattedSemester,
-          schoolYear: formattedSchoolYear,
-          userId: user.id
-        })));
+      const examList = userExams.map(r => ({
+        courseName: r.courseName || '',
+        examDate: r.Ngay_thi ? new Date(r.Ngay_thi).toLocaleDateString('vi-VN') : '',
+        examTime: r.Ca_thi ? `Ca ${r.Ca_thi}` : '',
+        room: r.Phong || '',
+        seatNumber: r.So_bao_danh || '',
+        examFormat: r.Hinh_thuc || '',
+        semester: formattedSemester,
+        schoolYear: formattedSchoolYear,
+        userId: user.id
+      }));
+      if (!keepExams) {
+        await Exam.destroy({ where: { userId: user.id, semester: formattedSemester, schoolYear: formattedSchoolYear } });
+        if (examList.length > 0) await Exam.bulkCreate(examList);
+      }
+
+      // Lịch học / lịch thi đổi → ghi nhận thời điểm đổi (máy nào chưa cập nhật lại sẽ nhận bản tin sáng dự phòng)
+      if (pushOn && !keepSchedules && !keepExams) {
+        try {
+          const changed = await notificationRepo.updateScheduleHash(user.id, scheduleFingerprint(scheduleList, examList), runAt);
+          if (changed) scheduleChanged++;
+        } catch (e) {
+          console.warn(`⏰ [Cron] Lỗi lưu dấu vân tay lịch ${maSv}: ${e.message}`);
+        }
       }
 
       // Cache grades
-      await Grade.destroy({ where: { userId: user.id, semester: formattedSemester, schoolYear: formattedSchoolYear } });
-      if (userGrades.length > 0) {
-        await Grade.bulkCreate(userGrades.map(r => {
+      if (!keepGrades) {
+        const newGradeRows = userGrades.map(r => {
           const totalGrade10 = r.TBCMH != null ? Math.round(r.TBCMH * 100) / 100 : null;
           const converted = strategy._convertGrade ? strategy._convertGrade(totalGrade10) : { totalGrade4: null, letterGrade: null };
           const grade4Raw = r.grade4 != null ? Number(r.grade4) : (r.Diem_so != null ? Number(r.Diem_so) : null);
@@ -156,7 +184,33 @@ const runDatabaseBulkSync = async () => {
             schoolYear: formattedSchoolYear,
             userId: user.id
           };
-        }));
+        });
+
+        // Đọc điểm cũ TRƯỚC khi ghi đè để phát hiện điểm mới / điểm thay đổi
+        let gradeEvents = [];
+        if (pushOn) {
+          try {
+            const oldGrades = await Grade.findAll({
+              where: { userId: user.id, semester: formattedSemester, schoolYear: formattedSchoolYear },
+              raw: true
+            });
+            // Tài khoản chưa từng được cron đồng bộ → chỉ lập mốc, không báo
+            gradeEvents = diffGradeRows(oldGrades, newGradeRows, { hasBaseline: !!user.lastSyncedAt }).events;
+          } catch (e) {
+            console.warn(`⏰ [Cron] Lỗi so điểm ${maSv}: ${e.message}`);
+          }
+        }
+
+        await Grade.destroy({ where: { userId: user.id, semester: formattedSemester, schoolYear: formattedSchoolYear } });
+        if (newGradeRows.length > 0) await Grade.bulkCreate(newGradeRows);
+
+        if (gradeEvents.length > 0) {
+          try {
+            if (await notificationCenter.enqueueGradeEvents(user.id, gradeEvents, runAt)) gradeNotified++;
+          } catch (e) {
+            console.warn(`⏰ [Cron] Lỗi xếp thông báo điểm ${maSv}: ${e.message}`);
+          }
+        }
       }
 
       // Cache finance
@@ -191,6 +245,17 @@ const runDatabaseBulkSync = async () => {
 
   console.log(`⏰ [Cron] Bulk sync hoàn tất: ${syncedCount}/${users.length} SV.`);
 
+  // Push ẩn cho MỌI thiết bị đang hoạt động (SV + GV): app thức dậy, tải dữ liệu mới nhất,
+  // lập lại lịch nhắc local (tuần tới tiết/thứ khác, đổi phòng... đều được cập nhật).
+  if (pushOn) {
+    try {
+      const syncQueued = await notificationCenter.enqueueDailySync(await notificationRepo.activeDeviceUserIds(), new Date());
+      console.log(`🔔 [Cron] Điểm mới: ${gradeNotified} SV • Lịch đổi: ${scheduleChanged} SV • Push cập nhật lịch nhắc: ${syncQueued} tài khoản.`);
+    } catch (e) {
+      console.warn('🔔 [Cron] Lỗi xếp push cập nhật lịch nhắc:', e.message);
+    }
+  }
+
   // Đóng pool sau cron (để không giữ kết nối liên tục)
   await namvietConnector.closePool();
 };
@@ -203,9 +268,10 @@ const runDatabaseBulkSync = async () => {
 const initCronJob = () => {
   const cronSchedule = process.env.CRON_SCHEDULE || '0 3 * * *';
   
+  // Chạy theo giờ Việt Nam (container thường để UTC → nếu không khai báo, "3h" sẽ là 10h sáng VN)
   cron.schedule(cronSchedule, () => {
     runDailySync();
-  });
+  }, { timezone: 'Asia/Ho_Chi_Minh' });
   
   console.log(`📅 [Cron Service] Đã thiết lập lịch đồng bộ SQL Server: "${cronSchedule}"`);
 };

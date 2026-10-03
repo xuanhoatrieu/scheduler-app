@@ -8,6 +8,8 @@
  *      nhưng toàn bộ API nạp dữ liệu bên dưới đều bị khóa chặt nếu chưa đăng nhập.
  */
 
+const crypto = require('crypto');
+
 function cleanIp(ip) {
   if (!ip) return '';
   if (ip.startsWith('::ffff:')) {
@@ -84,5 +86,33 @@ function adminLocalGuard(req, res, next) {
   next();
 }
 
-module.exports = { adminLocalGuard, isLanOrLocalIp };
+/**
+ * Lớp bảo vệ BỔ SUNG cho thao tác ảnh hưởng hàng loạt (VD: đẩy thông báo toàn trường).
+ * - Fail-closed: chưa cấu hình ADMIN_SECRET_KEY trong môi trường (hoặc vẫn dùng mật khẩu mặc định) → khóa chức năng.
+ * - Chỉ nhận khóa qua header x-admin-key (không nhận ?key= để tránh lộ qua log/lịch sử trình duyệt).
+ * - So sánh hằng thời gian.
+ * TODO(security): thay mật khẩu dùng chung bằng tài khoản quản trị riêng từng người + nhật ký thao tác.
+ */
+const DEFAULT_ADMIN_KEY = 'tuafadmin2026';
+
+function sha256(value) {
+  return crypto.createHash('sha256').update(String(value), 'utf8').digest();
+}
+
+function requireConfiguredAdminKey(req, res, next) {
+  const configured = process.env.ADMIN_SECRET_KEY;
+  if (!configured || configured === DEFAULT_ADMIN_KEY) {
+    return res.status(503).json({
+      success: false,
+      message: 'Chức năng đang bị khóa: máy chủ chưa đặt ADMIN_SECRET_KEY riêng (khác mật khẩu mặc định) trong file .env.'
+    });
+  }
+  const provided = req.headers['x-admin-key'];
+  if (typeof provided !== 'string' || !crypto.timingSafeEqual(sha256(provided.trim()), sha256(configured))) {
+    return res.status(401).json({ success: false, message: '❌ Bị từ chối: Yêu cầu xác thực Mật khẩu Quản trị viên (x-admin-key).' });
+  }
+  return next();
+}
+
+module.exports = { adminLocalGuard, isLanOrLocalIp, requireConfiguredAdminKey };
 

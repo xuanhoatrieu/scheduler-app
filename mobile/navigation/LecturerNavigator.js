@@ -14,6 +14,7 @@ import TeachingPaymentScreen from '../screens/lecturer/TeachingPaymentScreen';
 import InspectorFeedbackScreen from '../screens/lecturer/InspectorFeedbackScreen';
 import AcademicDocumentsScreen from '../screens/lecturer/AcademicDocumentsScreen';
 import { Colors } from '../theme/colors';
+import { flushPendingNavigation, navigationRef } from './navigationRef';
 
 const Tab = createBottomTabNavigator();
 
@@ -55,7 +56,7 @@ export default function LecturerNavigator({ user, onLogout, onSwitchRole }) {
   const tabHeight = 56 + bottomPadding;
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef} onReady={flushPendingNavigation}>
       <Tab.Navigator
         screenOptions={({ route }) => ({
           headerShown: false,

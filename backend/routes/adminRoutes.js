@@ -54,4 +54,7 @@ router.put('/inspectors/:id/password', (req, res) => adminController.changeInspe
 router.delete('/inspectors/:id', (req, res) => adminController.deleteInspector(req, res));
 router.get('/inspectors/lookup', (req, res) => adminController.lookupTuafStaff(req, res));
 
+// 7. Đẩy thông báo tới SV / lớp / khóa / toàn trường / giảng viên (thêm lớp khóa an toàn riêng)
+router.use('/announcements', require('./adminAnnouncements'));
+
 module.exports = router;

@@ -13,7 +13,7 @@ import {
   View,
 } from 'react-native';
 import { getExams, getScheduleSemesters } from '../services/api';
-import { scheduleExamReminders } from '../services/notificationService';
+import { syncReminders } from '../services/reminderSync';
 import { Colors } from '../theme/colors';
 
 const DAY_NAMES = {
@@ -77,8 +77,8 @@ export default function ExamsScreen({ user }) {
       const res = await getExams(forceSync, sem.semester, sem.schoolYear, 'ALL');
       if (res.success && Array.isArray(res.data)) {
         setExamData(res.data);
-        // Tự động lên lịch nhắc nhở 15 phút ra màn hình khóa có chuông
-        scheduleExamReminders(res.data);
+        // Nhắc lịch thi do ReminderSync lập theo kỳ hiện tại
+        syncReminders({ force: forceSync });
       } else {
         setExamData([]);
       }

@@ -8,6 +8,7 @@ const path = require('path');
 const { connectDB } = require('./config/db');
 const { initCronJob } = require('./jobs/syncScheduler');
 const { initInspectorCronJobs } = require('./jobs/inspectorReportJob');
+const { initPushJobs } = require('./jobs/pushJobs');
 const configService = require('./services/configService');
 
 const authRoutes = require('./routes/auth');
@@ -17,6 +18,8 @@ const inspectorRoutes = require('./routes/inspector');
 const newsRoutes = require('./routes/news');
 const adminRoutes = require('./routes/adminRoutes');
 const documentRoutes = require('./routes/documentRoutes');
+const deviceRoutes = require('./routes/devices');
+const announcementRoutes = require('./routes/announcements');
 const { adminLocalGuard } = require('./middleware/adminAuth');
 
 const app = express();
@@ -124,6 +127,8 @@ app.use('/api/news', newsRoutes);
 app.use('/api/lecturer', lecturerRoutes);
 app.use('/api/inspector', inspectorRoutes);
 app.use('/api/documents', documentRoutes);
+app.use('/api/devices', deviceRoutes);
+app.use('/api/announcements', announcementRoutes);
 
 // Health Check Route for Docker & Caddy
 app.get('/health', (req, res) => {
@@ -173,6 +178,7 @@ const startServices = async () => {
     // 3. Khởi chạy lịch chạy ngầm Cron Job
     initCronJob();
     initInspectorCronJobs();
+    initPushJobs();
     
     // 4. Khởi động Web API Server lắng nghe trên 0.0.0.0 (tất cả card mạng LAN & Local)
     app.listen(PORT, '0.0.0.0', () => {

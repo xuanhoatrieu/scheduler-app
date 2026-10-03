@@ -12,203 +12,174 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { getSchedule, getExams, getGrades, getFinance, getNews } from '../services/api';
+import { useFocusEffect } from '@react-navigation/native';
+import { getAnnouncements, getFinance, getNews, markAnnouncementRead } from '../services/api';
+import { getClassSessions, hasRealExamTime } from '../services/reminderPlanner';
+import { getRecentGradeEvents, loadCurrentEventData } from '../services/reminderSync';
 import { Colors } from '../theme/colors';
+import { atTime, dateKey, parseFullDate, startOfDay } from '../utils/scheduleDate';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+// Thời gian tối đa coi một buổi thi là "đang diễn ra" sau giờ bắt đầu
+const EXAM_ONGOING_MINUTES = 120;
+
+/** Liên kết http(s) trong nội dung văn bản thuần của thông báo Nhà trường */
+const extractPlainLinks = (text) => {
+  const out = [];
+  const re = /https?:\/\/[^\s<>"')]+/gi;
+  let m;
+  while ((m = re.exec(text || '')) !== null) {
+    const url = m[0].replace(/[.,;:!?]+$/, '');
+    if (!out.some((l) => l.url === url)) out.push({ url, text: 'Mở liên kết đính kèm' });
+  }
+  return out.slice(0, 10);
+};
+
+const formatShortDate = (ts) => {
+  const d = new Date(ts);
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+};
 
 /**
- * Quy đổi tiết học sang giờ bắt đầu thực tế của trường TUAF
+ * Chỉ liệt kê SỰ KIỆN CÓ THẬT của tài khoản đang đăng nhập:
+ * - Buổi học/dạy HÔM NAY chưa kết thúc (mỗi khoảng tiết một mục; không có lịch → không có mục)
+ * - Lịch thi trong 7 ngày tới (đọc được ngày thi)
+ * - Điểm mới / điểm thay đổi trong 7 ngày qua (sinh viên)
+ * - Còn nợ học phí (sinh viên)
  */
-const getStartTimeByPeriod = (periodText) => {
-  if (!periodText) return '07:00';
-  const firstPeriod = parseInt(periodText.split('-')[0]) || 1;
-  
-  if (firstPeriod === 1) return '07:00';
-  if (firstPeriod === 2) return '07:55';
-  if (firstPeriod === 3) return '08:50';
-  if (firstPeriod === 4) return '09:55';
-  if (firstPeriod === 5) return '10:50';
-  
-  if (firstPeriod === 6) return '13:15';
-  if (firstPeriod === 7) return '14:10';
-  if (firstPeriod === 8) return '15:15';
-  if (firstPeriod === 9) return '16:10';
-  if (firstPeriod === 10) return '17:05';
-  if (firstPeriod === 11) return '18:00';
-  if (firstPeriod === 12) return '18:50';
-  if (firstPeriod === 13) return '19:40';
-  if (firstPeriod === 14) return '20:30';
-  
-  return '07:00';
-};
-
-const subtractMinutesFromTime = (timeStr, mins) => {
-  const [h, m] = timeStr.split(':').map(Number);
-  let totalMins = h * 60 + m - mins;
-  if (totalMins < 0) totalMins += 24 * 60;
-  const hours = Math.floor(totalMins / 60).toString().padStart(2, '0');
-  const minutes = (totalMins % 60).toString().padStart(2, '0');
-  return `${hours}:${minutes}`;
-};
-
-const parseStudyTime = (studyTime) => {
-  if (!studyTime) return null;
-  const parts = studyTime.split('-').map(s => s.trim());
-  if (parts.length < 2) return null;
-
-  const parseDate = (str) => {
-    const m = str.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?/);
-    if (!m) return null;
-    const year = m[3] ? parseInt(m[3], 10) : new Date().getFullYear();
-    return new Date(year, parseInt(m[2], 10) - 1, parseInt(m[1], 10));
-  };
-
-  const start = parseDate(parts[0]);
-  const end = parseDate(parts[1]);
-  if (!start || !end) return null;
-  return { start, end };
-};
-
-const getPeriodStatus = (studyTime) => {
-  const range = parseStudyTime(studyTime);
-  if (!range) return 'unknown';
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  if (today < range.start) return 'upcoming';
-  if (today > range.end) return 'past';
-  return 'active';
-};
-
-const generatePersonalNotifications = (schedule, exams, grades, finance) => {
+const buildPersonalNotifications = ({ schedule, exams, finance, gradeEvents, role, now = new Date() }) => {
   const notifications = [];
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const isLecturer = role === 'lecturer';
+  const today = startOfDay(now);
 
-  // 1. Lịch đi học hôm nay (trước 15m)
-  if (schedule && schedule.length > 0) {
-    const dayOfWeekIndex = today.getDay();
-    const currentDayOfWeek = dayOfWeekIndex === 0 ? 8 : dayOfWeekIndex + 1;
-
-    const todayClasses = schedule.filter(
-      item => item.dayOfWeek === currentDayOfWeek && getPeriodStatus(item.studyTime) === 'active'
-    );
-
-    todayClasses.forEach((classItem) => {
-      const startTime = getStartTimeByPeriod(classItem.periodText);
-      const room = classItem.room || 'Chưa xếp';
-      const courseName = classItem.courseName;
-
-      const time15m = subtractMinutesFromTime(startTime, 15);
-
+  // 1. Buổi học / dạy hôm nay
+  getClassSessions(schedule, { from: now, days: 1 })
+    .filter((s) => s.endAt > now)
+    .forEach((s, idx) => {
+      const ongoing = s.startAt <= now;
       notifications.push({
-        id: `class_reminder_15m_${classItem.id || classItem.courseName}_${startTime}`,
+        id: `class_${s.key}`,
         type: 'reminder',
         icon: 'alarm-outline',
         color: Colors.accentPurple,
-        title: '⏰ Nhắc lịch học [Trước 15 phút]',
-        body: `Môn "${courseName}" sẽ bắt đầu lúc ${startTime} tại phòng ${room}. Chuẩn bị sách vở và vào lớp thôi!`,
-        time: `Lúc ${time15m}`,
-        priority: 0.1,
+        title: ongoing
+          ? (isLecturer ? '🟢 Đang trong giờ dạy' : '🟢 Đang trong giờ học')
+          : (isLecturer ? '⏰ Lịch dạy hôm nay' : '⏰ Lịch học hôm nay'),
+        body: `Môn "${s.courseName}" • Tiết ${s.periodText} (${s.startTime}–${s.endTime})${s.room ? ` • Phòng ${s.room}` : ''}`,
+        time: ongoing ? 'Đang diễn ra' : `Lúc ${s.startTime}`,
+        priority: idx * 0.001,
       });
     });
-  }
 
-  // 2. Lịch thi sắp tới
-  if (exams && exams.length > 0) {
-    for (const exam of exams) {
-      if (!exam.examDate) continue;
-      const parts = exam.examDate.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
-      if (!parts) continue;
-      const examDate = new Date(parseInt(parts[3]), parseInt(parts[2]) - 1, parseInt(parts[1]));
-      const diff = Math.ceil((examDate - today) / (1000 * 60 * 60 * 24));
+  // 2. Lịch thi trong 7 ngày tới
+  const seenExam = new Set();
+  for (const exam of exams || []) {
+    if (!exam || !exam.courseName) continue;
+    const date = parseFullDate(exam.examDate);
+    if (!date) continue;
+    const diff = Math.round((startOfDay(date) - today) / DAY_MS);
+    if (diff < 0 || diff > 7) continue;
 
-      if (diff >= 0 && diff <= 7) {
-        notifications.push({
-          id: `exam_${exam.courseName}_${exam.examDate}`,
-          type: 'exam',
-          icon: 'document-text',
-          color: diff <= 2 ? Colors.danger : Colors.warning,
-          title: diff === 0 ? '🚨 Thi HÔM NAY!' : `📝 Còn ${diff} ngày thi`,
-          body: `${exam.courseName} — ${exam.examDate} ${exam.examTime ? `• Ca: ${exam.examTime}` : ''} ${exam.room ? `• Phòng: ${exam.room}` : ''}`,
-          time: diff === 0 ? 'Hôm nay' : `Còn ${diff} ngày`,
-          priority: diff <= 2 ? 1 : 2,
-        });
-      }
+    const realTime = hasRealExamTime(exam);
+    if (diff === 0 && realTime) {
+      const start = atTime(date, String(exam.startTime).trim());
+      if (now.getTime() > start.getTime() + EXAM_ONGOING_MINUTES * 60 * 1000) continue; // đã thi xong
     }
-  }
+    const key = `${dateKey(date)}|${exam.startTime || ''}|${exam.courseCode || exam.courseName}|${exam.className || ''}`;
+    if (seenExam.has(key)) continue;
+    seenExam.add(key);
 
-  // 3. Nợ học phí
-  const actualDebt = finance?.overallDebt !== undefined ? finance.overallDebt : (finance?.debtTuition || 0);
-  if (actualDebt > 0) {
+    const timeStr = realTime ? ` • ${exam.startTime}` : (exam.examTime ? ` • ${exam.examTime}` : '');
+    const classStr = isLecturer && exam.className ? ` • Lớp ${exam.className}` : '';
     notifications.push({
-      id: 'finance_debt',
-      type: 'finance',
-      icon: 'wallet',
-      color: Colors.danger,
-      title: '💰 Còn nợ học phí',
-      body: `Bạn còn nợ ${actualDebt.toLocaleString('vi-VN')}đ. Vui lòng nộp để tránh bị cấm thi.`,
-      time: 'Quan trọng',
-      priority: 0.5,
+      id: `exam_${key}`,
+      type: 'exam',
+      icon: 'document-text',
+      color: diff <= 2 ? Colors.danger : Colors.warning,
+      title: diff === 0 ? '🚨 Thi HÔM NAY!' : `📝 Còn ${diff} ngày thi`,
+      body: `${exam.courseName} — ${exam.examDate}${timeStr}${classStr}${exam.room ? ` • Phòng: ${exam.room}` : ''}`,
+      time: diff === 0 ? 'Hôm nay' : `Còn ${diff} ngày`,
+      priority: diff <= 2 ? 1 : 2,
     });
   }
 
-  // 4. Kết quả học tập
-  if (grades && grades.length > 0) {
-    const completedGrades = grades.filter(g => g.totalGrade10 !== null && g.totalGrade10 !== undefined);
-    if (completedGrades.length > 0) {
-      const avgGrade = (completedGrades.reduce((s, g) => s + g.totalGrade10, 0) / completedGrades.length).toFixed(1);
+  // 3. Điểm mới / điểm thay đổi (chỉ khi thực sự có thay đổi, do ReminderSync phát hiện)
+  (gradeEvents || []).forEach((e, idx) => {
+    const score = [e.totalGrade10 !== null && e.totalGrade10 !== undefined ? String(e.totalGrade10) : '', e.letterGrade ? `(${e.letterGrade})` : '']
+      .filter(Boolean)
+      .join(' ');
+    notifications.push({
+      id: `grade_${e.at}_${idx}`,
+      type: 'grade',
+      icon: 'trophy',
+      color: Colors.success,
+      title: e.type === 'changed' ? '📊 Điểm vừa được cập nhật' : '📊 Có điểm mới',
+      body: `${e.courseName}${score ? `: ${score}` : ''}`,
+      time: formatShortDate(e.at),
+      priority: 0.8,
+    });
+  });
+
+  // 4. Nợ học phí (sinh viên)
+  if (!isLecturer) {
+    const actualDebt = finance?.overallDebt !== undefined ? finance.overallDebt : (finance?.debtTuition || 0);
+    if (actualDebt > 0) {
       notifications.push({
-        id: 'grades_summary',
-        type: 'grade',
-        icon: 'trophy',
-        color: parseFloat(avgGrade) >= 7 ? Colors.success : Colors.warning,
-        title: '🏆 Kết quả học tập tích lũy',
-        body: `${completedGrades.length} môn đã có điểm, trung bình hệ 10: ${avgGrade}`,
-        time: 'Cập nhật',
-        priority: 3,
+        id: 'finance_debt',
+        type: 'finance',
+        icon: 'wallet',
+        color: Colors.danger,
+        title: '💰 Còn nợ học phí',
+        body: `Bạn còn nợ ${actualDebt.toLocaleString('vi-VN')}đ. Vui lòng nộp để tránh bị cấm thi.`,
+        time: 'Quan trọng',
+        priority: 0.5,
       });
     }
   }
-
-  // 5. Thông báo hệ thống
-  notifications.push({
-    id: 'sync_info',
-    type: 'info',
-    icon: 'checkmark-circle',
-    color: Colors.success,
-    title: '✅ Dữ liệu đã được đồng bộ',
-    body: 'Lịch học, lịch thi, điểm số và học phí đã được cập nhật từ cổng thông tin trường.',
-    time: 'Vừa xong',
-    priority: 10,
-  });
 
   return notifications.sort((a, b) => a.priority - b.priority);
 };
 
-export default function NotificationsScreen({ user }) {
+export default function NotificationsScreen({ user, route }) {
   const [activeTab, setActiveTab] = useState('personal'); // 'personal' | 'school'
   const [personalNotifs, setPersonalNotifs] = useState([]);
   const [schoolNews, setSchoolNews] = useState([]);
+  const [announcements, setAnnouncements] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [selectedNews, setSelectedNews] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  const loadAnnouncements = async () => {
+    const res = await getAnnouncements();
+    if (res.success) {
+      setAnnouncements(res.data);
+      setUnreadCount(res.unread);
+    }
+  };
+
   const loadAllData = async () => {
     try {
-      const [scheduleRes, examsRes, gradesRes, financeRes, newsRes] = await Promise.all([
-        getSchedule(),
-        getExams(),
-        getGrades(),
-        getFinance(),
+      const role = user?.role;
+      const isStudent = role === 'student';
+      const [eventData, financeRes, newsRes, gradeEvents] = await Promise.all([
+        loadCurrentEventData(user),
+        isStudent ? getFinance() : Promise.resolve(null),
         getNews(),
+        isStudent ? getRecentGradeEvents(user) : Promise.resolve([]),
+        loadAnnouncements(),
       ]);
 
-      const pNotifs = generatePersonalNotifications(
-        scheduleRes.success ? scheduleRes.data : [],
-        examsRes.success ? examsRes.data : [],
-        gradesRes.success ? gradesRes.data : [],
-        financeRes.success ? financeRes.data : null,
+      setPersonalNotifs(
+        buildPersonalNotifications({
+          schedule: eventData.schedule,
+          exams: eventData.exams,
+          finance: financeRes && financeRes.success ? financeRes.data : null,
+          gradeEvents,
+          role,
+          now: new Date(),
+        })
       );
-      setPersonalNotifs(pNotifs);
 
       if (newsRes.success && newsRes.data) {
         setSchoolNews(newsRes.data);
@@ -219,14 +190,51 @@ export default function NotificationsScreen({ user }) {
   };
 
   useEffect(() => {
+    // Đổi tài khoản → xóa ngay hộp thư cũ trước khi tải của tài khoản mới
+    setAnnouncements([]);
+    setUnreadCount(0);
     loadAllData().finally(() => setLoading(false));
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.username, user?.role]);
+
+  // Quay lại tab → làm mới hộp thư Nhà trường (nhẹ, chỉ 1 request)
+  useFocusEffect(
+    useCallback(() => {
+      loadAnnouncements();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user?.username, user?.role])
+  );
+
+  // Mở từ push của Nhà trường → chuyển sang mục "Nhà Trường"
+  const openedAt = route?.params?.at;
+  useEffect(() => {
+    if (route?.params?.tab === 'school') {
+      setActiveTab('school');
+      loadAnnouncements();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openedAt]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadAllData();
     setRefreshing(false);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.username, user?.role]);
+
+  const openItem = (item) => {
+    setSelectedNews(item);
+    if (item._kind === 'ann' && !item.read) {
+      setAnnouncements((list) => list.map((a) => (a.id === item.id ? { ...a, read: true } : a)));
+      setUnreadCount((n) => Math.max(0, n - 1));
+      markAnnouncementRead(item.id);
+    }
+  };
+
+  const schoolItems = [
+    ...announcements.map((a) => ({ ...a, _kind: 'ann', _key: `ann_${a.id}` })),
+    ...schoolNews.map((n) => ({ ...n, _kind: 'news', _key: `news_${n.id || n.newsId}` })),
+  ];
 
   const formatDate = (isoString) => {
     if (!isoString) return '';
@@ -294,8 +302,13 @@ export default function NotificationsScreen({ user }) {
               color={activeTab === 'school' ? Colors.primary : Colors.textSecondary}
             />
             <Text style={[styles.segmentText, activeTab === 'school' && styles.segmentTextActive]}>
-              Nhà Trường ({schoolNews.length})
+              Nhà Trường ({schoolItems.length})
             </Text>
+            {unreadCount > 0 && (
+              <View style={styles.unreadBadge}>
+                <Text style={styles.unreadBadgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -334,20 +347,51 @@ export default function NotificationsScreen({ user }) {
         />
       )}
 
-      {/* Tab 2: Official School Announcements (tblNews) */}
+      {/* Tab 2: Thông báo Admin gửi riêng (trên cùng) + tin chính thức từ tblNews */}
       {activeTab === 'school' && (
         <FlatList
-          data={schoolNews}
-          keyExtractor={(item) => String(item.id || item.newsId)}
+          data={schoolItems}
+          keyExtractor={(item) => item._key}
           contentContainerStyle={styles.listPadding}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />
           }
-          renderItem={({ item }) => (
+          renderItem={({ item }) => (item._kind === 'ann' ? (
+            <TouchableOpacity
+              style={[styles.newsCard, !item.read && styles.annCardUnread]}
+              activeOpacity={0.8}
+              onPress={() => openItem(item)}
+            >
+              <View style={styles.newsHeaderRow}>
+                <View style={[styles.newsBadge, styles.annBadge]}>
+                  <Ionicons name="megaphone" size={12} color={Colors.accentPurple} />
+                  <Text style={[styles.newsBadgeText, { color: Colors.accentPurple }]} numberOfLines={1}>
+                    {item.senderLabel || 'Nhà trường'}
+                  </Text>
+                </View>
+                <View style={styles.annMetaRight}>
+                  {!item.read && <View style={styles.unreadDot} />}
+                  <Text style={styles.newsDate}>{formatDate(item.createdAt)}</Text>
+                </View>
+              </View>
+
+              <Text style={[styles.newsTitle, !item.read && styles.annTitleUnread]} numberOfLines={2}>
+                {item.title}
+              </Text>
+              <Text style={styles.newsSummary} numberOfLines={2}>
+                {item.body}
+              </Text>
+
+              <View style={styles.newsFooter}>
+                <Text style={styles.newsReadMore}>{item.read ? 'Xem lại' : 'Đọc thông báo'}</Text>
+                <Ionicons name="chevron-forward" size={14} color={Colors.primary} />
+              </View>
+            </TouchableOpacity>
+          ) : (
             <TouchableOpacity
               style={styles.newsCard}
               activeOpacity={0.8}
-              onPress={() => setSelectedNews(item)}
+              onPress={() => openItem(item)}
             >
               <View style={styles.newsHeaderRow}>
                 <View style={styles.newsBadge}>
@@ -372,7 +416,7 @@ export default function NotificationsScreen({ user }) {
                 <Ionicons name="chevron-forward" size={14} color={Colors.primary} />
               </View>
             </TouchableOpacity>
-          )}
+          ))}
           ListEmptyComponent={
             loading ? null : (
               <View style={styles.emptyWrap}>
@@ -405,26 +449,33 @@ export default function NotificationsScreen({ user }) {
           </View>
 
           {selectedNews && (() => {
-            const links = extractLinksFromHtml(selectedNews.content || selectedNews.summary);
-            const cleanContent = cleanHtmlTags(selectedNews.content || selectedNews.summary || 'Nội dung chi tiết thông báo đã được đăng tải trên Cổng thông tin sinh viên.');
+            const isAnn = selectedNews._kind === 'ann';
+            const links = isAnn
+              ? extractPlainLinks(selectedNews.body)
+              : extractLinksFromHtml(selectedNews.content || selectedNews.summary);
+            const cleanContent = isAnn
+              ? selectedNews.body
+              : cleanHtmlTags(selectedNews.content || selectedNews.summary || 'Nội dung chi tiết thông báo đã được đăng tải trên Cổng thông tin sinh viên.');
 
             return (
               <ScrollView style={styles.modalBody} contentContainerStyle={{ paddingBottom: 40 }}>
                 <View style={styles.newsBadgeLarge}>
-                  <Ionicons name="school" size={14} color={Colors.primary} />
-                  <Text style={styles.newsBadgeLargeText}>Thông báo chính thức từ Nhà trường</Text>
+                  <Ionicons name={isAnn ? 'megaphone' : 'school'} size={14} color={Colors.primary} />
+                  <Text style={styles.newsBadgeLargeText}>
+                    {isAnn ? `Thông báo từ ${selectedNews.senderLabel || 'Nhà trường'}` : 'Thông báo chính thức từ Nhà trường'}
+                  </Text>
                 </View>
 
                 <Text style={styles.modalArticleTitle}>{selectedNews.title}</Text>
 
                 <View style={styles.modalMetaRow}>
                   <Ionicons name="calendar-outline" size={14} color={Colors.textMuted} />
-                  <Text style={styles.modalMetaText}>Ngày đăng: {formatDate(selectedNews.postDate)}</Text>
+                  <Text style={styles.modalMetaText}>Ngày đăng: {formatDate(isAnn ? selectedNews.createdAt : selectedNews.postDate)}</Text>
                 </View>
 
                 <View style={styles.divider} />
 
-                <Text style={styles.modalArticleContent}>
+                <Text style={styles.modalArticleContent} selectable={isAnn}>
                   {cleanContent}
                 </Text>
 
@@ -566,6 +617,18 @@ const styles = StyleSheet.create({
     paddingTop: 8, marginTop: 4,
   },
   newsReadMore: { fontSize: 12, fontWeight: '700', color: Colors.primary, marginRight: 4 },
+
+  // Thông báo Admin gửi
+  annCardUnread: { borderColor: Colors.accentPurple + '55', backgroundColor: Colors.accentPurple + '08' },
+  annBadge: { backgroundColor: Colors.accentPurple + '18', maxWidth: '70%' },
+  annMetaRight: { flexDirection: 'row', alignItems: 'center' },
+  annTitleUnread: { fontWeight: '800' },
+  unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.danger, marginRight: 6 },
+  unreadBadge: {
+    minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 5,
+    backgroundColor: Colors.danger, alignItems: 'center', justifyContent: 'center', marginLeft: 6,
+  },
+  unreadBadgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
 
   emptyWrap: { alignItems: 'center', paddingTop: 80 },
   emptyText: { fontSize: 15, color: Colors.textMuted, marginTop: 14 },

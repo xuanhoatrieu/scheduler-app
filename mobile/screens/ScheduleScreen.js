@@ -14,7 +14,8 @@ import {
 import { getSchedule, getScheduleSemesters } from '../services/api';
 import { Colors, getDayColor } from '../theme/colors';
 import ExamsScreen from './ExamsScreen';
-import { scheduleClassReminders } from '../services/notificationService';
+import { syncReminders } from '../services/reminderSync';
+import { getTuafDayOfWeek, parseStudyTime } from '../utils/scheduleDate';
 
 const DAY_FULL = {
   0: 'Lịch Thực Tập / Chưa Xếp Thứ',
@@ -26,94 +27,8 @@ const DAY_SHORT = {
   2: 'T2', 3: 'T3', 4: 'T4', 5: 'T5', 6: 'T6', 7: 'T7', 8: 'CN',
 };
 
-/**
- * Parse các định dạng ngày học của TUAF:
- * - "17/08 - 27/09" (chuẩn phân kỳ TUAF không có năm)
- * - "03/11/2025 - 14/12/2025" (đầy đủ ngày tháng năm)
- * - "2026-09-01 -> 2026-12-31" hoặc "2026-09-01 đến 2026-12-30" (dải ngày ISO)
- * - "2026-09-17" hoặc "17/09/2026" (ngày đơn)
- * → { start: Date, end: Date }
- */
-const parseStudyTime = (studyTime, schoolYear) => {
-  if (!studyTime || typeof studyTime !== 'string') return null;
-  const trimmed = studyTime.trim();
-  if (!trimmed) return null;
-
-  let baseYear = 2026;
-  if (schoolYear) {
-    const rawY = String(schoolYear).replace('_', '-');
-    baseYear = parseInt(rawY.split('-')[0]) || new Date().getFullYear();
-  } else {
-    baseYear = new Date().getFullYear();
-  }
-
-  const parseSingleDate = (str, isEnd = false, startParsed = null) => {
-    if (!str) return null;
-    const s = str.trim();
-
-    // 1. ISO format: YYYY-MM-DD
-    const mIso = s.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
-    if (mIso) {
-      return new Date(parseInt(mIso[1]), parseInt(mIso[2]) - 1, parseInt(mIso[3]));
-    }
-
-    // 2. dd/MM/yyyy
-    const mFull = s.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-    if (mFull) {
-      return new Date(parseInt(mFull[3]), parseInt(mFull[2]) - 1, parseInt(mFull[1]));
-    }
-
-    // 3. dd/MM (tự suy ra năm học dựa vào học kỳ TUAF: tháng >= 8 thuộc baseYear, tháng < 8 thuộc baseYear + 1)
-    const mShort = s.match(/(\d{1,2})\/(\d{1,2})/);
-    if (mShort) {
-      const day = parseInt(mShort[1]);
-      const month = parseInt(mShort[2]);
-      let year = baseYear;
-      if (!isEnd) {
-        year = month >= 8 ? baseYear : baseYear + 1;
-      } else {
-        if (startParsed) {
-          const startMonth = startParsed.getMonth() + 1;
-          const startYear = startParsed.getFullYear();
-          year = month < startMonth ? startYear + 1 : startYear;
-        } else {
-          year = month >= 8 ? baseYear : baseYear + 1;
-        }
-      }
-      return new Date(year, month - 1, day);
-    }
-
-    return null;
-  };
-
-  let rawParts = [];
-  if (trimmed.includes('->')) {
-    rawParts = trimmed.split('->');
-  } else if (trimmed.includes('đến')) {
-    rawParts = trimmed.split('đến');
-  } else if (trimmed.includes(' to ')) {
-    rawParts = trimmed.split(' to ');
-  } else if (trimmed.includes(' - ')) {
-    rawParts = trimmed.split(' - ');
-  } else if (/^\d{1,2}\/\d{1,2}\s*-\s*\d{1,2}\/\d{1,2}/.test(trimmed)) {
-    rawParts = trimmed.split('-');
-  } else if (/^\d{1,2}\/\d{1,2}\/\d{4}\s*-\s*\d{1,2}\/\d{1,2}\/\d{4}/.test(trimmed)) {
-    rawParts = trimmed.split('-');
-  }
-
-  if (rawParts.length >= 2) {
-    const start = parseSingleDate(rawParts[0], false, null);
-    const end = parseSingleDate(rawParts[1], true, start);
-    if (start && end) return { start, end };
-  }
-
-  const single = parseSingleDate(trimmed, false, null);
-  if (single) {
-    return { start: single, end: single };
-  }
-
-  return null;
-};
+// Bộ đọc ngày dùng chung với hệ thống thông báo (mobile/utils/scheduleDate.js)
+// để màn Lịch và thông báo luôn cho cùng một kết quả.
 
 /**
  * Xác định trạng thái giai đoạn so với ngày hiện tại:
@@ -183,14 +98,6 @@ const getPeriodTimeStr = (periodText) => {
   const endStr = endTimes[endPeriod] || '17:55';
 
   return `${startStr} - ${endStr} (Tiết ${periodText})`;
-};
-
-/**
- * Lấy thứ trong tuần theo chuẩn TUAF (2 = Thứ Hai ... 8 = Chủ Nhật)
- */
-const getTuafDayOfWeek = (date = new Date()) => {
-  const jsDay = date.getDay();
-  return jsDay === 0 ? 8 : jsDay + 1;
 };
 
 /**
@@ -279,8 +186,8 @@ export default function ScheduleScreen({ user }) {
     
     if (res.success) {
       setScheduleData(res.data || []);
-      // Tự động kích hoạt chuông và thông báo màn hình khóa trước 15m cho TKB
-      scheduleClassReminders(res.data || []);
+      // Thông báo luôn lập theo HỌC KỲ HIỆN TẠI (không theo kỳ đang xem) → chỉ nhờ ReminderSync cập nhật
+      syncReminders({ force: forceSync });
     } else {
       setScheduleData([]);
     }
