@@ -19,6 +19,7 @@ import {
   getHomeroomTuition,
   markHomeroomAlertRead,
 } from '../../services/api';
+import StudentTuitionDetailModal from '../../components/StudentTuitionDetailModal';
 import { Colors } from '../../theme/colors';
 
 const formatCurrency = (amount) => {
@@ -62,6 +63,7 @@ export default function HomeroomScreen({ user }) {
   const [tuitionLoading, setTuitionLoading] = useState(false);
   const [tuitionFilter, setTuitionFilter] = useState('all'); // 'all' | 'debt' | 'settled' | 'surplus'
   const [tuitionStatusFilter, setTuitionStatusFilter] = useState('all'); // 'all' | 'active' | 'leave'
+  const [tuitionDetailStudent, setTuitionDetailStudent] = useState(null); // SV đang xem chi tiết học phí
 
   // Tab 3: Alerts data
   const [alerts, setAlerts] = useState([]);
@@ -117,6 +119,11 @@ export default function HomeroomScreen({ user }) {
       loadTabData();
     }
   }, [selectedClassId, activeSubTab]);
+
+  // Đổi lớp → đóng chi tiết học phí của SV lớp cũ
+  useEffect(() => {
+    setTuitionDetailStudent(null);
+  }, [selectedClassId]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -579,7 +586,12 @@ export default function HomeroomScreen({ user }) {
                 .map((stu, idx) => {
                   const statusConf = getStatusBadgeStyle(stu.statusId);
                   return (
-                    <View key={stu.studentCode || idx} style={styles.tuitionCard}>
+                    <TouchableOpacity
+                      key={stu.studentCode || idx}
+                      style={styles.tuitionCard}
+                      onPress={() => setTuitionDetailStudent(stu)}
+                      activeOpacity={0.7}
+                    >
                       <View style={styles.tuitionCardMain}>
                         <View style={{ flex: 1 }}>
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -619,6 +631,7 @@ export default function HomeroomScreen({ user }) {
                             Miễn giảm: {formatCurrency(stu.exemption)}
                           </Text>
                         ) : null}
+                        <Ionicons name="chevron-forward" size={14} color={Colors.textMuted} />
                       </View>
 
                       {(stu.phone || stu.email) ? (
@@ -637,7 +650,7 @@ export default function HomeroomScreen({ user }) {
                           ) : null}
                         </View>
                       ) : null}
-                    </View>
+                    </TouchableOpacity>
                   );
                 })
             ) : (
@@ -878,6 +891,13 @@ export default function HomeroomScreen({ user }) {
           </View>
         </View>
       </Modal>
+
+      {/* MÀN HÌNH: CHI TIẾT HỌC PHÍ TỪNG KỲ CỦA SINH VIÊN (GVCN) */}
+      <StudentTuitionDetailModal
+        idLop={selectedClassId}
+        student={tuitionDetailStudent}
+        onClose={() => setTuitionDetailStudent(null)}
+      />
     </SafeAreaView>
   );
 }

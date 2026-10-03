@@ -7,6 +7,8 @@ const Grade = require('../models/Grade');
 const Finance = require('../models/Finance');
 const Curriculum = require('../models/Curriculum');
 const News = require('../models/News');
+const { aggregateFinanceGroup, buildFinanceTerms } = require('../services/financeCalculator');
+const { replaceFinanceCache } = require('../services/financeReader');
 
 /**
  * DatabaseStrategy — Đọc dữ liệu từ SQL Server TUAF và cache vào PostgreSQL
@@ -207,93 +209,16 @@ class DatabaseStrategy extends ScheduleStrategy {
       }
     }
 
-    // Helper chuẩn hóa năm học (sửa lỗi các biên lai bị ghi năm học 0-1)
-    const normalizeSchoolYear = (schoolYear, date, hocKy) => {
-      if (schoolYear && schoolYear.includes('-') && schoolYear !== '0-1') {
-        return schoolYear;
-      }
-      if (date) {
-        const d = new Date(date);
-        if (!isNaN(d.getTime())) {
-          const year = d.getFullYear();
-          const month = d.getMonth() + 1;
-          if (month >= 8) {
-            return `${year}-${year + 1}`;
-          } else {
-            return `${year - 1}-${year}`;
-          }
-        }
-      }
-      return schoolYear || '';
-    };
-
-    // Nhóm học phí theo kỳ và cache (bao gồm cả công nợ Nam Việt, biên lai, miễn giảm, và tổng hợp công nợ)
-    const financeByKey = {};
-    
-    // Ghi nhận kỳ từ Stored Procedure Nam Việt (chuẩn xác nhất theo tín chỉ)
-    for (const r of (rawNamVietFinance || [])) {
-      const cleanYear = normalizeSchoolYear(r.nam_hoc, null, r.Hoc_ky);
-      const semester = `HocKy${r.Hoc_ky}`;
-      const key = `${semester}|${cleanYear}`;
-      if (!financeByKey[key]) financeByKey[key] = { receipts: [], exemptions: [], summaryTerm: null, namVietRow: null };
-      if (financeByKey[key].namVietRow) {
-        financeByKey[key].namVietRow.So_tien_phai_nop = (financeByKey[key].namVietRow.So_tien_phai_nop || 0) + (r.So_tien_phai_nop || 0);
-        financeByKey[key].namVietRow.So_tien_mien_giam = (financeByKey[key].namVietRow.So_tien_mien_giam || 0) + (r.So_tien_mien_giam || 0);
-        financeByKey[key].namVietRow.So_tien_nop = (financeByKey[key].namVietRow.So_tien_nop || 0) + (r.So_tien_nop || 0);
-        financeByKey[key].namVietRow.So_tien_da_nop = (financeByKey[key].namVietRow.So_tien_da_nop || 0) + (r.So_tien_da_nop || 0);
-        financeByKey[key].namVietRow.Thieu_thua = (financeByKey[key].namVietRow.Thieu_thua || 0) + (r.Thieu_thua || 0);
-      } else {
-        financeByKey[key].namVietRow = { ...r, nam_hoc: cleanYear };
-      }
-    }
-
-    // Ghi nhận kỳ từ biên lai
-    for (const r of (rawAllFinance || [])) {
-      const cleanYear = normalizeSchoolYear(r.Nam_hoc, r.Ngay_thu, r.Hoc_ky);
-      const semester = `HocKy${r.Hoc_ky}`;
-      const key = `${semester}|${cleanYear}`;
-      if (!financeByKey[key]) financeByKey[key] = { receipts: [], exemptions: [], summaryTerm: null, namVietRow: null };
-      financeByKey[key].receipts.push(r);
-    }
-
-    // Ghi nhận kỳ từ bảng miễn giảm
-    for (const r of (rawExemptions || [])) {
-      const cleanYear = normalizeSchoolYear(r.Nam_hoc, null, r.Hoc_ky);
-      const semester = `HocKy${r.Hoc_ky}`;
-      const key = `${semester}|${cleanYear}`;
-      if (!financeByKey[key]) financeByKey[key] = { receipts: [], exemptions: [], summaryTerm: null, namVietRow: null };
-      financeByKey[key].exemptions.push(r);
-    }
-
-    // Ghi nhận kỳ từ bảng tổng hợp công nợ theo kỳ
-    for (const r of (rawSummaryTerms || [])) {
-      const cleanYear = normalizeSchoolYear(r.Nam_hoc, null, r.Hoc_ky);
-      const semester = `HocKy${r.Hoc_ky}`;
-      const key = `${semester}|${cleanYear}`;
-      if (!financeByKey[key]) financeByKey[key] = { receipts: [], exemptions: [], summaryTerm: null, namVietRow: null };
-      financeByKey[key].summaryTerm = r;
-    }
-
-    // Xóa TOÀN BỘ học phí cũ trong cache của user trước khi nạp từ SQL Server
-    // để loại bỏ triệt để các kỳ ma do crawler cũ để lại (tương tự như với Grade)
-    await Finance.destroy({ where: { userId: user.id } });
-
-    for (const [key, group] of Object.entries(financeByKey)) {
-      const [semester, schoolYear] = key.split('|');
-      const aggregated = this._aggregateFinanceGroup(group);
-      await Finance.create({
-        userId: user.id,
-        semester,
-        schoolYear: schoolYear || '',
-        totalTuition: aggregated.totalTuition,
-        mustPayTuition: aggregated.mustPayTuition,
-        discountTuition: aggregated.discountTuition,
-        paidTuition: aggregated.paidTuition,
-        refundTuition: aggregated.refundTuition,
-        debtTuition: aggregated.debtTuition,
-        invoiceDetails: aggregated.invoiceDetails
-      });
-    }
+    // Chia kỳ + gộp kỳ bằng hàm tính DÙNG CHUNG (services/financeCalculator) để SV và GVCN luôn cùng con số.
+    // Thay TOÀN BỘ bản lưu tạm học phí của user (loại bỏ kỳ ma do crawler cũ), tuần tự theo user
+    // để không trùng bản ghi khi có request đọc trực tiếp chạy song song.
+    const financeTerms = buildFinanceTerms({
+      namViet: rawNamVietFinance,
+      receipts: rawAllFinance,
+      exemptions: rawExemptions,
+      summaryTerms: rawSummaryTerms
+    });
+    await replaceFinanceCache(Finance, user.id, financeTerms);
 
     // Cache CTĐT (Chỉ lấy các môn phân từ Kỳ 1 đến Kỳ 8)
     const validCurriculum = rawCurriculum || [];
@@ -311,11 +236,11 @@ class DatabaseStrategy extends ScheduleStrategy {
     }
 
     const totalGrades = (rawAllGrades || []).length;
-    console.log(`📚 [Strategy: Database] Lịch sử hoàn tất! ${totalGrades} điểm, ${Object.keys(financeByKey).length} kỳ học phí, ${validCurriculum.length} môn CTĐT`);
+    console.log(`📚 [Strategy: Database] Lịch sử hoàn tất! ${totalGrades} điểm, ${financeTerms.length} kỳ học phí, ${validCurriculum.length} môn CTĐT`);
 
     return {
       gradesCount: totalGrades,
-      financeCount: Object.keys(financeByKey).length,
+      financeCount: financeTerms.length,
       curriculumCount: validCurriculum.length,
       semestersCrawled: Object.keys(gradesByKey).length
     };
@@ -558,77 +483,7 @@ class DatabaseStrategy extends ScheduleStrategy {
    * Gom nhóm biên lai, miễn giảm, và công nợ tổng hợp thành đối tượng chi tiết
    */
   _aggregateFinanceGroup(group) {
-    const { receipts = [], exemptions = [], summaryTerm = null, namVietRow = null } = group || {};
-
-    let totalTuition = namVietRow ? (namVietRow.So_tien_phai_nop || 0) : (summaryTerm ? (summaryTerm.So_tien_phai_nop || 0) : 0);
-    let discountTuition = namVietRow ? (namVietRow.So_tien_mien_giam || 0) : (summaryTerm ? (summaryTerm.So_tien_mien_giam || 0) : 0);
-    let paidTuition = namVietRow ? (namVietRow.So_tien_da_nop || 0) : (summaryTerm ? (summaryTerm.So_tien_da_nop || 0) : 0);
-    let refundTuition = namVietRow ? (namVietRow.So_tien_tra_lai || 0) : (summaryTerm ? (summaryTerm.So_tien_tra_lai || 0) : 0);
-    let debtTuition = namVietRow ? (namVietRow.Thieu_thua || 0) : (summaryTerm ? (summaryTerm.Thieu_thua || 0) : 0);
-
-    // Tính toán từ receipts và exemptions nếu không có dữ liệu chốt từ Stored Procedure / bảng tổng hợp
-    if (!namVietRow && !summaryTerm) {
-      for (const r of receipts) {
-        const isRefund = r.Thu_chi === false || (r.Noi_dung && r.Noi_dung.toLowerCase().includes('hoàn'));
-        if (isRefund) {
-          refundTuition += Math.abs(r.So_tien || 0);
-        } else {
-          paidTuition += (r.So_tien || 0);
-        }
-      }
-
-      if (totalTuition === 0 && paidTuition > 0) {
-        totalTuition = paidTuition;
-      }
-
-      if (exemptions.length > 0) {
-        const percent = exemptions[0]?.Phan_tram || 0;
-        discountTuition = exemptions.reduce((sum, e) => sum + (e.So_tien_MG || 0), 0);
-        if (percent === 100) {
-          discountTuition = totalTuition > 0 ? totalTuition : (discountTuition || 0);
-          debtTuition = 0;
-        }
-      }
-
-      debtTuition = totalTuition - discountTuition - paidTuition + refundTuition;
-    } else {
-      // Khi không có dữ liệu chốt từ Stored Procedure NamViet (chỉ có summaryTerm), mới dùng receipts để kiểm tra bù đắp
-      if (!namVietRow && summaryTerm && receipts.length > 0) {
-        const receiptTotal = receipts.reduce((sum, r) => sum + (r.Thu_chi !== false ? (r.So_tien || 0) : 0), 0);
-        if (receiptTotal > paidTuition) {
-          paidTuition = receiptTotal;
-          debtTuition = (totalTuition - discountTuition) - paidTuition;
-        }
-      }
-
-      if (discountTuition === 0 && debtTuition === 0 && paidTuition === 0 && totalTuition > 0) {
-        discountTuition = totalTuition;
-      }
-    }
-
-    const mustPayTuition = Math.max(0, totalTuition - discountTuition);
-
-    const invoiceDetails = receipts.map(r => {
-      const isRefund = r.Thu_chi === false || (r.Noi_dung && r.Noi_dung.toLowerCase().includes('hoàn'));
-      return {
-        invoiceNo: r.So_phieu || '',
-        date: this._formatDate(r.Ngay_thu),
-        amount: Math.abs(r.So_tien || 0),
-        round: r.Lan_thu || 1,
-        description: r.Noi_dung || '',
-        isRefund: Boolean(isRefund)
-      };
-    });
-
-    return {
-      totalTuition,
-      mustPayTuition,
-      discountTuition,
-      paidTuition,
-      refundTuition,
-      debtTuition,
-      invoiceDetails
-    };
+    return aggregateFinanceGroup(group);
   }
 
   _aggregateFinance(records) {

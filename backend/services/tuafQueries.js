@@ -704,8 +704,9 @@ async function getAllStudentFinance(pool, idSv) {
 
 /**
  * Lấy danh sách miễn giảm học phí của 1 SV (ACC_DanhSachMienGiamHocPhi)
+ * @param {{strict?: boolean}} [opts] strict=true: ném lỗi thay vì trả [] (dùng cho đọc trực tiếp học phí)
  */
-async function getStudentExemptions(pool, idSv) {
+async function getStudentExemptions(pool, idSv, { strict = false } = {}) {
   try {
     const result = await safeQuery(pool,
       `SELECT Hoc_ky, Nam_hoc, Phan_tram, So_tien_MG
@@ -716,14 +717,16 @@ async function getStudentExemptions(pool, idSv) {
     );
     return result.recordset;
   } catch (e) {
+    if (strict) throw e;
     return [];
   }
 }
 
 /**
  * Lấy tổng hợp công nợ học phí theo kỳ của 1 SV (ACC_TongHopCongNoHocPhiTheoKy)
+ * @param {{strict?: boolean}} [opts] strict=true: ném lỗi thay vì trả []
  */
-async function getStudentFinanceSummaryByTerm(pool, idSv) {
+async function getStudentFinanceSummaryByTerm(pool, idSv, { strict = false } = {}) {
   try {
     const result = await safeQuery(pool,
       `SELECT Hoc_ky, Nam_hoc, So_tien_phai_nop, So_tien_mien_giam, So_tien_nop, So_tien_da_nop, So_tien_tra_lai, Thieu_thua
@@ -734,6 +737,7 @@ async function getStudentFinanceSummaryByTerm(pool, idSv) {
     );
     return result.recordset;
   } catch (e) {
+    if (strict) throw e;
     return [];
   }
 }
@@ -801,14 +805,16 @@ async function getStudentCumulativeFinance(pool, idSv) {
 
 /**
  * Lấy chi tiết công nợ học phí các kỳ theo chuẩn phần mềm Nam Việt (ACC_TongHopHocPhiSinhVien_HienThi)
+ * @param {{strict?: boolean}} [opts] strict=true: ném lỗi thay vì trả []
  */
-async function getStudentNamVietFinance(pool, idSv) {
+async function getStudentNamVietFinance(pool, idSv, { strict = false } = {}) {
   try {
     const result = await pool.request()
       .input('ID_sv', sql.UniqueIdentifier, idSv)
       .execute('ACC_TongHopHocPhiSinhVien_HienThi');
     return result.recordset || [];
   } catch (e) {
+    if (strict) throw e;
     return [];
   }
 }
@@ -968,29 +974,44 @@ async function getClassStudents(pool, idLopTc) {
   }));
 }
 
+// ═══════════════════════════════════════
+// GVCN — NGUỒN CHÍNH THỨC: STU_Lop.ID_cb
+// Phần mềm ESS của trường cấp nhóm quyền "GVCN" theo đúng cột này
+// (thủ tục STU_Lop_CapNhatTuDongQuyenGVCN; gỡ GVCN = STU_Lop_XoaGVCN đặt ID_cb = NULL).
+// STU_GiaoVienChuNghiem chỉ là sổ ghi phân công theo năm → KHÔNG dùng để cấp quyền.
+// "Năm hiện tại" = GVCN hiện tại của lớp còn sinh viên đang học (Trang_thai = 0).
+// ═══════════════════════════════════════
+
+const HOMEROOM_SCOPE_SQL = `
+  l.ID_cb = @idCb
+  AND EXISTS (SELECT 1 FROM STU_DanhSach dsa WHERE dsa.ID_lop = l.ID_lop AND dsa.Trang_thai = 0)`;
+
 /**
- * Lấy danh sách các lớp mà Giảng viên được phân công làm Chủ nhiệm (GVCN)
- * - Khử nhân bản lớp khi GV phụ trách nhiều năm học
- * - Đếm chính xác sĩ số thực tế và phân loại trạng thái học tập từ STU_DanhSach
+ * Lấy danh sách lớp mà Giảng viên đang là GVCN (STU_Lop.ID_cb), chỉ lớp còn SV đang học.
+ * Tham số namHoc giữ lại cho tương thích chữ ký cũ, không còn dùng.
  */
-async function getHomeroomClasses(pool, idCb, namHoc) {
+async function getHomeroomClasses(pool, idCb, namHoc) { // eslint-disable-line no-unused-vars
+  if (!idCb) return [];
   const query = `
-    WITH AssignedClasses AS (
+    SELECT
+      l.ID_lop AS idLop,
+      COALESCE(l.Ma_lop, '') AS classCode,
+      COALESCE(l.Ten_lop, '') AS className,
+      l.Khoa_hoc AS cohort,
+      l.Nien_khoa AS schoolYearRange,
+      (SELECT TOP 1 REPLACE(g.Nam_hoc, ' ', '') FROM STU_GiaoVienChuNghiem g
+        WHERE g.ID_lop = l.ID_lop AND g.Id_cb = l.ID_cb
+        ORDER BY REPLACE(g.Nam_hoc, ' ', '') DESC) AS schoolYear,
+      COALESCE(s.totalStudents, 0) AS studentCount,
+      COALESCE(s.totalStudents, 0) AS totalStudents,
+      COALESCE(s.activeStudents, 0) AS activeStudents,
+      COALESCE(s.leaveStudents, 0) AS leaveStudents,
+      COALESCE(s.reservedStudents, 0) AS reservedStudents,
+      COALESCE(s.suspendedStudents, 0) AS suspendedStudents,
+      COALESCE(s.graduatedStudents, 0) AS graduatedStudents
+    FROM STU_Lop l
+    OUTER APPLY (
       SELECT
-        l.ID_lop AS idLop,
-        COALESCE(l.Ma_lop, '') AS classCode,
-        COALESCE(l.Ten_lop, '') AS className,
-        l.Khoa_hoc AS cohort,
-        l.Nien_khoa AS schoolYearRange,
-        MAX(gv.Nam_hoc) AS latestSchoolYear
-      FROM STU_GiaoVienChuNghiem gv
-      JOIN STU_Lop l ON gv.ID_lop = l.ID_lop
-      WHERE (gv.Id_cb = @idCb OR CAST(gv.Id_cb AS nvarchar(50)) = @idCb)
-      GROUP BY l.ID_lop, l.Ma_lop, l.Ten_lop, l.Khoa_hoc, l.Nien_khoa
-    ),
-    ClassStats AS (
-      SELECT
-        ds.ID_lop,
         COUNT(ds.ID_sv) AS totalStudents,
         SUM(CASE WHEN ds.Trang_thai = 0 THEN 1 ELSE 0 END) AS activeStudents,
         SUM(CASE WHEN ds.Trang_thai = 2 THEN 1 ELSE 0 END) AS leaveStudents,
@@ -999,29 +1020,54 @@ async function getHomeroomClasses(pool, idCb, namHoc) {
         SUM(CASE WHEN ds.Trang_thai = 4 THEN 1 ELSE 0 END) AS graduatedStudents
       FROM STU_DanhSach ds
       JOIN STU_HoSoSinhVien sv ON ds.ID_sv = sv.ID_sv
-      GROUP BY ds.ID_lop
-    )
-    SELECT
-      c.idLop,
-      c.classCode,
-      c.className,
-      c.cohort,
-      c.schoolYearRange,
-      c.latestSchoolYear AS schoolYear,
-      COALESCE(s.totalStudents, 0) AS studentCount,
-      COALESCE(s.totalStudents, 0) AS totalStudents,
-      COALESCE(s.activeStudents, 0) AS activeStudents,
-      COALESCE(s.leaveStudents, 0) AS leaveStudents,
-      COALESCE(s.reservedStudents, 0) AS reservedStudents,
-      COALESCE(s.suspendedStudents, 0) AS suspendedStudents,
-      COALESCE(s.graduatedStudents, 0) AS graduatedStudents
-    FROM AssignedClasses c
-    LEFT JOIN ClassStats s ON c.idLop = s.ID_lop
-    ORDER BY c.cohort DESC, c.className ASC
+      WHERE ds.ID_lop = l.ID_lop
+    ) s
+    WHERE ${HOMEROOM_SCOPE_SQL}
+    ORDER BY l.Khoa_hoc DESC, l.Ten_lop ASC
   `;
   const inputs = [{ name: 'idCb', type: sql.NVarChar(50), value: String(idCb) }];
   const result = await safeQuery(pool, query, inputs, { username: 'homeroom-classes' });
   return result.recordset;
+}
+
+/**
+ * Giảng viên idCb có đang là GVCN của lớp idLop không (cùng điều kiện với getHomeroomClasses).
+ */
+async function isHomeroomOf(pool, idCb, idLop) {
+  if (!idCb || !Number.isInteger(idLop) || idLop <= 0) return false;
+  const result = await safeQuery(pool,
+    `SELECT TOP 1 1 AS ok FROM STU_Lop l WHERE l.ID_lop = @idLop AND ${HOMEROOM_SCOPE_SQL}`,
+    [
+      { name: 'idLop', type: sql.Int, value: idLop },
+      { name: 'idCb', type: sql.NVarChar(50), value: String(idCb) }
+    ],
+    { username: 'homeroom-access' }
+  );
+  return result.recordset.length > 0;
+}
+
+/**
+ * Giảng viên idCb có được phân công dạy lớp tín chỉ idLopTc không
+ * (cùng điều kiện với getLecturerSchedule: COALESCE(sk.ID_cb, ltc.ID_cb)).
+ */
+async function isTeachingClass(pool, idCb, idLopTc) {
+  if (!idCb || !Number.isInteger(idLopTc) || idLopTc <= 0) return false;
+  const result = await safeQuery(pool,
+    `SELECT TOP 1 1 AS ok
+     FROM PLAN_LopTinChi_TC ltc
+     WHERE ltc.ID_lop_tc = @idLopTc
+       AND ISNULL(ltc.Huy_lop, 0) = 0
+       AND EXISTS (
+         SELECT 1 FROM PLAN_SukiensTinChi_TC sk
+         WHERE sk.ID_lop_tc = ltc.ID_lop_tc AND COALESCE(sk.ID_cb, ltc.ID_cb) = @idCb
+       )`,
+    [
+      { name: 'idLopTc', type: sql.Int, value: idLopTc },
+      { name: 'idCb', type: sql.NVarChar(50), value: String(idCb) }
+    ],
+    { username: 'teaching-access' }
+  );
+  return result.recordset.length > 0;
 }
 
 /**
@@ -1201,146 +1247,111 @@ async function getHomeroomStudentsRegistration(pool, idLop, hocKy, namHoc) {
 }
 
 /**
- * Theo dõi công nợ học phí của sinh viên lớp chủ nhiệm
- * - Phân loại: Còn nợ, Đã nộp đủ, Nộp thừa tiền
- * - Hiển thị trạng thái học tập chi tiết
+ * Danh sách sinh viên của lớp chủ nhiệm (thông tin cơ bản, chưa có học phí).
+ * Học phí được tính riêng bằng financeReader + financeCalculator (dùng chung với màn SV).
  */
-async function getHomeroomStudentsFinance(pool, idLop, hocKy, namHoc) {
+async function getHomeroomStudentsBasic(pool, idLop) {
   const classRes = await safeQuery(pool,
     `SELECT ID_lop, Ma_lop, Ten_lop FROM STU_Lop WHERE ID_lop = @idLop`,
     [{ name: 'idLop', type: sql.Int, value: idLop }],
     { username: 'homeroom-finance-class' }
   );
-  if (classRes.recordset.length === 0) return { summary: {}, students: [] };
-
+  if (classRes.recordset.length === 0) return { className: '', classCode: '', students: [] };
   const classInfo = classRes.recordset[0];
-  const className = classInfo.Ten_lop || '';
-  const classCode = classInfo.Ma_lop || '';
 
-  const cleanNamHoc = String(namHoc || '').replace('_', '-');
-  const altNamHoc = cleanNamHoc.replace('-', '_');
-
-  const query = `
-    SELECT
+  const result = await safeQuery(pool,
+    `SELECT
+      sv.ID_sv,
       sv.Ma_sv AS studentCode,
       sv.Ho_ten AS studentName,
-      @className AS studentClass,
       ds.Trang_thai AS statusId,
       COALESCE(tt.Trang_thai, 'Chưa rõ') AS statusName,
       sv.Dienthoai_canhan AS phone,
-      COALESCE(sv.EmailTruong, sv.Email, '') AS email,
-      -- 1. Lấy theo kỳ cụ thể nếu trường đã chốt sổ kỳ này
-      cnKy.So_tien_phai_nop AS kyMustPay,
-      cnKy.So_tien_da_nop AS kyPaid,
-      cnKy.So_tien_mien_giam AS kyExemption,
-      cnKy.Thieu_thua AS kyBalance,
-      -- 2. Lấy công nợ tổng hợp lũy kế mới nhất của trường (đến kỳ chốt gần nhất)
-      cnAll.So_tien_phai_nop AS allMustPay,
-      cnAll.So_tien_da_nop AS allPaid,
-      cnAll.So_tien_mien_giam AS allExemption,
-      cnAll.Thieu_thua AS allBalance,
-      cnAll.Ngay_tong_hop AS allDate
+      COALESCE(sv.EmailTruong, sv.Email, '') AS email
     FROM STU_DanhSach ds
     JOIN STU_HoSoSinhVien sv ON ds.ID_sv = sv.ID_sv
     LEFT JOIN dmTrangThaiHoc tt ON ds.Trang_thai = tt.ID_tt
-    LEFT JOIN ACC_TongHopCongNoHocPhiTheoKy cnKy 
-      ON cnKy.ID_sv = sv.ID_sv AND cnKy.Hoc_ky = @hocKy AND (cnKy.Nam_hoc = @namHoc OR cnKy.Nam_hoc = @altNamHoc)
-    LEFT JOIN ACC_TongHopCongNoHocPhi cnAll 
-      ON cnAll.ID_sv = sv.ID_sv
     WHERE ds.ID_lop = @idLop
-    ORDER BY ds.Trang_thai ASC, sv.Ho_ten ASC
-  `;
-
-  const result = await safeQuery(pool, query, [
-    { name: 'idLop', type: sql.Int, value: idLop },
-    { name: 'className', type: sql.NVarChar(100), value: className },
-    { name: 'hocKy', type: sql.Int, value: hocKy },
-    { name: 'namHoc', type: sql.NVarChar(50), value: cleanNamHoc },
-    { name: 'altNamHoc', type: sql.NVarChar(50), value: altNamHoc }
-  ], { username: 'homeroom-finance-students' });
-
-  let debtCount = 0;
-  let settledCount = 0;
-  let surplusCount = 0;
-  let totalDebtAmount = 0;
-  let totalPaidAmount = 0;
-  let hasAnyTermData = false;
-
-  const students = result.recordset.map(row => {
-    // Nếu có dữ liệu theo kỳ cụ thể thì dùng theo kỳ, nếu kỳ đó trường chưa chốt số liệu thì fallback sang công nợ tổng hợp lũy kế mới nhất
-    const hasKy = row.kyMustPay != null;
-    if (hasKy) hasAnyTermData = true;
-
-    const mustPay = hasKy ? (row.kyMustPay || 0) : (row.allMustPay || 0);
-    const paid = hasKy ? (row.kyPaid || 0) : (row.allPaid || 0);
-    const exemption = hasKy ? (row.kyExemption || 0) : (row.allExemption || 0);
-    let balance = hasKy ? (row.kyBalance || 0) : (row.allBalance || 0);
-
-    // Chuẩn hóa nợ lũy kế chốt toàn trường (sổ cái chốt của phòng Tài vụ)
-    const allNorm = parseNamVietBalance(row.allBalance);
-    const kyNorm = parseNamVietBalance(row.kyBalance);
-
-    let status = 'settled';
-    let debtAmount = 0;
-    let surplusAmount = 0;
-
-    // QUY TẮC KẾ TOÁN BÙ TRỪ TUAF:
-    // Nếu bảng tổng hợp công nợ lũy kế toàn trường cnAll ghi nhận sinh viên đã nộp đủ hoặc nộp thừa (allBalance <= 0),
-    // thì sinh viên KHÔNG bị coi là nợ dù ở kỳ cũ cnKy chưa kết chuyển bù trừ công nợ.
-    if (allNorm.isSettled || allNorm.isSurplus) {
-      if (allNorm.isSurplus) {
-        status = 'surplus';
-        surplusAmount = allNorm.surplusAmount;
-        surplusCount++;
-      } else {
-        status = 'settled';
-        settledCount++;
-      }
-    } else {
-      // Toàn khóa sinh viên đang nợ thực tế
-      status = 'debt';
-      debtAmount = allNorm.debtAmount;
-      debtCount++;
-      totalDebtAmount += debtAmount;
-    }
-
-    totalPaidAmount += paid;
-
-    return {
-      studentCode: row.studentCode,
-      studentName: row.studentName,
-      studentClass: row.studentClass,
-      statusId: row.statusId,
-      statusName: row.statusName,
-      phone: row.phone || '',
-      email: row.email || '',
-      mustPay,
-      paid,
-      exemption,
-      rawBalance: row.allBalance,
-      balance: surplusAmount > 0 ? surplusAmount : debtAmount,
-      debtAmount,
-      surplusAmount,
-      status,
-      statusText: allNorm.statusText,
-      isTermData: hasKy
-    };
-  });
+    ORDER BY ds.Trang_thai ASC, sv.Ho_ten ASC`,
+    [{ name: 'idLop', type: sql.Int, value: idLop }],
+    { username: 'homeroom-finance-students' }
+  );
 
   return {
-    className,
-    classCode,
-    summary: {
-      totalStudents: students.length,
-      debtCount,
-      settledCount,
-      surplusCount,
-      totalDebtAmount,
-      totalPaidAmount,
-      isTermData: hasAnyTermData
-    },
-    students
+    className: classInfo.Ten_lop || '',
+    classCode: classInfo.Ma_lop || '',
+    students: result.recordset
   };
+}
+
+/**
+ * Tìm sinh viên theo mã SV NHƯNG chỉ trong đúng lớp idLop (chặn mượn lớp mình để xem SV lớp khác).
+ */
+async function findStudentInClass(pool, idLop, studentCode) {
+  const result = await safeQuery(pool,
+    `SELECT TOP 1
+      sv.ID_sv,
+      sv.Ma_sv AS studentCode,
+      sv.Ho_ten AS studentName,
+      l.Ten_lop AS studentClass,
+      ds.Trang_thai AS statusId,
+      COALESCE(tt.Trang_thai, 'Chưa rõ') AS statusName,
+      sv.Dienthoai_canhan AS phone,
+      COALESCE(sv.EmailTruong, sv.Email, '') AS email
+    FROM STU_DanhSach ds
+    JOIN STU_HoSoSinhVien sv ON ds.ID_sv = sv.ID_sv
+    JOIN STU_Lop l ON l.ID_lop = ds.ID_lop
+    LEFT JOIN dmTrangThaiHoc tt ON ds.Trang_thai = tt.ID_tt
+    WHERE ds.ID_lop = @idLop AND UPPER(LTRIM(RTRIM(sv.Ma_sv))) = UPPER(@studentCode)`,
+    [
+      { name: 'idLop', type: sql.Int, value: idLop },
+      { name: 'studentCode', type: sql.NVarChar(50), value: studentCode }
+    ],
+    { username: 'homeroom-student' }
+  );
+  return result.recordset[0] || null;
+}
+
+// Truy vấn học phí theo CẢ LỚP — cùng cột / cùng điều kiện với các hàm theo từng SV
+// (getAllStudentFinance, getStudentExemptions, getStudentFinanceSummaryByTerm), thêm cột ID_sv để tách theo SV.
+const CLASS_STUDENTS_SUBQUERY = 'SELECT ds.ID_sv FROM STU_DanhSach ds WHERE ds.ID_lop = @idLop';
+
+async function getClassReceipts(pool, idLop) {
+  const result = await safeQuery(pool,
+    `SELECT
+      bl.ID_sv,
+      bl.ID_bien_lai, bl.So_phieu, bl.Ngay_thu, bl.So_tien,
+      bl.Hoc_ky, bl.Nam_hoc, bl.Lan_thu, bl.Ghi_chu, bl.Thu_chi, bl.Noi_dung
+    FROM ACC_BienLaiThu bl
+    WHERE bl.ID_sv IN (${CLASS_STUDENTS_SUBQUERY})
+      AND ISNULL(bl.Huy_phieu, 0) = 0
+    ORDER BY bl.Nam_hoc, bl.Hoc_ky, bl.Ngay_thu DESC`,
+    [{ name: 'idLop', type: sql.Int, value: idLop }],
+    { username: 'class-finance-receipts' }
+  );
+  return result.recordset;
+}
+
+async function getClassExemptions(pool, idLop) {
+  const result = await safeQuery(pool,
+    `SELECT ID_sv, Hoc_ky, Nam_hoc, Phan_tram, So_tien_MG
+     FROM ACC_DanhSachMienGiamHocPhi
+     WHERE ID_sv IN (${CLASS_STUDENTS_SUBQUERY})`,
+    [{ name: 'idLop', type: sql.Int, value: idLop }],
+    { username: 'class-finance-exemptions' }
+  );
+  return result.recordset;
+}
+
+async function getClassFinanceSummaryByTerm(pool, idLop) {
+  const result = await safeQuery(pool,
+    `SELECT ID_sv, Hoc_ky, Nam_hoc, So_tien_phai_nop, So_tien_mien_giam, So_tien_nop, So_tien_da_nop, So_tien_tra_lai, Thieu_thua
+     FROM ACC_TongHopCongNoHocPhiTheoKy
+     WHERE ID_sv IN (${CLASS_STUDENTS_SUBQUERY})`,
+    [{ name: 'idLop', type: sql.Int, value: idLop }],
+    { username: 'class-finance-summary-terms' }
+  );
+  return result.recordset;
 }
 
 // ═══════════════════════════════════════
@@ -2320,8 +2331,14 @@ module.exports = {
   getMajorsByCohort,
   getClassStudents,
   getHomeroomClasses,
+  isHomeroomOf,
+  isTeachingClass,
   getHomeroomStudentsRegistration,
-  getHomeroomStudentsFinance,
+  getHomeroomStudentsBasic,
+  findStudentInClass,
+  getClassReceipts,
+  getClassExemptions,
+  getClassFinanceSummaryByTerm,
   parseNamVietBalance,
   getInspectorClassesByDate
 };

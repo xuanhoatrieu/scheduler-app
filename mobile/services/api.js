@@ -461,6 +461,21 @@ export const getHomeroomTuition = async (idLop, semester = 1, schoolYear = '2026
 };
 
 /**
+ * Chi tiết học phí từng kỳ + phiếu thu của 1 sinh viên lớp chủ nhiệm.
+ * KHÔNG lưu vào bộ nhớ máy (dữ liệu tài chính của người khác).
+ */
+export const getHomeroomStudentTuition = async (idLop, studentCode) => {
+  try {
+    const response = await api.get(
+      `/lecturer/homeroom/${encodeURIComponent(idLop)}/students/${encodeURIComponent(studentCode)}/tuition`
+    );
+    return response.data;
+  } catch (error) {
+    return { success: false, message: error.response?.data?.message || 'Không thể tải chi tiết học phí sinh viên!' };
+  }
+};
+
+/**
  * Lấy danh sách thông báo điểm danh từ GV học phần gửi cho GVCN
  */
 export const getHomeroomAlerts = async () => {

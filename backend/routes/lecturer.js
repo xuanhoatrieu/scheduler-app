@@ -8,20 +8,50 @@ const StudentAttendance = require('../models/StudentAttendance');
 const HomeroomNotification = require('../models/HomeroomNotification');
 const User = require('../models/User');
 const tuafQueries = require('../services/tuafQueries');
+const financeReader = require('../services/financeReader');
 const { getPool, sql } = require('../services/namvietConnector');
+const {
+  createLecturerAccess,
+  isValidStudentCode,
+  resolveLecturerIdCb: resolveIdCb
+} = require('../middleware/requireHomeroom');
+
+const { requireLecturer, requireHomeroomOf, requireTeachingClass } = createLecturerAccess({ getPool, tuafQueries });
 
 /**
- * Helper lấy idCb của giảng viên
+ * Helper lấy idCb của giảng viên (chỉ gọi khi user.role === 'lecturer')
  */
-async function resolveLecturerIdCb(pool, user) {
-  if (user.tuafStudentId) return user.tuafStudentId;
-  const cb = await tuafQueries.findLecturerId(pool, user.username);
-  if (cb && cb.ID_cb) {
-    user.tuafStudentId = cb.ID_cb;
-    await user.save().catch(() => {});
-    return cb.ID_cb;
+function resolveLecturerIdCb(pool, user) {
+  return resolveIdCb(pool, user, tuafQueries.findLecturerId);
+}
+
+/**
+ * Điều kiện lọc thông báo điểm danh thuộc về GVCN đang đăng nhập
+ * (theo user id, ID_cb và tên/mã các lớp đang chủ nhiệm hiện tại).
+ */
+async function buildHomeroomAlertScope(pool, user) {
+  const idCb = await resolveLecturerIdCb(pool, user);
+  const homeroomClassNames = [];
+  if (idCb) {
+    const classes = await tuafQueries.getHomeroomClasses(pool, idCb);
+    for (const c of classes) {
+      if (c.className) {
+        homeroomClassNames.push(c.className);
+        homeroomClassNames.push(c.className.replace(/\s+/g, ''));
+      }
+      if (c.classCode) {
+        homeroomClassNames.push(c.classCode);
+        homeroomClassNames.push(c.classCode.replace(/\s+/g, ''));
+      }
+    }
   }
-  return null;
+
+  const conditions = [{ homeroomTeacherId: user.id }];
+  if (idCb) conditions.push({ tuafLecturerId: String(idCb) });
+  if (homeroomClassNames.length > 0) {
+    conditions.push({ homeroomClass: { [Op.in]: [...new Set(homeroomClassNames)] } });
+  }
+  return conditions;
 }
 
 /**
@@ -90,18 +120,9 @@ router.get('/classes', authMiddleware, async (req, res) => {
  * @desc    Lấy danh sách sinh viên đăng ký lớp tín chỉ từ SQL Server
  * @access  Private (JWT, role=lecturer)
  */
-router.get('/classes/:idLopTc/students', authMiddleware, async (req, res) => {
+router.get('/classes/:idLopTc/students', authMiddleware, requireTeachingClass, async (req, res) => {
   try {
-    if (req.user.role !== 'lecturer' && req.user.role !== 'admin') {
-      return res.status(403).json({ success: false, message: 'Quyền truy cập bị từ chối!' });
-    }
-
-    const idLopTc = parseInt(req.params.idLopTc);
-    if (!idLopTc) {
-      return res.status(400).json({ success: false, message: 'Mã lớp tín chỉ không hợp lệ!' });
-    }
-
-    const pool = await getPool();
+    const { pool, idLopTc } = req.teaching;
     const students = await tuafQueries.getClassStudents(pool, idLopTc);
 
     res.json({
@@ -112,7 +133,7 @@ router.get('/classes/:idLopTc/students', authMiddleware, async (req, res) => {
     });
   } catch (error) {
     console.error('❌ [API /lecturer/classes/:idLopTc/students] Lỗi:', error.message);
-    res.status(500).json({ success: false, message: 'Không thể tải danh sách sinh viên lớp!', error: error.message });
+    res.status(500).json({ success: false, message: 'Không thể tải danh sách sinh viên lớp!' });
   }
 });
 
@@ -319,7 +340,7 @@ router.post('/attendance', authMiddleware, async (req, res) => {
  * @desc    Lấy danh sách các lớp mà Giảng viên làm Chủ nhiệm (GVCN)
  * @access  Private (JWT, role=lecturer)
  */
-router.get('/homeroom/classes', authMiddleware, async (req, res) => {
+router.get('/homeroom/classes', authMiddleware, requireLecturer, async (req, res) => {
   try {
     const pool = await getPool();
     const idCb = await resolveLecturerIdCb(pool, req.user);
@@ -342,7 +363,7 @@ router.get('/homeroom/classes', authMiddleware, async (req, res) => {
     });
   } catch (error) {
     console.error('❌ [API /lecturer/homeroom/classes] Lỗi:', error.message);
-    res.status(500).json({ success: false, message: 'Không thể tải danh sách lớp chủ nhiệm!', error: error.message });
+    res.status(500).json({ success: false, message: 'Không thể tải danh sách lớp chủ nhiệm!' });
   }
 });
 
@@ -351,14 +372,9 @@ router.get('/homeroom/classes', authMiddleware, async (req, res) => {
  * @desc    Theo dõi đăng ký học (tín chỉ, cảnh báo thiếu môn kế hoạch)
  * @access  Private (JWT, role=lecturer)
  */
-router.get('/homeroom/:idLop/course-registration', authMiddleware, async (req, res) => {
+router.get('/homeroom/:idLop/course-registration', authMiddleware, requireHomeroomOf, async (req, res) => {
   try {
-    const idLop = parseInt(req.params.idLop);
-    if (!idLop) {
-      return res.status(400).json({ success: false, message: 'Mã lớp không hợp lệ!' });
-    }
-
-    const pool = await getPool();
+    const { pool, idLop } = req.homeroom;
     const hocKy = parseInt(req.query.semester) || 1;
     const namHoc = req.query.schoolYear || '2026-2027';
 
@@ -396,35 +412,75 @@ router.get('/homeroom/:idLop/course-registration', authMiddleware, async (req, r
     });
   } catch (error) {
     console.error('❌ [API /lecturer/homeroom/:idLop/course-registration] Lỗi:', error.message);
-    res.status(500).json({ success: false, message: 'Không thể tải dữ liệu đăng ký học!', error: error.message });
+    res.status(500).json({ success: false, message: 'Không thể tải dữ liệu đăng ký học!' });
   }
 });
 
 /**
  * @route   GET /api/lecturer/homeroom/:idLop/tuition
- * @desc    Theo dõi học phí lớp chủ nhiệm (nợ, không nợ, thừa tiền)
- * @access  Private (JWT, role=lecturer)
+ * @desc    Theo dõi học phí lớp chủ nhiệm (nợ, không nợ, thừa tiền) — tổng toàn khóa, đọc trực tiếp
+ *          SQL Server và tính bằng cùng bộ tính với màn hình Học phí của sinh viên
+ * @access  Private (JWT, role=lecturer, GVCN hiện tại của lớp)
  */
-router.get('/homeroom/:idLop/tuition', authMiddleware, async (req, res) => {
+router.get('/homeroom/:idLop/tuition', authMiddleware, requireHomeroomOf, async (req, res) => {
   try {
-    const idLop = parseInt(req.params.idLop);
-    if (!idLop) {
-      return res.status(400).json({ success: false, message: 'Mã lớp không hợp lệ!' });
-    }
+    const { pool, idLop } = req.homeroom;
+    const result = await financeReader.getClassFinanceView(pool, idLop);
 
-    const pool = await getPool();
-    const hocKy = parseInt(req.query.semester) || 1;
-    const namHoc = req.query.schoolYear || '2026-2027';
-
-    const result = await tuafQueries.getHomeroomStudentsFinance(pool, idLop, hocKy, namHoc);
-
+    res.set('Cache-Control', 'no-store');
     res.json({
       success: true,
       data: result
     });
   } catch (error) {
     console.error('❌ [API /lecturer/homeroom/:idLop/tuition] Lỗi:', error.message);
-    res.status(500).json({ success: false, message: 'Không thể tải dữ liệu học phí!', error: error.message });
+    res.status(500).json({ success: false, message: 'Không thể tải dữ liệu học phí!' });
+  }
+});
+
+/**
+ * @route   GET /api/lecturer/homeroom/:idLop/students/:studentCode/tuition
+ * @desc    Chi tiết học phí từng kỳ + biên lai của 1 sinh viên thuộc lớp chủ nhiệm
+ *          (cùng dữ liệu/cách tính với /api/finance/all của sinh viên)
+ * @access  Private (JWT, role=lecturer, GVCN hiện tại của lớp, SV phải thuộc lớp)
+ */
+router.get('/homeroom/:idLop/students/:studentCode/tuition', authMiddleware, requireHomeroomOf, async (req, res) => {
+  try {
+    const { pool, idLop } = req.homeroom;
+    const studentCode = String(req.params.studentCode || '').trim();
+    if (!isValidStudentCode(studentCode)) {
+      return res.status(400).json({ success: false, message: 'Mã sinh viên không hợp lệ!' });
+    }
+
+    const student = await tuafQueries.findStudentInClass(pool, idLop, studentCode);
+    if (!student) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy sinh viên trong lớp chủ nhiệm!' });
+    }
+
+    const { data, summary } = await financeReader.getStudentFinanceView(pool, student.ID_sv);
+    console.log(`👀 [GVCN-TUITION] ${req.user.username} xem ${student.studentCode} lớp ${idLop}`);
+
+    res.set('Cache-Control', 'no-store');
+    res.json({
+      success: true,
+      data: {
+        student: {
+          studentCode: (student.studentCode || '').trim(),
+          studentName: (student.studentName || '').trim(),
+          studentClass: (student.studentClass || '').trim(),
+          statusId: student.statusId,
+          statusName: student.statusName,
+          phone: (student.phone || '').trim(),
+          email: (student.email || '').trim()
+        },
+        data,
+        summary,
+        updatedAt: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('❌ [API /lecturer/homeroom/:idLop/students/:studentCode/tuition] Lỗi:', error.message);
+    res.status(500).json({ success: false, message: 'Không thể tải chi tiết học phí sinh viên!' });
   }
 });
 
@@ -433,39 +489,10 @@ router.get('/homeroom/:idLop/tuition', authMiddleware, async (req, res) => {
  * @desc    Lấy danh sách thông báo điểm danh từ GV học phần gửi cho GVCN
  * @access  Private (JWT, role=lecturer)
  */
-router.get('/homeroom/alerts', authMiddleware, async (req, res) => {
+router.get('/homeroom/alerts', authMiddleware, requireLecturer, async (req, res) => {
   try {
     const pool = await getPool();
-    const idCb = await resolveLecturerIdCb(pool, req.user);
-
-    // Lấy danh sách tên các lớp chủ nhiệm của GV này
-    const homeroomClassNames = [];
-    if (idCb) {
-      const classes = await tuafQueries.getHomeroomClasses(pool, idCb);
-      for (const c of classes) {
-        if (c.className) {
-          homeroomClassNames.push(c.className);
-          homeroomClassNames.push(c.className.replace(/\s+/g, ''));
-        }
-        if (c.classCode) {
-          homeroomClassNames.push(c.classCode);
-          homeroomClassNames.push(c.classCode.replace(/\s+/g, ''));
-        }
-      }
-    }
-
-    const whereConditions = [];
-    if (req.user.id) {
-      whereConditions.push({ homeroomTeacherId: req.user.id });
-    }
-    if (idCb) {
-      whereConditions.push({ tuafLecturerId: String(idCb) });
-    }
-    if (homeroomClassNames.length > 0) {
-      whereConditions.push({ homeroomClass: { [Op.in]: [...new Set(homeroomClassNames)] } });
-    }
-
-    const where = whereConditions.length > 0 ? { [Op.or]: whereConditions } : {};
+    const where = { [Op.or]: await buildHomeroomAlertScope(pool, req.user) };
 
     const alerts = await HomeroomNotification.findAll({
       where,
@@ -503,18 +530,25 @@ router.get('/homeroom/alerts', authMiddleware, async (req, res) => {
     });
   } catch (error) {
     console.error('❌ [API /lecturer/homeroom/alerts] Lỗi:', error.message);
-    res.status(500).json({ success: false, message: 'Không thể tải thông báo chủ nhiệm!', error: error.message });
+    res.status(500).json({ success: false, message: 'Không thể tải thông báo chủ nhiệm!' });
   }
 });
 
 /**
  * @route   PUT /api/lecturer/homeroom/alerts/:id/read
- * @desc    Đánh dấu đã xem thông báo điểm danh
+ * @desc    Đánh dấu đã xem thông báo điểm danh (chỉ thông báo thuộc lớp mình chủ nhiệm)
  * @access  Private (JWT, role=lecturer)
  */
-router.put('/homeroom/alerts/:id/read', authMiddleware, async (req, res) => {
+router.put('/homeroom/alerts/:id/read', authMiddleware, requireLecturer, async (req, res) => {
   try {
-    const alert = await HomeroomNotification.findByPk(req.params.id);
+    const id = String(req.params.id || '');
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+      return res.status(400).json({ success: false, message: 'Mã thông báo không hợp lệ!' });
+    }
+    const pool = await getPool();
+    const alert = await HomeroomNotification.findOne({
+      where: { id, [Op.or]: await buildHomeroomAlertScope(pool, req.user) }
+    });
     if (!alert) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy thông báo!' });
     }
@@ -523,7 +557,8 @@ router.put('/homeroom/alerts/:id/read', authMiddleware, async (req, res) => {
 
     res.json({ success: true, message: 'Đã đánh dấu đã đọc!' });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Lỗi cập nhật trạng thái!', error: error.message });
+    console.error('❌ [API PUT /lecturer/homeroom/alerts/:id/read] Lỗi:', error.message);
+    res.status(500).json({ success: false, message: 'Lỗi cập nhật trạng thái!' });
   }
 });
 

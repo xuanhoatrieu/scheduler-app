@@ -7,6 +7,8 @@ const Grade = require('../models/Grade');
 const Finance = require('../models/Finance');
 const { decrypt } = require('../utils/security');
 const strategyManager = require('../strategies/StrategyManager');
+const { loadOwnFinance } = require('../services/financeReader');
+const { summarizeFinance } = require('../services/financeCalculator');
 
 /**
  * Chuẩn hóa tham số học kỳ và năm học từ request query
@@ -369,7 +371,7 @@ router.get('/grades', authMiddleware, async (req, res) => {
 
 /**
  * @route   GET /api/finance
- * @desc    Lấy học phí/công nợ tài chính từ cache PostgreSQL, hỗ trợ forceSync=true
+ * @desc    Lấy học phí/công nợ 1 kỳ (đọc trực tiếp SQL Server, dự phòng bằng cache PostgreSQL), hỗ trợ forceSync=true
  * @access  Private (JWT)
  */
 router.get('/finance', authMiddleware, async (req, res) => {
@@ -381,66 +383,38 @@ router.get('/finance', authMiddleware, async (req, res) => {
       await handleForceSync(req.user, req);
     }
 
-    const whereClause = {
-      userId: req.user.id,
-      semester: formattedSemester
-    };
-    if (req.query.schoolYear) {
-      whereClause.schoolYear = req.query.schoolYear;
+    // Cùng bộ tính với /finance/all và màn GVCN (cấn trừ liên kỳ + dung sai làm tròn)
+    const { rows } = await loadOwnFinance(req.user);
+    const { data, summary } = summarizeFinance(rows);
+    const overallDebt = summary.totalDebt;
+    const overallSurplus = summary.totalSurplus;
+
+    const term = data
+      .filter(f => f.semester === formattedSemester && (!req.query.schoolYear || f.schoolYear === req.query.schoolYear))
+      .sort((a, b) => String(b.schoolYear || '').localeCompare(String(a.schoolYear || '')))[0];
+
+    let responseData;
+    if (term) {
+      responseData = { ...term };
+      delete responseData.note;
+    } else {
+      responseData = {
+        totalTuition: 0,
+        paidTuition: 0,
+        debtTuition: 0,
+        invoiceDetails: [],
+        rawDebtTuition: 0,
+        surplusTuition: 0,
+        badge: '✓ Đã nộp đủ'
+      };
     }
 
-    const finance = await Finance.findOne({
-      where: whereClause,
-      order: [['schoolYear', 'DESC']]
-    });
-
-    // Tính tổng hợp công nợ toàn khóa để kiểm tra sinh viên có thực sự nợ hay không (cấn trừ liên kỳ)
-    const allFinances = await Finance.findAll({ where: { userId: req.user.id } });
-    const totalMustPay = allFinances.reduce((sum, f) => sum + (f.mustPayTuition !== undefined && f.mustPayTuition !== null ? f.mustPayTuition : (f.totalTuition || 0)), 0);
-    const totalPaid = allFinances.reduce((sum, f) => sum + (f.paidTuition || 0), 0);
-    const totalRefund = allFinances.reduce((sum, f) => sum + (f.refundTuition || 0), 0);
-    const netBalance = totalMustPay - totalPaid + totalRefund;
-    const overallDebt = Math.max(0, netBalance);
-    const overallSurplus = netBalance < 0 ? Math.abs(netBalance) : 0;
-
-    let responseData = finance ? finance.toJSON() : {
-      totalTuition: 0,
-      paidTuition: 0,
-      debtTuition: 0,
-      invoiceDetails: []
-    };
-
-    let termDebt = responseData.debtTuition || 0;
-    let termSurplus = 0;
-    let termStatus = 'completed';
-    let termBadge = '✓ Đã nộp đủ';
-
-    if (termDebt < 0) {
-      termSurplus = Math.abs(termDebt);
-      termDebt = 0;
-      termStatus = 'surplus';
-      termBadge = `✓ Nộp thừa ${termSurplus.toLocaleString('vi-VN')}đ`;
-    } else if (termDebt > 0) {
-      if (overallDebt === 0) {
-        termDebt = 0;
-        termStatus = 'offset';
-        termBadge = '✓ Đã cấn trừ đủ';
-      } else {
-        termStatus = 'debt';
-        termBadge = `Còn thiếu ${termDebt.toLocaleString('vi-VN')}đ`;
-      }
-    }
-
-    responseData.rawDebtTuition = responseData.debtTuition;
-    responseData.debtTuition = termDebt;
-    responseData.surplusTuition = termSurplus;
     responseData.overallDebt = overallDebt;
     responseData.overallSurplus = overallSurplus;
     responseData.status = overallDebt > 0 ? 'debt' : (overallSurplus > 0 ? 'surplus' : 'completed');
     responseData.statusText = overallDebt > 0 
       ? `Còn nợ ${overallDebt.toLocaleString('vi-VN')}đ` 
       : (overallSurplus > 0 ? `Đang nộp thừa ${overallSurplus.toLocaleString('vi-VN')}đ` : 'Đã nộp đủ');
-    responseData.badge = termBadge;
 
     res.json({
       success: true,
@@ -451,8 +425,7 @@ router.get('/finance', authMiddleware, async (req, res) => {
     console.error('❌ [API /finance] Lỗi:', error.message);
     res.status(500).json({
       success: false,
-      message: 'Không thể tải thông tin học phí công nợ!',
-      error: error.message
+      message: 'Không thể tải thông tin học phí công nợ!'
     });
   }
 });
@@ -691,147 +664,26 @@ router.get('/grades/all', authMiddleware, async (req, res) => {
 
 /**
  * @route   GET /api/finance/all
- * @desc    Lấy lịch sử tài chính TẤT CẢ các kỳ
+ * @desc    Lấy lịch sử tài chính TẤT CẢ các kỳ (đọc trực tiếp SQL Server, dự phòng bằng cache PostgreSQL).
+ *          Cùng bộ tính với màn chi tiết học phí của GVCN nên số liệu luôn khớp.
  * @access  Private (JWT)
  */
 router.get('/finance/all', authMiddleware, async (req, res) => {
   try {
-    let finances = await Finance.findAll({
-      where: { userId: req.user.id },
-      order: [['schoolYear', 'ASC'], ['semester', 'ASC']]
-    });
-
-    if ((finances.length === 0 || req.query.force === 'true') && req.user.role === 'student') {
-      try {
-        const { decrypt } = require('../utils/security');
-        const decryptedPassword = decrypt(req.user.encryptedPassword);
-        const strategy = strategyManager.getDatabaseStrategy();
-        await strategy.syncHistory(req.user, decryptedPassword);
-        finances = await Finance.findAll({
-          where: { userId: req.user.id },
-          order: [['schoolYear', 'ASC'], ['semester', 'ASC']]
-        });
-      } catch (fErr) {
-        console.warn('⚠️ [API /finance/all] Tự động đồng bộ tài chính SQL Server:', fErr.message);
-      }
-    }
-
-    // Chuẩn hóa tính toán công nợ và miễn giảm theo thực tế
-    const processedFinances = finances.map(f => {
-      const totalTuition = f.totalTuition || 0;
-      let mustPayTuition = f.mustPayTuition !== undefined && f.mustPayTuition !== null ? f.mustPayTuition : totalTuition;
-      let discountTuition = f.discountTuition || 0;
-      const paidTuition = f.paidTuition || 0;
-      const refundTuition = f.refundTuition || 0;
-      const debtTuition = f.debtTuition || 0;
-
-      // Xử lý sinh viên được miễn giảm 100% (Phải nộp = 0, Học phí gốc > 0)
-      if (discountTuition === 0 && mustPayTuition === 0 && totalTuition > 0) {
-        discountTuition = totalTuition;
-      } else if (!discountTuition && totalTuition > mustPayTuition) {
-        discountTuition = totalTuition - mustPayTuition;
-      }
-
-      const discountPercent = totalTuition > 0 ? Math.min(100, Math.round((discountTuition / totalTuition) * 100)) : 0;
-
-      return {
-        ...f.toJSON(),
-        totalTuition,
-        discountTuition,
-        discountPercent,
-        mustPayTuition,
-        paidTuition,
-        refundTuition,
-        debtTuition
-      };
-    });
-
-    // Tính tổng qua các kỳ đã ghi nhận
-    const totalTuition = processedFinances.reduce((sum, f) => sum + f.totalTuition, 0);
-    const totalDiscount = processedFinances.reduce((sum, f) => sum + f.discountTuition, 0);
-    const totalMustPay = processedFinances.reduce((sum, f) => sum + f.mustPayTuition, 0);
-    const totalPaid = processedFinances.reduce((sum, f) => sum + f.paidTuition, 0);
-    const totalRefund = processedFinances.reduce((sum, f) => sum + f.refundTuition, 0);
-
-    // QUY TẮC CÔNG NỢ TOÀN KHÓA (CÓ CẤN TRỪ LIÊN KỲ):
-    // Phải nộp lũy kế - Đã nộp lũy kế + Đã hoàn trả
-    const netBalance = totalMustPay - totalPaid + totalRefund;
-    const totalDebt = Math.max(0, netBalance);
-    const totalSurplus = netBalance < 0 ? Math.abs(netBalance) : 0;
-    const isOverallSettled = totalDebt === 0;
-
-    // Chuẩn hóa từng kỳ: Tách bạch rõ ràng nợ / thừa / đã cấn trừ, không để số âm lọt ra ngoài
-    const enrichedFinances = processedFinances.map(f => {
-      const rawDebt = f.debtTuition || 0;
-      const isOverpaid = rawDebt < 0;
-      const surplusAmount = isOverpaid ? Math.abs(rawDebt) : 0;
-
-      let termDebt = 0;
-      let status = 'completed';
-      let badge = '✓ Đã nộp đủ';
-      let note = '';
-
-      if (isOverpaid) {
-        status = 'surplus';
-        badge = `✓ Nộp thừa ${surplusAmount.toLocaleString('vi-VN')}đ`;
-        note = 'Số dư thừa lưu trên hệ thống';
-      } else if (rawDebt > 0) {
-        if (isOverallSettled) {
-          // Sinh viên có nợ cục bộ ở kỳ này nhưng tổng thể toàn khóa đã hết nợ (được cấn trừ)
-          status = 'offset';
-          termDebt = 0;
-          badge = '✓ Đã cấn trừ đủ';
-          note = 'Đã bù trừ từ các kỳ sau';
-        } else {
-          status = 'debt';
-          termDebt = rawDebt;
-          badge = `Còn thiếu ${termDebt.toLocaleString('vi-VN')}đ`;
-          note = 'Chưa thanh toán đủ';
-        }
-      }
-
-      return {
-        ...f,
-        rawDebtTuition: rawDebt,
-        debtTuition: termDebt,
-        surplusTuition: surplusAmount,
-        status,
-        badge,
-        note
-      };
-    });
-
-    let summaryStatus = 'completed';
-    let summaryStatusText = 'Đã hoàn thành nghĩa vụ học phí';
-    if (totalDebt > 0) {
-      summaryStatus = 'debt';
-      summaryStatusText = `Còn nợ ${totalDebt.toLocaleString('vi-VN')}đ`;
-    } else if (totalSurplus > 0) {
-      summaryStatus = 'surplus';
-      summaryStatusText = `Đang nộp thừa ${totalSurplus.toLocaleString('vi-VN')}đ`;
-    }
+    const { rows, source, updatedAt } = await loadOwnFinance(req.user);
+    const { data, summary } = summarizeFinance(rows);
 
     res.json({
       success: true,
-      data: enrichedFinances,
-      summary: {
-        totalTuition,
-        totalDiscount,
-        totalMustPay,
-        totalPaid,
-        totalRefund,
-        totalDebt,
-        totalSurplus,
-        netBalance,
-        status: summaryStatus,
-        statusText: summaryStatusText,
-        totalSemesters: enrichedFinances.length
-      },
-      lastSyncedAt: req.user.lastSyncedAt
+      data,
+      summary,
+      lastSyncedAt: req.user.lastSyncedAt,
+      dataSource: source,
+      updatedAt
     });
   } catch (error) {
     console.error('❌ [API /finance/all] Lỗi:', error.message);
-    res.status(500).json({ success: false, message: 'Không thể tải lịch sử tài chính!', error: error.message });
+    res.status(500).json({ success: false, message: 'Không thể tải lịch sử tài chính!' });
   }
 });
 
