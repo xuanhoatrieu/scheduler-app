@@ -322,10 +322,66 @@ class DatabaseStrategy extends ScheduleStrategy {
         return `${String(timeMatch[1]).padStart(2, '0')}:${timeMatch[2]}`;
       }
     }
-    if (tuTiet !== null && tuTiet !== undefined && !isNaN(parseInt(tuTiet))) {
-      return this._getStartTimeByPeriod(parseInt(tuTiet));
+    const t = tuTiet != null && !isNaN(parseInt(tuTiet)) ? parseInt(tuTiet) : null;
+    const EXAM_PERIOD_MAP = {
+      0: '07:00', 1: '07:30', 2: '08:00', 3: '08:30', 4: '09:00',
+      5: '09:30', 6: '10:00', 7: '10:30', 8: '11:00', 9: '11:30',
+      10: '13:00', 11: '13:30', 12: '14:00', 13: '14:30', 14: '15:00',
+      15: '15:30', 16: '16:00', 17: '16:30', 18: '17:00', 19: '17:30',
+      20: '18:00', 21: '18:30', 22: '19:00',
+      25: '07:00', 26: '09:30', 27: '13:30',
+      31: '07:30', 34: '09:05', 37: '10:40',
+      40: '13:00', 41: '13:30', 43: '14:35', 44: '15:05',
+      46: '16:10', 47: '16:40', 49: '17:40',
+      59: '08:30', 60: '09:00', 61: '09:30', 62: '10:00',
+      63: '10:30', 64: '11:00', 65: '11:30', 66: '12:00',
+      68: '13:00', 69: '13:30', 70: '14:00', 71: '14:30',
+      72: '15:00', 73: '15:30', 74: '16:00', 75: '16:30'
+    };
+    if (t !== null && EXAM_PERIOD_MAP[t]) {
+      return EXAM_PERIOD_MAP[t];
+    }
+    if (t !== null) {
+      return this._getStartTimeByPeriod(t);
     }
     return '07:00';
+  }
+
+  _calculateExamEndTime(startTime, durationMinutes = 60) {
+    if (!startTime || typeof startTime !== 'string') return '';
+    const parts = startTime.split(':');
+    if (parts.length !== 2) return '';
+    const h = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    if (isNaN(h) || isNaN(m)) return '';
+    const totalMinutes = h * 60 + m + (parseInt(durationMinutes, 10) || 60);
+    const endH = Math.floor(totalMinutes / 60) % 24;
+    const endM = totalMinutes % 60;
+    return `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+  }
+
+  _getExamDurationMinutes(soPhutThi, examFormatName) {
+    if (soPhutThi && !isNaN(parseInt(soPhutThi)) && parseInt(soPhutThi) > 0) {
+      return parseInt(soPhutThi);
+    }
+    if (examFormatName) {
+      const match = String(examFormatName).match(/(\d+)\s*p/i);
+      if (match) return parseInt(match[1]);
+    }
+    return 60;
+  }
+
+  _formatExamShift(startTime, caThi) {
+    if (caThi) return `Ca ${caThi}`;
+    if (startTime) {
+      const h = parseInt(startTime.split(':')[0], 10);
+      if (!isNaN(h)) {
+        if (h < 12) return 'Ca Sáng';
+        if (h < 18) return 'Ca Chiều';
+        return 'Ca Tối';
+      }
+    }
+    return '';
   }
 
   _formatExamFormat(format) {
@@ -349,23 +405,10 @@ class DatabaseStrategy extends ScheduleStrategy {
     return map[format] || map[String(format)] || String(format || 'Thi viết');
   }
 
-  _formatExamTime(tuTiet, soTiet, caThi, gioThi) {
-    const cleanGioThi = gioThi && String(gioThi).trim() ? String(gioThi).trim() : '';
-    const hasTuTiet = tuTiet !== null && tuTiet !== undefined && !isNaN(parseInt(tuTiet));
-
-    if (cleanGioThi && hasTuTiet) {
-      const startPeriod = parseInt(tuTiet);
-      const periodCount = parseInt(soTiet) || 2;
-      const endPeriod = startPeriod + periodCount - 1;
-      return `${cleanGioThi} (Tiết ${startPeriod}-${endPeriod})`;
-    }
-    if (cleanGioThi) return cleanGioThi;
-    if (hasTuTiet) {
-      const startPeriod = parseInt(tuTiet);
-      const periodCount = parseInt(soTiet) || 2;
-      const endPeriod = startPeriod + periodCount - 1;
-      const startTime = this._getStartTimeByPeriod(startPeriod);
-      return `Tiết ${startPeriod}-${endPeriod} (${startTime})`;
+  _formatExamTime(startTime, durationMinutes = 60, caThi = null) {
+    if (startTime) {
+      const endTime = this._calculateExamEndTime(startTime, durationMinutes);
+      return endTime ? `${startTime} - ${endTime} (${durationMinutes}p)` : startTime;
     }
     if (caThi) return `Ca ${caThi}`;
     return 'Chưa xếp giờ';
@@ -373,25 +416,28 @@ class DatabaseStrategy extends ScheduleStrategy {
 
   _transformStudentExams(rawRows, trainingSystem = 'DHCQ') {
     return rawRows.map(r => {
+      const examFormat = this._formatExamFormat(r.Hinh_thuc);
+      const durationMinutes = this._getExamDurationMinutes(r.So_phut_thi, examFormat);
       const tuTiet = r.Tu_tiet != null ? parseInt(r.Tu_tiet) : null;
-      const soTiet = r.So_tiet != null ? parseInt(r.So_tiet) : 2;
       const startTime = this._getExamStartTime(r.Gio_thi, tuTiet);
-      const examShift = r.Ca_thi ? `Ca ${r.Ca_thi}` : (tuTiet !== null ? `Tiết ${tuTiet}-${tuTiet + soTiet - 1}` : '');
+      const examShift = this._formatExamShift(startTime, r.Ca_thi);
+      const examTime = this._formatExamTime(startTime, durationMinutes, r.Ca_thi);
       const proctors = [r.CbCoiThi1, r.CbCoiThi2].filter(Boolean).join(', ');
 
       return {
         role: 'student',
         trainingSystem,
+        idDotThiPhong: r.idDotThiPhong || null,
         courseCode: r.courseCode || '',
         courseName: r.courseName || '',
         credits: r.credits ? Number(r.credits) : 0,
         examDate: this._formatDate(r.Ngay_thi),
-        examTime: this._formatExamTime(tuTiet, soTiet, r.Ca_thi, r.Gio_thi),
+        examTime,
         examShift,
         startTime,
         room: (r.Phong || '').trim(),
         seatNumber: (r.So_bao_danh || '').trim(),
-        examFormat: this._formatExamFormat(r.Hinh_thuc),
+        examFormat,
         examAttempt: r.Lan_thi ? Number(r.Lan_thi) : 1,
         examBatch: r.Dot_thi ? `Đợt ${r.Dot_thi}` : '',
         proctors,
@@ -402,28 +448,31 @@ class DatabaseStrategy extends ScheduleStrategy {
 
   _transformLecturerExams(rawRows, trainingSystem = 'DHCQ') {
     return rawRows.map(r => {
+      const examFormat = this._formatExamFormat(r.Hinh_thuc);
+      const durationMinutes = this._getExamDurationMinutes(r.So_phut_thi, examFormat);
       const tuTiet = r.Tu_tiet != null ? parseInt(r.Tu_tiet) : null;
-      const soTiet = r.So_tiet != null ? parseInt(r.So_tiet) : 2;
       const startTime = this._getExamStartTime(r.Gio_thi, tuTiet);
-      const examShift = r.Ca_thi ? `Ca ${r.Ca_thi}` : (tuTiet !== null ? `Tiết ${tuTiet}-${tuTiet + soTiet - 1}` : '');
+      const examShift = this._formatExamShift(startTime, r.Ca_thi);
+      const examTime = this._formatExamTime(startTime, durationMinutes, r.Ca_thi);
       const proctors = [r.CbCoiThi1, r.CbCoiThi2].filter(Boolean).join(', ');
 
       return {
         role: 'lecturer',
         trainingSystem,
+        idDotThiPhong: r.idDotThiPhong || null,
         courseCode: r.courseCode || '',
         courseName: r.courseName || '',
         credits: r.credits ? Number(r.credits) : 0,
         classCode: r.ID_lop_tc ? String(r.ID_lop_tc) : '',
         className: r.Ten_lop_hp || '',
         examDate: this._formatDate(r.Ngay_thi),
-        examTime: this._formatExamTime(tuTiet, soTiet, r.Ca_thi, r.Gio_thi),
+        examTime,
         examShift,
         startTime,
         room: (r.Phong || '').trim(),
         seatNumber: '',
         studentCount: r.Si_so ? Number(r.Si_so) : 0,
-        examFormat: this._formatExamFormat(r.Hinh_thuc),
+        examFormat,
         examAttempt: r.Lan_thi ? Number(r.Lan_thi) : 1,
         examBatch: r.Ten_dot ? `Đợt ${r.Ten_dot}` : '',
         proctors,

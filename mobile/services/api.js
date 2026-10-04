@@ -400,6 +400,24 @@ export const getClassStudents = async (idLopTc) => {
 };
 
 /**
+ * Lấy danh sách thí sinh của ca thi (ưu tiên theo phòng thi, fallback theo lớp tín chỉ)
+ */
+export const getExamCandidates = async (idDotThiPhong, idLopTc) => {
+  try {
+    const params = new URLSearchParams();
+    if (idDotThiPhong) params.append('idDotThiPhong', idDotThiPhong);
+    if (idLopTc) params.append('idLopTc', idLopTc);
+    const response = await api.get(`/lecturer/exams/candidates?${params.toString()}`);
+    return response.data;
+  } catch (error) {
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Không thể tải danh sách thí sinh ca thi!'
+    };
+  }
+};
+
+/**
  * Lấy bảng điểm danh buổi học đã lưu
  */
 export const getSessionAttendance = async (scheduleId, date) => {

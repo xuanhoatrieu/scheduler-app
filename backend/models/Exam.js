@@ -75,6 +75,10 @@ const Exam = sequelize.define('Exam', {
     type: DataTypes.STRING,
     defaultValue: ''
   },
+  idDotThiPhong: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  },
   className: {
     type: DataTypes.STRING,
     defaultValue: ''

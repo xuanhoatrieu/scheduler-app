@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Modal,
   RefreshControl,
   SafeAreaView,
   ScrollView,
@@ -12,7 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { getExams, getScheduleSemesters } from '../../services/api';
+import { getExams, getScheduleSemesters, getExamCandidates } from '../../services/api';
 import { Colors } from '../../theme/colors';
 
 const DAY_NAMES = {
@@ -69,6 +70,42 @@ export default function LecturerExamsScreen({ user }) {
   const [semesters, setSemesters] = useState(getDynamicSemesters());
   const [selectedSemIdx, setSelectedSemIdx] = useState(0);
   const [selectedSystem, setSelectedSystem] = useState('DHCQ');
+
+  // Modal danh sách thí sinh ca thi
+  const [selectedExamForModal, setSelectedExamForModal] = useState(null);
+  const [modalCandidates, setModalCandidates] = useState([]);
+  const [modalLoading, setModalLoading] = useState(false);
+  const [candidateSearchText, setCandidateSearchText] = useState('');
+
+  const openCandidateModal = async (exam) => {
+    setSelectedExamForModal(exam);
+    setCandidateSearchText('');
+    setModalLoading(true);
+    try {
+      const res = await getExamCandidates(exam.idDotThiPhong, exam.classCode);
+      if (res && res.success && Array.isArray(res.data)) {
+        setModalCandidates(res.data);
+      } else {
+        setModalCandidates([]);
+      }
+    } catch (e) {
+      setModalCandidates([]);
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
+  const filteredCandidates = useMemo(() => {
+    if (!candidateSearchText.trim()) return modalCandidates;
+    const q = candidateSearchText.trim().toLowerCase();
+    return modalCandidates.filter(
+      (c) =>
+        (c.studentName && c.studentName.toLowerCase().includes(q)) ||
+        (c.studentCode && c.studentCode.toLowerCase().includes(q)) ||
+        (c.sbd && c.sbd.toLowerCase().includes(q)) ||
+        (c.studentClass && c.studentClass.toLowerCase().includes(q))
+    );
+  }, [modalCandidates, candidateSearchText]);
 
   const currentSem = semesters[selectedSemIdx] || semesters[0] || { label: 'Học kỳ' };
   const currentSysObj = TRAINING_SYSTEMS.find(s => s.key === selectedSystem) || TRAINING_SYSTEMS[0];
@@ -358,10 +395,15 @@ export default function LecturerExamsScreen({ user }) {
                 </View>
 
                 {item.studentCount > 0 ? (
-                  <View style={styles.studentCountBadge}>
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => openCandidateModal(item)}
+                    style={styles.studentCountBadge}
+                  >
                     <Ionicons name="people" size={13} color="#2563EB" />
                     <Text style={styles.studentCountText}>{item.studentCount} SV</Text>
-                  </View>
+                    <Ionicons name="chevron-forward" size={12} color="#2563EB" style={{ marginLeft: 2 }} />
+                  </TouchableOpacity>
                 ) : null}
               </View>
 
@@ -464,6 +506,90 @@ export default function LecturerExamsScreen({ user }) {
           </View>
         }
       />
+
+      {/* MODAL DANH SÁCH THÍ SINH CA THI */}
+      <Modal
+        visible={Boolean(selectedExamForModal)}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSelectedExamForModal(null)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <View style={{ flex: 1, paddingRight: 8 }}>
+                <Text style={styles.modalTitle} numberOfLines={1}>
+                  {selectedExamForModal ? selectedExamForModal.courseName : ''}
+                </Text>
+                <Text style={styles.modalSub} numberOfLines={1}>
+                  {selectedExamForModal && selectedExamForModal.className ? `Lớp HP: ${selectedExamForModal.className} • ` : ''}
+                  Phòng: {(selectedExamForModal && selectedExamForModal.room) || 'Chưa xếp'} • {modalCandidates.length} thí sinh
+                </Text>
+                <Text style={styles.modalTimeSub}>
+                  {selectedExamForModal ? selectedExamForModal.examDate : ''} • {(selectedExamForModal && (selectedExamForModal.examTime || selectedExamForModal.examShift)) || ''}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setSelectedExamForModal(null)}
+                style={styles.modalCloseBtn}
+              >
+                <Ionicons name="close" size={20} color="#555" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Ô tìm kiếm nhanh thí sinh */}
+            <View style={styles.modalSearchBox}>
+              <Ionicons name="search-outline" size={16} color={Colors.textMuted} />
+              <TextInput
+                style={styles.modalSearchInput}
+                placeholder="Tìm theo tên, mã SV, SBD..."
+                placeholderTextColor={Colors.textMuted}
+                value={candidateSearchText}
+                onChangeText={setCandidateSearchText}
+              />
+              {candidateSearchText ? (
+                <TouchableOpacity onPress={() => setCandidateSearchText('')}>
+                  <Ionicons name="close-circle" size={16} color={Colors.textMuted} />
+                </TouchableOpacity>
+              ) : null}
+            </View>
+
+            {modalLoading ? (
+              <View style={styles.modalLoading}>
+                <ActivityIndicator size="large" color={Colors.primary} />
+                <Text style={styles.modalLoadingText}>Đang tải danh sách thí sinh...</Text>
+              </View>
+            ) : filteredCandidates.length === 0 ? (
+              <View style={styles.modalEmpty}>
+                <Ionicons name="people-outline" size={48} color={Colors.borderLight} />
+                <Text style={styles.modalEmptyText}>
+                  {candidateSearchText ? 'Không tìm thấy thí sinh phù hợp' : 'Chưa có thông tin thí sinh cho ca thi này'}
+                </Text>
+              </View>
+            ) : (
+              <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
+                {filteredCandidates.map((stu, sIdx) => (
+                  <View key={stu.studentCode || sIdx} style={styles.candidateItem}>
+                    <View style={styles.sbdBadge}>
+                      <Text style={styles.sbdLabel}>SBD</Text>
+                      <Text style={styles.sbdText}>{stu.sbd || String(sIdx + 1).padStart(3, '0')}</Text>
+                    </View>
+                    <View style={{ flex: 1, marginLeft: 12 }}>
+                      <Text style={styles.stuNameText}>{stu.studentName}</Text>
+                      <Text style={styles.stuSubText}>
+                        {stu.studentCode}{stu.studentClass ? ` • ${stu.studentClass}` : ''}
+                      </Text>
+                      {stu.note ? (
+                        <Text style={styles.candidateNote}>Ghi chú: {stu.note}</Text>
+                      ) : null}
+                    </View>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -538,7 +664,8 @@ const styles = StyleSheet.create({
   metaText: { fontSize: 12, color: Colors.textSecondary, fontWeight: '500' },
   studentCountBadge: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: '#EFF6FF',
-    paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8,
+    paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8,
+    borderWidth: 1, borderColor: '#BFDBFE',
   },
   studentCountText: { fontSize: 12, fontWeight: '700', color: '#2563EB', marginLeft: 4 },
   classRow: {
@@ -565,4 +692,37 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12, marginTop: 20,
   },
   emptySyncBtnText: { color: Colors.textOnPrimary, fontSize: 14, fontWeight: '700' },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalSheet: {
+    backgroundColor: Colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    padding: 20, paddingBottom: 40, maxHeight: '85%',
+  },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
+  modalTitle: { fontSize: 16, fontWeight: '800', color: Colors.textPrimary },
+  modalSub: { fontSize: 12, color: Colors.textSecondary, marginTop: 3 },
+  modalTimeSub: { fontSize: 11, color: '#2563EB', fontWeight: '600', marginTop: 3 },
+  modalCloseBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#f0f0f0', alignItems: 'center', justifyContent: 'center' },
+  modalSearchBox: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC',
+    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8,
+    marginBottom: 12, borderWidth: 1, borderColor: '#E2E8F0',
+  },
+  modalSearchInput: { flex: 1, fontSize: 13, color: Colors.textPrimary, marginLeft: 8, padding: 0 },
+  modalLoading: { alignItems: 'center', paddingVertical: 40 },
+  modalLoadingText: { marginTop: 10, color: Colors.textSecondary, fontSize: 13 },
+  modalEmpty: { alignItems: 'center', paddingVertical: 40 },
+  modalEmptyText: { marginTop: 10, color: Colors.textMuted, fontSize: 13 },
+  candidateItem: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+  },
+  sbdBadge: {
+    width: 48, height: 38, borderRadius: 8, backgroundColor: '#EFF6FF',
+    alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#DBEAFE',
+  },
+  sbdLabel: { fontSize: 9, fontWeight: '700', color: '#64748B', letterSpacing: 0.5 },
+  sbdText: { fontSize: 13, fontWeight: '800', color: '#1D4ED8' },
+  stuNameText: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
+  stuSubText: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
+  candidateNote: { fontSize: 11, color: '#D97706', marginTop: 2, fontStyle: 'italic' },
 });

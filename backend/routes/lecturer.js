@@ -138,6 +138,70 @@ router.get('/classes/:idLopTc/students', authMiddleware, requireTeachingClass, a
 });
 
 /**
+ * @route   GET /api/lecturer/exams/candidates
+ * @desc    Lấy danh sách thí sinh của 1 ca thi (theo phòng thi ID_dot_thi_phong hoặc theo lớp tín chỉ ID_lop_tc)
+ * @access  Private (JWT, role=lecturer)
+ */
+router.get('/exams/candidates', authMiddleware, requireLecturer, async (req, res) => {
+  try {
+    const pool = await getPool();
+    const idCb = await resolveLecturerIdCb(pool, req.user);
+    if (!idCb && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Bạn chưa được phân quyền giảng viên trong hệ thống!' });
+    }
+
+    const idDotThiPhong = req.query.idDotThiPhong ? parseInt(req.query.idDotThiPhong, 10) : null;
+    const idLopTc = req.query.idLopTc || req.query.classCode ? parseInt(req.query.idLopTc || req.query.classCode, 10) : null;
+
+    if (!idDotThiPhong && !idLopTc) {
+      return res.status(400).json({ success: false, message: 'Thiếu idDotThiPhong hoặc idLopTc!' });
+    }
+
+    // Kiểm tra quyền: admin hoặc giảng viên có thẩm quyền đối với ca thi này
+    if (req.user.role !== 'admin') {
+      const isAuth = await tuafQueries.isAuthorizedForExamRoom(pool, idCb, idDotThiPhong, idLopTc);
+      if (!isAuth) {
+        return res.status(403).json({ success: false, message: 'Bạn không có quyền xem danh sách sinh viên ca thi này!' });
+      }
+    }
+
+    let candidates = [];
+    let source = 'room';
+
+    // 1. Ưu tiên lấy theo phòng thi
+    if (idDotThiPhong && idDotThiPhong > 0) {
+      candidates = await tuafQueries.getExamRoomCandidates(pool, idDotThiPhong);
+    }
+
+    // 2. Fallback: Nếu phòng thi chưa xếp danh sách thí sinh hoặc không có idDotThiPhong, lấy theo lớp tín chỉ
+    if (candidates.length === 0 && idLopTc && idLopTc > 0) {
+      source = 'class';
+      const classStudents = await tuafQueries.getClassStudents(pool, idLopTc);
+      candidates = classStudents.map((st, idx) => ({
+        sbd: String(idx + 1).padStart(3, '0'),
+        studentCode: st.studentCode,
+        studentName: st.studentName,
+        studentClass: st.studentClass,
+        dob: st.dob,
+        note: null
+      }));
+    }
+
+    res.json({
+      success: true,
+      source,
+      idDotThiPhong,
+      idLopTc,
+      totalStudents: candidates.length,
+      data: candidates
+    });
+  } catch (error) {
+    console.error('❌ [API /lecturer/exams/candidates] Lỗi:', error.message);
+    res.status(500).json({ success: false, message: 'Không thể tải danh sách thí sinh ca thi!' });
+  }
+});
+
+/**
  * @route   GET /api/lecturer/attendance
  * @desc    Lấy dữ liệu điểm danh đã lưu của 1 buổi học
  * @access  Private (JWT, role=lecturer)

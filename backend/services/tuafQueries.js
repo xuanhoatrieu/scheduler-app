@@ -269,12 +269,15 @@ async function getStudentExams(pool, idSv, hocKy, namHoc, heDaoTao = 'DHCQ') {
   // 1. Thử lấy từ MARK_TochucThiChiTiet_TC kết hợp MARK_ToChucThiPhong_TC & TCT_DotThi_Phong
   const result = await safeQuery(pool,
     `SELECT
+      COALESCE(mtp.ID_dot_thi_phong, ct.ID_phong_thi) AS idDotThiPhong,
       COALESCE(mtp.Ngay_thi, dtp.Ngay_thi, thi.Ngay_thi) AS Ngay_thi,
       0 AS Ca_thi,
       COALESCE(NULLIF(mtp.Gio_thi, ''), NULLIF(thi.Gio_thi, ''), '') AS Gio_thi,
       COALESCE(mtp.Tu_tiet, dtp.Tu_tiet) AS Tu_tiet,
       COALESCE(mtp.So_tiet, dtp.So_tiet, thi.So_tiet, 2) AS So_tiet,
       COALESCE(thi.Hinh_thuc_thi, 1) AS Hinh_thuc,
+      COALESCE(ht.So_phut_thi, 60) AS So_phut_thi,
+      ht.Ten_hinh_thuc,
       COALESCE(thi.Lan_thi, 1) AS Lan_thi,
       COALESCE(thi.Dot_thi, 1) AS Dot_thi,
       CASE 
@@ -292,6 +295,7 @@ async function getStudentExams(pool, idSv, hocKy, namHoc, heDaoTao = 'DHCQ') {
     JOIN dmMonHoc mh ON thi.ID_mon = mh.ID_mon
     LEFT JOIN MARK_ToChucThiPhong_TC mtp ON ct.ID_phong_thi = mtp.ID_phong_thi
     LEFT JOIN TCT_DotThi_Phong dtp ON COALESCE(mtp.ID_dot_thi_phong, ct.ID_phong_thi) = dtp.ID_dot_thi_phong
+    LEFT JOIN dmHinhThucThi ht ON thi.Hinh_thuc_thi = ht.ID_hinh_thuc
     LEFT JOIN dmPhongHoc dmph ON COALESCE(mtp.ID_phong, dtp.ID_phong) = dmph.ID_phong
     LEFT JOIN PLAN_PhongHoc ph ON COALESCE(mtp.ID_phong, ct.ID_phong_thi) = ph.ID_phong
     LEFT JOIN HR_LyLich cb1 ON COALESCE(mtp.ID_cb_coi_thi1, dtp.ID_cb_coi_thi1) = cb1.ID_cb
@@ -315,12 +319,15 @@ async function getStudentExams(pool, idSv, hocKy, namHoc, heDaoTao = 'DHCQ') {
   // 2. Fallback: Nếu bảng MARK chưa có, lấy trực tiếp từ TCT_DotThi_ThiSinh (phần mềm xếp lịch thi)
   const fallback = await safeQuery(pool,
     `SELECT
+      dtp.ID_dot_thi_phong AS idDotThiPhong,
       dtp.Ngay_thi,
       0 AS Ca_thi,
       COALESCE(NULLIF(mtp.Gio_thi, ''), '') AS Gio_thi,
       dtp.Tu_tiet,
       COALESCE(dtp.So_tiet, mtp.So_tiet, 2) AS So_tiet,
       COALESCE(dtm.ID_hinh_thuc, 1) AS Hinh_thuc,
+      COALESCE(ht.So_phut_thi, 60) AS So_phut_thi,
+      ht.Ten_hinh_thuc,
       COALESCE(ts.Lan_thi_diem, dt.Lan_thi, 1) AS Lan_thi,
       1 AS Dot_thi,
       CASE 
@@ -346,6 +353,7 @@ async function getStudentExams(pool, idSv, hocKy, namHoc, heDaoTao = 'DHCQ') {
         OR dtp.ID_mons LIKE '%,' + CAST(dtm.ID_mon AS VARCHAR)
       )
     )
+    LEFT JOIN dmHinhThucThi ht ON dtm.ID_hinh_thuc = ht.ID_hinh_thuc
     LEFT JOIN dmMonHoc mh ON dtm.ID_mon = mh.ID_mon
     LEFT JOIN dmPhongHoc dmph ON COALESCE(dtp.ID_phong, mtp.ID_phong) = dmph.ID_phong
     LEFT JOIN HR_LyLich cb1 ON COALESCE(dtp.ID_cb_coi_thi1, mtp.ID_cb_coi_thi1) = cb1.ID_cb
@@ -439,12 +447,16 @@ async function getLecturerExams(pool, idCb, hocKy, namHoc, knownSchedules = null
   const res1 = await safeQuery(pool,
     `SELECT DISTINCT
       dtm.ID_lop_tc,
+      dtp.ID_dot_thi_phong AS idDotThiPhong,
       dtp.Ngay_thi,
+      COALESCE(NULLIF(mtp.Gio_thi, ''), '') AS Gio_thi,
       dtp.Tu_tiet,
       COALESCE(dtp.So_tiet, 2) AS So_tiet,
       COALESCE(dmph.So_phong, dtp.Ten_phong, ph.So_phong, '') AS Phong,
       COALESCE(dtp.Si_so, 0) AS Si_so,
       COALESCE(dtm.ID_hinh_thuc, 1) AS Hinh_thuc,
+      COALESCE(ht.So_phut_thi, 60) AS So_phut_thi,
+      ht.Ten_hinh_thuc,
       COALESCE(dt.Lan_thi, 1) AS Lan_thi,
       dt.Ten_dot,
       cb1.Ho_ten AS CbCoiThi1,
@@ -460,6 +472,8 @@ async function getLecturerExams(pool, idCb, hocKy, namHoc, knownSchedules = null
         OR dtp.ID_lop_tcs LIKE '%,' + CAST(dtm.ID_lop_tc AS VARCHAR)
       )
     )
+    LEFT JOIN MARK_ToChucThiPhong_TC mtp ON dtp.ID_dot_thi_phong = mtp.ID_dot_thi_phong
+    LEFT JOIN dmHinhThucThi ht ON dtm.ID_hinh_thuc = ht.ID_hinh_thuc
     LEFT JOIN dmPhongHoc dmph ON dtp.ID_phong = dmph.ID_phong
     LEFT JOIN PLAN_PhongHoc ph ON dtp.ID_phong = ph.ID_phong
     LEFT JOIN HR_LyLich cb1 ON dtp.ID_cb_coi_thi1 = cb1.ID_cb
@@ -486,12 +500,16 @@ async function getLecturerExams(pool, idCb, hocKy, namHoc, knownSchedules = null
     const res2 = await safeQuery(pool,
       `SELECT DISTINCT
         ds.ID_lop_tc,
+        dtp.ID_dot_thi_phong AS idDotThiPhong,
         dtp.Ngay_thi,
+        COALESCE(NULLIF(mtp.Gio_thi, ''), '') AS Gio_thi,
         dtp.Tu_tiet,
         COALESCE(dtp.So_tiet, 2) AS So_tiet,
         COALESCE(dmph.So_phong, dtp.Ten_phong, '') AS Phong,
         COALESCE(dtp.Si_so, 0) AS Si_so,
-        1 AS Hinh_thuc,
+        COALESCE(dtm.ID_hinh_thuc, 1) AS Hinh_thuc,
+        COALESCE(ht.So_phut_thi, 60) AS So_phut_thi,
+        ht.Ten_hinh_thuc,
         COALESCE(ts.Lan_thi_diem, dt.Lan_thi, 1) AS Lan_thi,
         dt.Ten_dot,
         cb1.Ho_ten AS CbCoiThi1,
@@ -503,6 +521,8 @@ async function getLecturerExams(pool, idCb, hocKy, namHoc, knownSchedules = null
       JOIN TCT_DotThi_Phong dtp ON ts.ID_dot_thi_phong = dtp.ID_dot_thi_phong
       JOIN TCT_DotThi dt ON dtp.ID_dot_thi = dt.ID_dot_thi
       JOIN TCT_DotThi_Mon dtm ON (dt.ID_dot_thi = dtm.ID_dot_thi AND dtm.ID_mon = mtc.ID_mon)
+      LEFT JOIN MARK_ToChucThiPhong_TC mtp ON dtp.ID_dot_thi_phong = mtp.ID_dot_thi_phong
+      LEFT JOIN dmHinhThucThi ht ON dtm.ID_hinh_thuc = ht.ID_hinh_thuc
       LEFT JOIN dmPhongHoc dmph ON dtp.ID_phong = dmph.ID_phong
       LEFT JOIN HR_LyLich cb1 ON dtp.ID_cb_coi_thi1 = cb1.ID_cb
       LEFT JOIN HR_LyLich cb2 ON dtp.ID_cb_coi_thi2 = cb2.ID_cb
@@ -529,6 +549,7 @@ async function getLecturerExams(pool, idCb, hocKy, namHoc, knownSchedules = null
     const res3 = await safeQuery(pool,
       `SELECT DISTINCT
         ds.ID_lop_tc,
+        COALESCE(mtp.ID_dot_thi_phong, dtp.ID_dot_thi_phong) AS idDotThiPhong,
         COALESCE(mtp.Ngay_thi, dtp.Ngay_thi, thi.Ngay_thi) AS Ngay_thi,
         COALESCE(NULLIF(mtp.Gio_thi, ''), NULLIF(thi.Gio_thi, ''), '') AS Gio_thi,
         COALESCE(mtp.Tu_tiet, dtp.Tu_tiet, 1) AS Tu_tiet,
@@ -540,6 +561,8 @@ async function getLecturerExams(pool, idCb, hocKy, namHoc, knownSchedules = null
         END AS Phong,
         COALESCE(mtp.So_sv, dtp.Si_so, 0) AS Si_so,
         COALESCE(thi.Hinh_thuc_thi, 1) AS Hinh_thuc,
+        COALESCE(ht.So_phut_thi, 60) AS So_phut_thi,
+        ht.Ten_hinh_thuc,
         COALESCE(thi.Lan_thi, 1) AS Lan_thi,
         COALESCE(thi.Dot_thi, 1) AS Ten_dot,
         cb1.Ho_ten AS CbCoiThi1,
@@ -551,6 +574,7 @@ async function getLecturerExams(pool, idCb, hocKy, namHoc, knownSchedules = null
       JOIN MARK_TochucThi_TC thi ON (ct.ID_thi = thi.ID_thi AND thi.ID_mon = mtc.ID_mon)
       LEFT JOIN MARK_ToChucThiPhong_TC mtp ON ct.ID_phong_thi = mtp.ID_phong_thi
       LEFT JOIN TCT_DotThi_Phong dtp ON COALESCE(mtp.ID_dot_thi_phong, ct.ID_phong_thi) = dtp.ID_dot_thi_phong
+      LEFT JOIN dmHinhThucThi ht ON thi.Hinh_thuc_thi = ht.ID_hinh_thuc
       LEFT JOIN dmPhongHoc dmph ON COALESCE(mtp.ID_phong, dtp.ID_phong) = dmph.ID_phong
       LEFT JOIN PLAN_PhongHoc ph ON COALESCE(mtp.ID_phong, ct.ID_phong_thi) = ph.ID_phong
       LEFT JOIN HR_LyLich cb1 ON COALESCE(mtp.ID_cb_coi_thi1, dtp.ID_cb_coi_thi1) = cb1.ID_cb
@@ -579,7 +603,7 @@ async function getLecturerExams(pool, idCb, hocKy, namHoc, knownSchedules = null
     const cls = classesMap.get(r.ID_lop_tc);
     if (!cls) continue;
 
-    const dedupKey = `${cls.ID_lop_tc}_${r.Ngay_thi}_${r.Tu_tiet}_${r.Phong}`;
+    const dedupKey = `${cls.ID_lop_tc}_${r.idDotThiPhong || ''}_${r.Ngay_thi}_${r.Tu_tiet}_${r.Phong}`;
     if (seenKey.has(dedupKey)) continue;
     seenKey.add(dedupKey);
 
@@ -588,13 +612,17 @@ async function getLecturerExams(pool, idCb, hocKy, namHoc, knownSchedules = null
       courseName: cls.courseName || '',
       credits: cls.credits || 0,
       ID_lop_tc: cls.ID_lop_tc,
+      idDotThiPhong: r.idDotThiPhong || null,
       Ten_lop_hp: cls.Ten_lop_hp || '',
       Ngay_thi: r.Ngay_thi,
       Tu_tiet: r.Tu_tiet,
       So_tiet: r.So_tiet,
+      Gio_thi: r.Gio_thi || '',
       Phong: r.Phong,
       Si_so: r.Si_so || 0,
       Hinh_thuc: r.Hinh_thuc || 1,
+      So_phut_thi: r.So_phut_thi || 60,
+      Ten_hinh_thuc: r.Ten_hinh_thuc || '',
       Lan_thi: r.Lan_thi || 1,
       Ten_dot: r.Ten_dot || '',
       CbCoiThi1: r.CbCoiThi1 || '',
@@ -972,6 +1000,93 @@ async function getClassStudents(pool, idLopTc) {
     studentName: (r.studentName || '').trim(),
     studentCode: (r.studentCode || '').trim()
   }));
+}
+
+/**
+ * Lấy danh sách thí sinh trong một phòng thi cụ thể (theo ID_dot_thi_phong)
+ * Kèm SBD, Mã SV, Họ tên, Lớp sinh hoạt, Ngày sinh, Ghi chú
+ */
+async function getExamRoomCandidates(pool, idDotThiPhong) {
+  const pId = parseInt(idDotThiPhong, 10);
+  if (isNaN(pId) || pId <= 0) return [];
+  const result = await safeQuery(pool,
+    `SELECT
+      ts.SBD AS sbd,
+      ts.Ghi_chu AS note,
+      sv.ID_sv AS idSv,
+      sv.Ma_sv AS studentCode,
+      sv.Ho_ten AS studentName,
+      COALESCE(l.Ten_lop, l.Ma_lop, sv.Lop, '') AS studentClass,
+      sv.Ngay_sinh AS dob
+    FROM TCT_DotThi_ThiSinh ts
+    JOIN STU_HoSoSinhVien sv ON ts.ID_sv = sv.ID_sv
+    LEFT JOIN (
+      SELECT dsl.ID_sv, MAX(dsl.ID_lop) AS ID_lop
+      FROM STU_DanhSach dsl
+      WHERE ISNULL(dsl.Trang_thai, 0) = 0
+      GROUP BY dsl.ID_sv
+    ) dsl ON sv.ID_sv = dsl.ID_sv
+    LEFT JOIN STU_Lop l ON dsl.ID_lop = l.ID_lop
+    WHERE ts.ID_dot_thi_phong = @idDotThiPhong
+    ORDER BY ts.SBD ASC, sv.Ho_ten ASC`,
+    [{ name: 'idDotThiPhong', type: sql.Int, value: pId }],
+    { username: 'exam-room-candidates' }
+  );
+
+  return (result.recordset || []).map(r => ({
+    sbd: (r.sbd || '').trim(),
+    studentCode: (r.studentCode || '').trim(),
+    studentName: (r.studentName || '').trim(),
+    studentClass: (r.studentClass || '').trim(),
+    dob: r.dob,
+    note: (r.note || '').trim() || null
+  }));
+}
+
+/**
+ * Kiểm tra xem giảng viên có được phép xem danh sách ca thi / phòng thi không
+ * (Có quyền nếu dạy lớp tín chỉ HOẶC làm cán bộ coi thi của phòng)
+ */
+async function isAuthorizedForExamRoom(pool, idCb, idDotThiPhong = null, idLopTc = null) {
+  if (!idCb) return false;
+  const pLopTc = parseInt(idLopTc, 10);
+  if (!isNaN(pLopTc) && pLopTc > 0) {
+    if (await isTeachingClass(pool, idCb, pLopTc)) return true;
+  }
+  const pDotThiPhong = parseInt(idDotThiPhong, 10);
+  if (!isNaN(pDotThiPhong) && pDotThiPhong > 0) {
+    const res = await safeQuery(pool,
+      `SELECT TOP 1 1 AS ok
+       FROM TCT_DotThi_Phong dtp
+       LEFT JOIN MARK_ToChucThiPhong_TC mtp ON dtp.ID_dot_thi_phong = mtp.ID_dot_thi_phong
+       WHERE dtp.ID_dot_thi_phong = @idDotThiPhong
+         AND (
+           dtp.ID_cb_coi_thi1 = @idCb OR dtp.ID_cb_coi_thi2 = @idCb OR dtp.ID_cb_ho_tro = @idCb
+           OR mtp.ID_cb_coi_thi1 = @idCb OR mtp.ID_cb_coi_thi2 = @idCb OR mtp.ID_cb_ho_tro = @idCb
+         )`,
+      [
+        { name: 'idDotThiPhong', type: sql.Int, value: pDotThiPhong },
+        { name: 'idCb', type: sql.NVarChar(50), value: String(idCb) }
+      ],
+      { username: 'exam-room-auth' }
+    );
+    if (res.recordset && res.recordset.length > 0) return true;
+
+    // Kiểm tra các lớp tín chỉ được gán trong phòng thi đó
+    const roomRes = await safeQuery(pool,
+      `SELECT ID_lop_tcs FROM TCT_DotThi_Phong WHERE ID_dot_thi_phong = @idDotThiPhong`,
+      [{ name: 'idDotThiPhong', type: sql.Int, value: pDotThiPhong }],
+      { username: 'exam-room-loptcs' }
+    );
+    if (roomRes.recordset && roomRes.recordset.length > 0) {
+      const lopTcsStr = roomRes.recordset[0].ID_lop_tcs || '';
+      const lopIds = lopTcsStr.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n) && n > 0);
+      for (const lId of lopIds) {
+        if (await isTeachingClass(pool, idCb, lId)) return true;
+      }
+    }
+  }
+  return false;
 }
 
 // ═══════════════════════════════════════
@@ -2340,6 +2455,8 @@ module.exports = {
   getClassExemptions,
   getClassFinanceSummaryByTerm,
   parseNamVietBalance,
-  getInspectorClassesByDate
+  getInspectorClassesByDate,
+  getExamRoomCandidates,
+  isAuthorizedForExamRoom
 };
 
