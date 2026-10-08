@@ -489,6 +489,99 @@ async function ensureStudentGrades(user, pool, forceSync = false) {
 }
 
 /**
+ * Đánh giá Chuẩn đầu ra Ngoại ngữ & Tin học từ danh sách môn học
+ * @param {Array} grades 
+ */
+function evaluateGraduationStandards(grades) {
+  const englishCodes = ['NN703011', 'NN703012', 'NN702013', 'NN703013', 'ENG131', 'ENG132', 'ENG133'];
+  const itCodes = ['GIN131', 'GIN121', 'NN703008'];
+
+  const langCourses = grades.filter(c => {
+    const code = (c.courseCode || '').toUpperCase().trim();
+    const name = (c.courseName || '').toLowerCase();
+    return englishCodes.includes(code) || 
+           code.startsWith('ENG') || 
+           code.startsWith('CDRTA') || 
+           name.includes('tiếng anh') || 
+           name.includes('ngoại ngữ') || 
+           name.includes('english');
+  });
+
+  const itCourses = grades.filter(c => {
+    const code = (c.courseCode || '').toUpperCase().trim();
+    const name = (c.courseName || '').toLowerCase();
+    return itCodes.includes(code) || 
+           code.startsWith('GIN') || 
+           code.startsWith('INF') || 
+           code.startsWith('CDRTH') || 
+           code.startsWith('CDRIC3') || 
+           name.includes('tin học') || 
+           name.includes('công nghệ số') || 
+           name.includes('trí tuệ nhân tạo') || 
+           name.includes('ic3');
+  });
+
+  const passedLangCourses = langCourses.filter(c => c.letterGrade && c.letterGrade !== 'F' && c.totalGrade4 != null && c.totalGrade4 >= 2.0);
+  
+  let highestLang = null;
+  if (passedLangCourses.length > 0) {
+    passedLangCourses.sort((a, b) => {
+      const codeA = (a.courseCode || '').toUpperCase();
+      const codeB = (b.courseCode || '').toUpperCase();
+      const nameA = (a.courseName || '').toLowerCase();
+      const nameB = (b.courseName || '').toLowerCase();
+
+      const getRank = (code, name) => {
+        if (code === 'NN702013' || code === 'NN703013' || code === 'ENG133' || code.startsWith('CDRTA') || name.includes('tiếng anh 3') || name.includes('b1')) return 3;
+        if (code === 'NN703012' || code === 'ENG132' || name.includes('tiếng anh 2')) return 2;
+        if (code === 'NN703011' || code === 'ENG131' || name.includes('tiếng anh 1')) return 1;
+        return 0;
+      };
+
+      const rankA = getRank(codeA, nameA);
+      const rankB = getRank(codeB, nameB);
+      if (rankA !== rankB) return rankB - rankA;
+      return (b.totalGrade4 || 0) - (a.totalGrade4 || 0);
+    });
+    highestLang = passedLangCourses[0];
+  }
+
+  const isLangPassed = highestLang != null;
+
+  const passedITCourses = itCourses.filter(c => c.letterGrade && c.letterGrade !== 'F' && c.totalGrade4 != null && c.totalGrade4 >= 2.0);
+  const isITPassed = passedITCourses.length > 0;
+  
+  let topIT = null;
+  if (passedITCourses.length > 0) {
+    passedITCourses.sort((a, b) => (b.totalGrade4 || 0) - (a.totalGrade4 || 0));
+    topIT = passedITCourses[0];
+  }
+
+  return {
+    foreignLanguage: {
+      isPassed: isLangPassed,
+      courseCode: highestLang ? highestLang.courseCode : null,
+      courseName: highestLang ? highestLang.courseName : null,
+      letterGrade: highestLang ? highestLang.letterGrade : null,
+      score4: highestLang ? highestLang.totalGrade4 : null,
+      statusText: isLangPassed 
+        ? `Đạt (${highestLang.courseName} - Điểm ${highestLang.letterGrade})`
+        : (langCourses.length > 0 ? 'Chưa đạt (Cần học phần Tiếng Anh từ C trở lên)' : 'Chưa đăng ký/Chưa có điểm')
+    },
+    informationTechnology: {
+      isPassed: isITPassed,
+      courseCode: topIT ? topIT.courseCode : null,
+      courseName: topIT ? topIT.courseName : null,
+      letterGrade: topIT ? topIT.letterGrade : null,
+      score4: topIT ? topIT.totalGrade4 : null,
+      statusText: isITPassed 
+        ? `Đạt (${topIT.courseName} - Điểm ${topIT.letterGrade})`
+        : (itCourses.length > 0 ? 'Chưa đạt (Cần học phần Tin học/CNS&AI từ C trở lên)' : 'Chưa đăng ký/Chưa có điểm')
+    }
+  };
+}
+
+/**
  * @route   GET /api/grades/all
  * @desc    Lấy bảng điểm TẤT CẢ các kỳ, nhóm theo semester + schoolYear kèm thống kê tín chỉ & tiến độ tốt nghiệp
  * @access  Private (JWT)
@@ -589,7 +682,17 @@ router.get('/grades/all', authMiddleware, async (req, res) => {
           failedCoursesCount++;
         }
 
-        if (g4 !== null && cr > 0) {
+        const codeUpper = (c.courseCode || '').toUpperCase();
+        const isNonGpaCourse = Boolean(
+          c.isNonGpaCourse || 
+          c.ThuocTinhMon === 1 || 
+          c.Mon_chung_chi === true || 
+          c.ID_bm === 3 || 
+          codeUpper.startsWith('PHE') || 
+          codeUpper.startsWith('GDQP')
+        );
+
+        if (g4 !== null && cr > 0 && !isNonGpaCourse) {
           semWeightedScore4 += g4 * cr;
           semWeightedScore10 += (g10 !== null ? g10 : 0) * cr;
           semCreditsForGpa += cr;
@@ -640,6 +743,8 @@ router.get('/grades/all', authMiddleware, async (req, res) => {
       ? parseFloat(Math.min(100, (cumulativeCreditsAccumulated / totalRequiredCredits) * 100).toFixed(1))
       : 0;
 
+    const graduationStandards = evaluateGraduationStandards(grades);
+
     res.json({
       success: true,
       data: enrichedGroups,
@@ -652,7 +757,8 @@ router.get('/grades/all', authMiddleware, async (req, res) => {
         cumulativeGPA: finalCumulativeGPA,
         cumulativeGPA10: finalCumulativeGPA10,
         totalRequiredCredits,
-        graduationProgress
+        graduationProgress,
+        graduationStandards
       },
       lastSyncedAt: req.user.lastSyncedAt
     });

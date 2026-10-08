@@ -639,17 +639,39 @@ async function getLecturerExams(pool, idCb, hocKy, namHoc, knownSchedules = null
  */
 async function getStudentGrades(pool, idSv, hocKy, namHoc) {
   const result = await safeQuery(pool,
-    `SELECT
-      mh.Ky_hieu AS courseCode, mh.Ten_mon AS courseName, mh.So_hoc_trinh AS credits,
-      tp_cc.Diem AS processGrade, tp_gk.Diem AS midtermGrade,
+    `WITH BestExam AS (
+      SELECT 
+        ID_diem, Diem_thi, TBCMH, Diem_chu, Diem_so, Lan_hoc, Lan_thi,
+        ROW_NUMBER() OVER (
+          PARTITION BY ID_diem 
+          ORDER BY ISNULL(Diem_so, -1) DESC, ISNULL(TBCMH, -1) DESC, ISNULL(Lan_thi, 1) DESC
+        ) AS rn
+      FROM MARK_DiemThi_TC
+    ),
+    BestCC AS (
+      SELECT ID_diem, Diem AS processGrade,
+        ROW_NUMBER() OVER (PARTITION BY ID_diem ORDER BY ISNULL(Diem, -1) DESC) AS rn
+      FROM MARK_DiemThanhPhan_TC
+      WHERE ID_thanh_phan = 1
+    ),
+    BestGK AS (
+      SELECT ID_diem, Diem AS midtermGrade,
+        ROW_NUMBER() OVER (PARTITION BY ID_diem ORDER BY ISNULL(Diem, -1) DESC) AS rn
+      FROM MARK_DiemThanhPhan_TC
+      WHERE ID_thanh_phan = 2
+    )
+    SELECT
+      mh.Ky_hieu AS courseCode, mh.Ten_mon AS courseName, ISNULL(NULLIF(mh.So_hoc_trinh_mh, 0), mh.So_hoc_trinh) AS credits,
+      mh.ThuocTinhMon, mh.Mon_chung_chi, mh.ID_bm, mh.Tinh_chat_mon,
+      cc.processGrade, gk.midtermGrade,
       dt.Diem_thi, dt.TBCMH, dt.Diem_chu, dt.Diem_so AS grade4,
       dt.Lan_hoc, dt.Lan_thi,
       d.Hoc_ky, d.Nam_hoc
     FROM MARK_Diem_TC d
     JOIN dmMonHoc mh ON d.ID_mon = mh.ID_mon
-    LEFT JOIN MARK_DiemThi_TC dt ON dt.ID_diem = d.ID_diem
-    LEFT JOIN MARK_DiemThanhPhan_TC tp_cc ON tp_cc.ID_diem = d.ID_diem AND tp_cc.ID_thanh_phan = 1
-    LEFT JOIN MARK_DiemThanhPhan_TC tp_gk ON tp_gk.ID_diem = d.ID_diem AND tp_gk.ID_thanh_phan = 2
+    LEFT JOIN BestExam dt ON dt.ID_diem = d.ID_diem AND dt.rn = 1
+    LEFT JOIN BestCC cc ON cc.ID_diem = d.ID_diem AND cc.rn = 1
+    LEFT JOIN BestGK gk ON gk.ID_diem = d.ID_diem AND gk.rn = 1
     WHERE d.ID_sv = @idSv
       AND d.Hoc_ky = @hocKy AND d.Nam_hoc = @namHoc
     ORDER BY mh.Ten_mon`,
@@ -668,17 +690,39 @@ async function getStudentGrades(pool, idSv, hocKy, namHoc) {
  */
 async function getAllStudentGrades(pool, idSv) {
   const result = await safeQuery(pool,
-    `SELECT
-      mh.Ky_hieu AS courseCode, mh.Ten_mon AS courseName, mh.So_hoc_trinh AS credits,
-      tp_cc.Diem AS processGrade, tp_gk.Diem AS midtermGrade,
+    `WITH BestExam AS (
+      SELECT 
+        ID_diem, Diem_thi, TBCMH, Diem_chu, Diem_so, Lan_hoc, Lan_thi,
+        ROW_NUMBER() OVER (
+          PARTITION BY ID_diem 
+          ORDER BY ISNULL(Diem_so, -1) DESC, ISNULL(TBCMH, -1) DESC, ISNULL(Lan_thi, 1) DESC
+        ) AS rn
+      FROM MARK_DiemThi_TC
+    ),
+    BestCC AS (
+      SELECT ID_diem, Diem AS processGrade,
+        ROW_NUMBER() OVER (PARTITION BY ID_diem ORDER BY ISNULL(Diem, -1) DESC) AS rn
+      FROM MARK_DiemThanhPhan_TC
+      WHERE ID_thanh_phan = 1
+    ),
+    BestGK AS (
+      SELECT ID_diem, Diem AS midtermGrade,
+        ROW_NUMBER() OVER (PARTITION BY ID_diem ORDER BY ISNULL(Diem, -1) DESC) AS rn
+      FROM MARK_DiemThanhPhan_TC
+      WHERE ID_thanh_phan = 2
+    )
+    SELECT
+      mh.Ky_hieu AS courseCode, mh.Ten_mon AS courseName, ISNULL(NULLIF(mh.So_hoc_trinh_mh, 0), mh.So_hoc_trinh) AS credits,
+      mh.ThuocTinhMon, mh.Mon_chung_chi, mh.ID_bm, mh.Tinh_chat_mon,
+      cc.processGrade, gk.midtermGrade,
       dt.Diem_thi, dt.TBCMH, dt.Diem_chu, dt.Diem_so AS grade4,
       dt.Lan_hoc, dt.Lan_thi,
       d.Hoc_ky, d.Nam_hoc
     FROM MARK_Diem_TC d
     JOIN dmMonHoc mh ON d.ID_mon = mh.ID_mon
-    LEFT JOIN MARK_DiemThi_TC dt ON dt.ID_diem = d.ID_diem
-    LEFT JOIN MARK_DiemThanhPhan_TC tp_cc ON tp_cc.ID_diem = d.ID_diem AND tp_cc.ID_thanh_phan = 1
-    LEFT JOIN MARK_DiemThanhPhan_TC tp_gk ON tp_gk.ID_diem = d.ID_diem AND tp_gk.ID_thanh_phan = 2
+    LEFT JOIN BestExam dt ON dt.ID_diem = d.ID_diem AND dt.rn = 1
+    LEFT JOIN BestCC cc ON cc.ID_diem = d.ID_diem AND cc.rn = 1
+    LEFT JOIN BestGK gk ON gk.ID_diem = d.ID_diem AND gk.rn = 1
     WHERE d.ID_sv = @idSv
     ORDER BY d.Nam_hoc, d.Hoc_ky, mh.Ten_mon`,
     [{ name: 'idSv', type: sql.UniqueIdentifier, value: idSv }],
@@ -1694,18 +1738,40 @@ async function isSurveyActive(pool) {
 async function getStudentGradesWithSurvey(pool, idSv, hocKy, namHoc) {
   // 1. Lấy toàn bộ điểm
   const gradesResult = await safeQuery(pool,
-    `SELECT
+    `WITH BestExam AS (
+      SELECT 
+        ID_diem, Diem_thi, TBCMH, Diem_chu, Diem_so, Lan_hoc, Lan_thi,
+        ROW_NUMBER() OVER (
+          PARTITION BY ID_diem 
+          ORDER BY ISNULL(Diem_so, -1) DESC, ISNULL(TBCMH, -1) DESC, ISNULL(Lan_thi, 1) DESC
+        ) AS rn
+      FROM MARK_DiemThi_TC
+    ),
+    BestCC AS (
+      SELECT ID_diem, Diem AS processGrade,
+        ROW_NUMBER() OVER (PARTITION BY ID_diem ORDER BY ISNULL(Diem, -1) DESC) AS rn
+      FROM MARK_DiemThanhPhan_TC
+      WHERE ID_thanh_phan = 1
+    ),
+    BestGK AS (
+      SELECT ID_diem, Diem AS midtermGrade,
+        ROW_NUMBER() OVER (PARTITION BY ID_diem ORDER BY ISNULL(Diem, -1) DESC) AS rn
+      FROM MARK_DiemThanhPhan_TC
+      WHERE ID_thanh_phan = 2
+    )
+    SELECT
       d.ID_mon,
-      mh.Ky_hieu AS courseCode, mh.Ten_mon AS courseName, mh.So_hoc_trinh AS credits,
-      tp_cc.Diem AS processGrade, tp_gk.Diem AS midtermGrade,
+      mh.Ky_hieu AS courseCode, mh.Ten_mon AS courseName, ISNULL(NULLIF(mh.So_hoc_trinh_mh, 0), mh.So_hoc_trinh) AS credits,
+      mh.ThuocTinhMon, mh.Mon_chung_chi, mh.ID_bm, mh.Tinh_chat_mon,
+      cc.processGrade, gk.midtermGrade,
       dt.Diem_thi, dt.TBCMH, dt.Diem_chu, dt.Diem_so AS grade4,
       dt.Lan_hoc, dt.Lan_thi,
       d.Hoc_ky, d.Nam_hoc
     FROM MARK_Diem_TC d
     JOIN dmMonHoc mh ON d.ID_mon = mh.ID_mon
-    LEFT JOIN MARK_DiemThi_TC dt ON dt.ID_diem = d.ID_diem
-    LEFT JOIN MARK_DiemThanhPhan_TC tp_cc ON tp_cc.ID_diem = d.ID_diem AND tp_cc.ID_thanh_phan = 1
-    LEFT JOIN MARK_DiemThanhPhan_TC tp_gk ON tp_gk.ID_diem = d.ID_diem AND tp_gk.ID_thanh_phan = 2
+    LEFT JOIN BestExam dt ON dt.ID_diem = d.ID_diem AND dt.rn = 1
+    LEFT JOIN BestCC cc ON cc.ID_diem = d.ID_diem AND cc.rn = 1
+    LEFT JOIN BestGK gk ON gk.ID_diem = d.ID_diem AND gk.rn = 1
     WHERE d.ID_sv = @idSv
       AND d.Hoc_ky = @hocKy AND d.Nam_hoc = @namHoc
     ORDER BY mh.Ten_mon`,

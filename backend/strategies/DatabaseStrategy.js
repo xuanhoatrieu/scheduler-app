@@ -496,6 +496,15 @@ class DatabaseStrategy extends ScheduleStrategy {
       const letterGrade = r.Diem_chu ? r.Diem_chu.trim() : converted.letterGrade;
       const credits = r.credits != null ? Number(r.credits) : (r.So_hoc_trinh != null ? Number(r.So_hoc_trinh) : 0);
 
+      const codeUpper = (r.courseCode || '').toUpperCase();
+      const isNonGpaCourse = Boolean(
+        r.ThuocTinhMon === 1 || 
+        r.Mon_chung_chi === true || 
+        r.ID_bm === 3 || 
+        codeUpper.startsWith('PHE') || 
+        codeUpper.startsWith('GDQP')
+      );
+
       return {
         courseName: r.courseName || '',
         courseCode: r.courseCode || '',
@@ -507,7 +516,11 @@ class DatabaseStrategy extends ScheduleStrategy {
         totalGrade4,
         letterGrade,
         retakeCount: r.Lan_hoc || 1,
-        examAttempt: r.Lan_thi || 1
+        examAttempt: r.Lan_thi || 1,
+        ThuocTinhMon: r.ThuocTinhMon,
+        Mon_chung_chi: r.Mon_chung_chi,
+        ID_bm: r.ID_bm,
+        isNonGpaCourse
       };
     });
   }

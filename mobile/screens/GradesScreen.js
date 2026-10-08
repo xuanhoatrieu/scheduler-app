@@ -60,7 +60,8 @@ export default function GradesScreen({ user }) {
     creditsAccumulated,
     failedCredits,
     totalRequiredCredits,
-    graduationProgress
+    graduationProgress,
+    graduationStandards
   }) => {
     const gpaLabel = gpa ? Number(gpa).toFixed(2) : '--';
     const gpa10Label = gpa10 ? Number(gpa10).toFixed(2) : '--';
@@ -175,6 +176,59 @@ export default function GradesScreen({ user }) {
             )}
           </View>
         </View>
+
+        {/* Chuẩn đầu ra Tốt nghiệp (Ngoại ngữ & Tin học) */}
+        {graduationStandards && (
+          <>
+            <View style={styles.gpaCardDivider} />
+            <View style={styles.progressSection}>
+              <View style={styles.progressHeader}>
+                <View style={styles.progressHeaderLeft}>
+                  <Ionicons name="ribbon-outline" size={16} color={Colors.primary} />
+                  <Text style={styles.progressTitle}>Chuẩn đầu ra tốt nghiệp</Text>
+                </View>
+              </View>
+
+              <View style={{ marginTop: 4, gap: 6 }}>
+                {/* Ngoại ngữ */}
+                <View style={styles.standardBadgeRow}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 6 }}>
+                    <Ionicons
+                      name={graduationStandards.foreignLanguage?.isPassed ? "checkmark-circle" : "alert-circle"}
+                      size={15}
+                      color={graduationStandards.foreignLanguage?.isPassed ? Colors.success : Colors.accentOrange}
+                    />
+                    <Text style={styles.standardBadgeLabel}>Ngoại ngữ (TA):</Text>
+                  </View>
+                  <Text style={[
+                    styles.standardBadgeStatus,
+                    { color: graduationStandards.foreignLanguage?.isPassed ? Colors.success : Colors.accentOrange }
+                  ]}>
+                    {graduationStandards.foreignLanguage?.statusText || 'Chưa rõ'}
+                  </Text>
+                </View>
+
+                {/* Tin học */}
+                <View style={styles.standardBadgeRow}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 6 }}>
+                    <Ionicons
+                      name={graduationStandards.informationTechnology?.isPassed ? "checkmark-circle" : "alert-circle"}
+                      size={15}
+                      color={graduationStandards.informationTechnology?.isPassed ? Colors.success : Colors.accentOrange}
+                    />
+                    <Text style={styles.standardBadgeLabel}>Tin học / CNS:</Text>
+                  </View>
+                  <Text style={[
+                    styles.standardBadgeStatus,
+                    { color: graduationStandards.informationTechnology?.isPassed ? Colors.success : Colors.accentOrange }
+                  ]}>
+                    {graduationStandards.informationTechnology?.statusText || 'Chưa rõ'}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </>
+        )}
       </View>
     );
   };
@@ -264,6 +318,7 @@ export default function GradesScreen({ user }) {
           failedCredits={summary?.failedCredits}
           totalRequiredCredits={summary?.totalRequiredCredits}
           graduationProgress={summary?.graduationProgress}
+          graduationStandards={summary?.graduationStandards}
         />
 
         {/* Filter Bar */}
@@ -646,4 +701,26 @@ const styles = StyleSheet.create({
   emptyWrap: { alignItems: 'center', paddingTop: 60, paddingBottom: 40 },
   emptyText: { fontSize: 14, color: Colors.textMuted, marginTop: 12 },
   emptySubText: { fontSize: 12, color: Colors.textMuted, marginTop: 4 },
+
+  // Graduation Standard Badges
+  standardBadgeRow: {
+    flexDirection: 'row',
+    justify: 'space-between',
+    alignItems: 'center',
+    backgroundColor: Colors.background,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  standardBadgeLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+  },
+  standardBadgeStatus: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
 });
