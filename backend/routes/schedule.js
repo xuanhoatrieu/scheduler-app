@@ -675,13 +675,6 @@ router.get('/grades/all', authMiddleware, async (req, res) => {
         const g10 = c.totalGrade10 != null ? Number(c.totalGrade10) : null;
         const isPassed = c.letterGrade && c.letterGrade !== 'F' && (g4 === null || g4 > 0);
 
-        semCreditsStudied += cr;
-        if (isPassed) {
-          semCreditsAccumulated += cr;
-        } else if (c.letterGrade === 'F') {
-          failedCoursesCount++;
-        }
-
         const codeUpper = (c.courseCode || '').toUpperCase();
         const isNonGpaCourse = Boolean(
           c.isNonGpaCourse || 
@@ -691,6 +684,15 @@ router.get('/grades/all', authMiddleware, async (req, res) => {
           codeUpper.startsWith('PHE') || 
           codeUpper.startsWith('GDQP')
         );
+
+        semCreditsStudied += cr;
+        if (isPassed) {
+          if (!isNonGpaCourse) {
+            semCreditsAccumulated += cr;
+          }
+        } else if (c.letterGrade === 'F') {
+          failedCoursesCount++;
+        }
 
         if (g4 !== null && cr > 0 && !isNonGpaCourse) {
           semWeightedScore4 += g4 * cr;

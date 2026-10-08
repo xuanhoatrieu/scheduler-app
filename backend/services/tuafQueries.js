@@ -661,7 +661,7 @@ async function getStudentGrades(pool, idSv, hocKy, namHoc) {
       WHERE ID_thanh_phan = 2
     )
     SELECT
-      mh.Ky_hieu AS courseCode, mh.Ten_mon AS courseName, ISNULL(NULLIF(mh.So_hoc_trinh_mh, 0), mh.So_hoc_trinh) AS credits,
+      mh.Ky_hieu AS courseCode, mh.Ten_mon AS courseName, ISNULL(NULLIF(mh.So_hoc_trinh, 0), mh.So_hoc_trinh_mh) AS credits, mh.So_hoc_trinh,
       mh.ThuocTinhMon, mh.Mon_chung_chi, mh.ID_bm, mh.Tinh_chat_mon,
       cc.processGrade, gk.midtermGrade,
       dt.Diem_thi, dt.TBCMH, dt.Diem_chu, dt.Diem_so AS grade4,
@@ -712,7 +712,7 @@ async function getAllStudentGrades(pool, idSv) {
       WHERE ID_thanh_phan = 2
     )
     SELECT
-      mh.Ky_hieu AS courseCode, mh.Ten_mon AS courseName, ISNULL(NULLIF(mh.So_hoc_trinh_mh, 0), mh.So_hoc_trinh) AS credits,
+      mh.Ky_hieu AS courseCode, mh.Ten_mon AS courseName, ISNULL(NULLIF(mh.So_hoc_trinh, 0), mh.So_hoc_trinh_mh) AS credits, mh.So_hoc_trinh,
       mh.ThuocTinhMon, mh.Mon_chung_chi, mh.ID_bm, mh.Tinh_chat_mon,
       cc.processGrade, gk.midtermGrade,
       dt.Diem_thi, dt.TBCMH, dt.Diem_chu, dt.Diem_so AS grade4,
