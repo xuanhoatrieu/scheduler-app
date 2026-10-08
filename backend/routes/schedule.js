@@ -747,6 +747,27 @@ router.get('/grades/all', authMiddleware, async (req, res) => {
 
     const graduationStandards = evaluateGraduationStandards(grades);
 
+    // Tính tổng tín chỉ các môn hiện tại đang bị điểm F (chưa học lại hoặc học lại vẫn F)
+    let totalFailedCredits = 0;
+    let totalFailedCourses = 0;
+    for (const c of grades) {
+      if (c.letterGrade === 'F') {
+        const codeUpper = (c.courseCode || '').toUpperCase();
+        const isNonGpa = Boolean(
+          c.isNonGpaCourse || 
+          c.ThuocTinhMon === 1 || 
+          c.Mon_chung_chi === true || 
+          c.ID_bm === 3 || 
+          codeUpper.startsWith('PHE') || 
+          codeUpper.startsWith('GDQP')
+        );
+        if (!isNonGpa) {
+          totalFailedCredits += (Number(c.credits) || 0);
+          totalFailedCourses++;
+        }
+      }
+    }
+
     res.json({
       success: true,
       data: enrichedGroups,
@@ -755,7 +776,8 @@ router.get('/grades/all', authMiddleware, async (req, res) => {
         totalSemesters,
         creditsStudied: cumulativeCreditsStudied,
         creditsAccumulated: cumulativeCreditsAccumulated,
-        failedCredits: cumulativeCreditsStudied - cumulativeCreditsAccumulated,
+        failedCredits: totalFailedCredits,
+        failedCoursesCount: totalFailedCourses,
         cumulativeGPA: finalCumulativeGPA,
         cumulativeGPA10: finalCumulativeGPA10,
         totalRequiredCredits,
@@ -939,30 +961,10 @@ router.get('/curriculum', authMiddleware, async (req, res) => {
     const gdqpGrade = grades.find(g => (g.courseCode || '').toUpperCase().includes('GDQP') || (g.courseName || '').toLowerCase().includes('quốc phòng'));
     const gdqpMet = Boolean(gdqpGrade && gdqpGrade.letterGrade && gdqpGrade.letterGrade !== 'F');
 
-    // 5.3 Chuẩn đầu ra Tin học: NN703008 (Nhập môn Công nghệ số và Trí tuệ nhân tạo) >= 'C'
-    const tinHocGrade = gradeMapByCode['NN703008'] || gradeMapByName['nhập môn công nghệ số và trí tuệ nhân tạo'];
-    const tinHocScore = tinHocGrade ? tinHocGrade.letterGrade : null;
-    const tinHocMet = Boolean(tinHocGrade && ['A', 'B', 'C'].includes(tinHocScore));
-
-    // 5.4 Chuẩn đầu ra Ngoại ngữ: Tiếng Anh 1 (NN703011), Tiếng Anh 2 (NN703012), Tiếng Anh 3 (NN702013) đều >= 'C'
-    const taList = [
-      { code: 'NN703011', name: 'Tiếng Anh 1', req: '>= C' },
-      { code: 'NN703012', name: 'Tiếng Anh 2', req: '>= C' },
-      { code: 'NN702013', name: 'Tiếng Anh 3', req: '>= C' }
-    ];
-    const foreignLangCourses = taList.map(item => {
-      const g = gradeMapByCode[item.code] || gradeMapByName[item.name.toLowerCase()];
-      const gradeLetter = g ? g.letterGrade : null;
-      const isMet = Boolean(g && ['A', 'B', 'C'].includes(gradeLetter));
-      return {
-        courseCode: item.code,
-        courseName: item.name,
-        letterGrade: gradeLetter,
-        isMet,
-        statusText: !g ? 'Chưa học' : (isMet ? `Đạt chuẩn (Điểm ${gradeLetter})` : `Chưa đạt chuẩn (Điểm ${gradeLetter})`)
-      };
-    });
-    const ngoaiNguMet = foreignLangCourses.every(c => c.isMet);
+    // 5.3 Chuẩn đầu ra Tin học & 5.4 Chuẩn đầu ra Ngoại ngữ (Dùng helper đa khóa evaluateGraduationStandards)
+    const stds = evaluateGraduationStandards(grades);
+    const tinHocMet = stds.informationTechnology.isPassed;
+    const ngoaiNguMet = stds.foreignLanguage.isPassed;
 
     const graduationRequirements = {
       allMet: gdtcMet && gdqpMet && tinHocMet && ngoaiNguMet,
@@ -981,23 +983,19 @@ router.get('/curriculum', authMiddleware, async (req, res) => {
       },
       tinHoc: {
         title: 'Chuẩn đầu ra Tin học',
-        courseCode: 'NN703008',
-        courseName: 'Nhập môn Công nghệ số và Trí tuệ nhân tạo',
+        courseCode: stds.informationTechnology.courseCode || 'GIN131',
+        courseName: stds.informationTechnology.courseName || 'Tin học đại cương / CNS & AI',
         minGradeRequired: 'C',
-        currentGrade: tinHocScore,
+        currentGrade: stds.informationTechnology.letterGrade,
         isMet: tinHocMet,
-        details: !tinHocGrade 
-          ? 'Chưa học môn này (Yêu cầu đạt điểm C trở lên)' 
-          : (tinHocMet ? `Đã đạt chuẩn đầu ra (Điểm ${tinHocScore})` : `Chưa đạt chuẩn (Điểm ${tinHocScore} — cần cải thiện lên C trở lên)`)
+        details: stds.informationTechnology.statusText
       },
       ngoaiNgu: {
         title: 'Chuẩn đầu ra Ngoại ngữ (Tiếng Anh 1, 2, 3)',
         minGradeRequired: 'C',
         isMet: ngoaiNguMet,
-        details: ngoaiNguMet 
-          ? 'Đã đạt chuẩn C cả 3 học phần Tiếng Anh 1, 2, 3' 
-          : 'Yêu cầu đạt điểm C trở lên ở cả 3 học phần',
-        courses: foreignLangCourses
+        details: stds.foreignLanguage.statusText,
+        courses: [stds.foreignLanguage]
       }
     };
 
