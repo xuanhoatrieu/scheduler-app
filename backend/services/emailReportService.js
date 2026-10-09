@@ -520,9 +520,47 @@ async function sendTestEmail({ to = null, customConfig = null } = {}) {
   }
 }
 
+/**
+ * Kiểm thử kết nối máy chủ SMTP mà KHÔNG gửi email (dành cho health check & test connection)
+ */
+async function verifySmtpConnection({ customConfig = null } = {}) {
+  try {
+    const transporter = createTransporter(customConfig);
+    if (!transporter) {
+      return {
+        success: false,
+        message: 'Chưa cấu hình thông tin SMTP (Tài khoản SMTP_USER hoặc Mật khẩu ứng dụng SMTP_PASS còn trống)!'
+      };
+    }
+
+    await transporter.verify();
+
+    const host = customConfig?.host || configService.get('SMTP_HOST') || process.env.SMTP_HOST || 'smtp.gmail.com';
+    const port = customConfig?.port || configService.get('SMTP_PORT') || process.env.SMTP_PORT || '465';
+    const sender = customConfig?.user || configService.get('SMTP_USER') || process.env.SMTP_USER;
+
+    return {
+      success: true,
+      message: `Kết nối máy chủ SMTP (${host}:${port}) thành công!`,
+      details: {
+        host: `${host}:${port}`,
+        user: sender,
+        status: 'Ready (Connected)'
+      }
+    };
+  } catch (error) {
+    console.error('❌ [EmailService] Lỗi khi kiểm tra kết nối SMTP:', error.message);
+    return {
+      success: false,
+      message: `Lỗi kết nối SMTP: ${error.message}`
+    };
+  }
+}
+
 module.exports = {
   sendInspectorReportEmail,
   sendTestEmail,
+  verifySmtpConnection,
   getReportRecipients,
   createTransporter
 };

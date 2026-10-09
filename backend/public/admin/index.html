@@ -2492,6 +2492,9 @@ async function handleAdminLogin(e) {
       loadConfigs();
       loadHealthData();
       checkAllNodes();
+      if (typeof window.autoLoadCurriculumGlobal === 'function') {
+        window.autoLoadCurriculumGlobal();
+      }
     } else {
       errBox.textContent = data.message || 'Mật khẩu quản trị không chính xác!';
       errBox.style.display = 'block';
@@ -2561,6 +2564,10 @@ document.addEventListener('DOMContentLoaded', () => {
     loadConfigs();
     loadHealthData();
     checkAllNodes();
+    const curPane = document.querySelector('.tab-pane.active')?.id;
+    if (curPane === 'tab-curriculum' && typeof window.autoLoadCurriculumGlobal === 'function') {
+      window.autoLoadCurriculumGlobal();
+    }
     showToast('info', 'Đang làm mới dữ liệu & kiểm tra các node...');
   });
 });
@@ -2633,6 +2640,10 @@ function initTabs() {
         loadInspectors();
       } else if (target === 'tab-documents') {
         loadAdminDocuments();
+      } else if (target === 'tab-curriculum') {
+        if (typeof window.autoLoadCurriculumGlobal === 'function') {
+          window.autoLoadCurriculumGlobal();
+        }
       }
     });
   });
@@ -2795,24 +2806,6 @@ async function runTestConnection(target, buttonEl) {
     if (fromName) overrides.SMTP_FROM_NAME = fromName;
     if (reportEmails) overrides.INSPECTOR_REPORT_EMAILS = reportEmails;
 
-    let defaultRecipient = '';
-    if (reportEmails) {
-      const parts = reportEmails.split(',').map(e => e.trim()).filter(Boolean);
-      if (parts.length > 0) defaultRecipient = parts[0];
-    }
-    if (!defaultRecipient && user) defaultRecipient = user;
-
-    const testTo = prompt('Nhập địa chỉ email người nhận thư thử nghiệm:', defaultRecipient);
-    if (testTo === null) {
-      if (buttonEl) {
-        buttonEl.disabled = false;
-        buttonEl.textContent = originalText;
-      }
-      return;
-    }
-    if (testTo.trim()) {
-      overrides.TEST_RECIPIENT_EMAIL = testTo.trim();
-    }
   }
 
   try {
@@ -3283,6 +3276,85 @@ function initCurriculumTab() {
   const filterGroup = document.getElementById('curriculum-filter-group');
   const statusText = document.getElementById('curriculum-status-text');
 
+  // 0. Hàm tự động tải Khung CTĐT khi mở tab hoặc thay đổi khóa/ngành
+  async function autoLoadCurriculum() {
+    const cohort = String(cohortSelect?.value || '56').replace(/^[kK]/, '');
+    const selectedOpt = majorSelect?.options[majorSelect?.selectedIndex];
+    const majorCode = selectedOpt ? selectedOpt.value : (majorSelect?.value || '7480201');
+    const idDt = selectedOpt ? selectedOpt.getAttribute('data-iddt') : null;
+
+    if (!majorCode) return;
+
+    if (statusText) statusText.innerHTML = `⏳ Đang tải dữ liệu Khung CTĐT ngành <strong>${majorCode} (K${cohort})</strong>...`;
+
+    // 1. Thử lấy Khung chuẩn đã lưu trong CSDL MasterCurriculum
+    try {
+      const res = await fetch(`/api/admin/curriculum/master?cohort=K${cohort}&majorCode=${majorCode}`);
+      const data = await res.json();
+      if (data.success && data.data && data.data.length > 0) {
+        const compRes = await fetch('/api/admin/curriculum/compare', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ courses: data.data, majorCode, cohort, idDt })
+        });
+        const compData = await compRes.json();
+        if (compData.success) {
+          currentComparisonData = compData.data;
+          renderCurriculumComparison(compData.data);
+          if (statusText) statusText.innerHTML = `✅ Đang hiển thị <strong>Khung chuẩn đã lưu</strong> của ngành ${majorCode} (K${cohort}) — Chuẩn tốt nghiệp: <strong>${compData.data.summary.totalGraduationCredits || 153} TC</strong> (${data.data.length} môn).`;
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Lỗi autoLoadCurriculum từ DB:', e);
+    }
+
+    // 2. Nếu là K56 và ngành CNDMST 7480201 (có sẵn file mẫu cndmstk56.xlsx trên server)
+    if (majorCode === '7480201' || majorCode.includes('7480201')) {
+      try {
+        const compRes = await fetch('/api/admin/curriculum/compare', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ useSample: true, majorCode, cohort, idDt })
+        });
+        const compData = await compRes.json();
+        if (compData.success) {
+          currentComparisonData = compData.data;
+          renderCurriculumComparison(compData.data);
+          if (statusText) statusText.innerHTML = `⚡ Đã tự động đối soát file mẫu <strong>cndmstk56.xlsx</strong> trên máy chủ (${compData.data.summary.totalGraduationCredits || 153} TC). Nhấn <strong>[💾 Lưu & Kích Hoạt Khung Chuẩn]</strong> để lưu vĩnh viễn vào CSDL.`;
+          return;
+        }
+      } catch (e) {
+        console.warn('Lỗi autoLoadCurriculum từ sample:', e);
+      }
+    }
+
+    // 3. Nếu chưa có dữ liệu, ẩn bảng cũ và hiển thị thông báo hướng dẫn
+    hideCurriculumTable();
+    if (statusText) {
+      statusText.innerHTML = `ℹ️ Ngành <strong>${majorCode} (K${cohort})</strong> chưa có dữ liệu Khung chuẩn trong CSDL. Vui lòng chọn tệp Excel (.xlsx) hoặc nhấn <strong>[Đối Soát Với Phần Mềm Đào Tạo]</strong> để nạp dữ liệu.`;
+    }
+  }
+
+  window.autoLoadCurriculumGlobal = autoLoadCurriculum;
+
+  function hideCurriculumTable() {
+    currentComparisonData = null;
+    const summaryCard = document.getElementById('curriculum-summary-card');
+    const jumpNav = document.getElementById('curriculum-jump-nav');
+    const part1 = document.getElementById('section-part1-blocks');
+    const part2 = document.getElementById('section-part2-semesters');
+    const btnSave = document.getElementById('btn-save-master-curriculum');
+    const deficitBanner = document.getElementById('curriculum-deficit-banner');
+
+    if (summaryCard) summaryCard.style.display = 'none';
+    if (jumpNav) jumpNav.style.display = 'none';
+    if (part1) part1.style.display = 'none';
+    if (part2) part2.style.display = 'none';
+    if (btnSave) btnSave.style.display = 'none';
+    if (deficitBanner) deficitBanner.style.display = 'none';
+  }
+
   // 1. Tải danh sách Khóa học
   async function loadCohorts() {
     try {
@@ -3292,8 +3364,9 @@ function initCurriculumTab() {
         cohortSelect.innerHTML = json.data.map(c => 
           `<option value="${c.cohortNum}" ${c.cohortNum === 56 ? 'selected' : ''}>${escapeHtml(c.label)}</option>`
         ).join('');
-        // Nạp danh sách ngành của khóa mặc định
+        // Nạp danh sách ngành của khóa mặc định và tự động tải dữ liệu khung
         await loadMajors(cohortSelect.value);
+        await autoLoadCurriculum();
       }
     } catch (err) {
       console.warn('⚠️ Lỗi tải danh sách khóa:', err);
@@ -3323,10 +3396,18 @@ function initCurriculumTab() {
     }
   }
 
-  // Khi thay đổi Khóa học -> nạp lại danh sách ngành
+  // Khi thay đổi Khóa học -> nạp lại danh sách ngành và tự động tải khung
   if (cohortSelect) {
-    cohortSelect.addEventListener('change', () => {
-      loadMajors(cohortSelect.value);
+    cohortSelect.addEventListener('change', async () => {
+      await loadMajors(cohortSelect.value);
+      await autoLoadCurriculum();
+    });
+  }
+
+  // Khi thay đổi Ngành đào tạo -> tự động tải khung
+  if (majorSelect) {
+    majorSelect.addEventListener('change', async () => {
+      await autoLoadCurriculum();
     });
   }
 
@@ -3372,8 +3453,10 @@ function initCurriculumTab() {
     btnViewMaster.addEventListener('click', async () => {
       btnViewMaster.disabled = true;
       btnViewMaster.textContent = '⏳ Đang tải...';
-      const cohort = cohortSelect?.value || '56';
+      const cohort = String(cohortSelect?.value || '56').replace(/^[kK]/, '');
       const majorCode = majorSelect?.value || '7480201';
+      const selectedOpt = majorSelect?.options[majorSelect.selectedIndex];
+      const idDt = selectedOpt ? selectedOpt.getAttribute('data-iddt') : null;
 
       try {
         const res = await fetch(`/api/admin/curriculum/master?cohort=K${cohort}&majorCode=${majorCode}`);
@@ -3383,7 +3466,7 @@ function initCurriculumTab() {
           const compRes = await fetch('/api/admin/curriculum/compare', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ courses: data.data, majorCode, cohort })
+            body: JSON.stringify({ courses: data.data, majorCode, cohort, idDt })
           });
           const compData = await compRes.json();
           if (compData.success) {

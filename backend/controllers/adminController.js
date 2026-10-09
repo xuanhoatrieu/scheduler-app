@@ -235,9 +235,9 @@ class AdminController {
         });
       }
 
-      // 5. Test Email Gateway (SMTP & Test Email Send)
+      // 5. Test Email Gateway (Chỉ kiểm tra kết nối SMTP máy chủ, KHÔNG gửi email)
       if (target === 'email') {
-        const { sendTestEmail } = require('../services/emailReportService');
+        const { verifySmtpConnection } = require('../services/emailReportService');
 
         const customConfig = (overrides.SMTP_HOST || overrides.SMTP_USER || overrides.SMTP_PASS) ? {
           host: overrides.SMTP_HOST,
@@ -247,17 +247,17 @@ class AdminController {
           fromName: overrides.SMTP_FROM_NAME
         } : null;
 
-        const targetEmail = overrides.TEST_RECIPIENT_EMAIL || overrides.to;
-
-        const result = await sendTestEmail({ to: targetEmail, customConfig });
+        const result = await verifySmtpConnection({ customConfig });
         const latencyMs = Date.now() - startTime;
 
         return res.json({
           success: result.success,
           target: 'email',
           latencyMs,
-          message: result.message,
-          details: result.details || null
+          message: result.success
+            ? `✅ Email Gateway SMTP kết nối thành công (${latencyMs}ms)`
+            : `Kết nối SMTP thất bại: ${result.message}`,
+          details: result.details || { error: result.message }
         });
       }
 
@@ -643,10 +643,20 @@ class AdminController {
 
         const parsed = await ExcelCurriculumService.parseExcel(savedFilePath);
         courseList = parsed.courses;
-      } else if (useSample || (!courses && !req.file)) {
-        const filePath = customFilePath || path.join(__dirname, '../../cndmstk56.xlsx');
-        const parsed = await ExcelCurriculumService.parseExcel(filePath);
-        courseList = parsed.courses;
+      } else if (!courseList || !Array.isArray(courseList) || courseList.length === 0) {
+        const cleanCohort = String(cohort || '56').replace(/^[kK]/, '');
+        const targetCohort = `K${cleanCohort}`;
+        const existingMaster = await ExcelCurriculumService.getMasterCurriculum(majorCode || '7480201', targetCohort);
+        if (existingMaster && existingMaster.length > 0) {
+          courseList = existingMaster;
+        } else if (useSample || majorCode === '7480201' || majorCode?.includes('7480201')) {
+          const fs = require('fs');
+          const filePath = customFilePath || path.join(__dirname, '../../cndmstk56.xlsx');
+          if (fs.existsSync(filePath)) {
+            const parsed = await ExcelCurriculumService.parseExcel(filePath);
+            courseList = parsed.courses;
+          }
+        }
       }
 
       if (!courseList || !Array.isArray(courseList) || courseList.length === 0) {
