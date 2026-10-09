@@ -607,31 +607,59 @@ router.get('/grades/all', authMiddleware, async (req, res) => {
     // 2. Lấy tổng số tín chỉ yêu cầu của CTĐT
     let totalRequiredCredits = 0;
     try {
-      const Curriculum = require('../models/Curriculum');
-      const cCredits = await Curriculum.sum('credits', { where: { userId: req.user.id } });
-      if (cCredits && cCredits > 0) {
-        totalRequiredCredits = cCredits;
+      const MasterCurriculum = require('../models/MasterCurriculum');
+      const tuafQueries = require('../services/tuafQueries');
+      let ctdtSummary = null;
+      if (pool && req.user.tuafStudentId) {
+        try {
+          ctdtSummary = await tuafQueries.getStudentCurriculumSummary(pool, req.user.tuafStudentId);
+        } catch (ctErr) {}
+      }
+
+      // Ưu tiên 1: Tra cứu theo Khung chuẩn MasterCurriculum đã duyệt
+      let masterList = [];
+      if (ctdtSummary?.ID_dt) {
+        masterList = await MasterCurriculum.findAll({
+          where: { idDt: ctdtSummary.ID_dt, isActive: true }
+        });
+      }
+      if (masterList.length === 0 && ctdtSummary?.majorCode) {
+        const cohortCode = ctdtSummary.cohort ? (String(ctdtSummary.cohort).startsWith('K') ? String(ctdtSummary.cohort) : `K${ctdtSummary.cohort}`) : 'K56';
+        masterList = await MasterCurriculum.findAll({
+          where: { majorCode: ctdtSummary.majorCode, cohort: cohortCode, isActive: true }
+        });
+      }
+
+      if (masterList.length > 0) {
+        const seenGradCodes = new Set();
+        totalRequiredCredits = masterList
+          .filter(c => c.isOrganized !== false && !c.isCondition)
+          .reduce((sum, c) => {
+            const code = (c.courseCode || '').toUpperCase().trim();
+            if (code && seenGradCodes.has(code)) return sum;
+            if (code) seenGradCodes.add(code);
+            return sum + (c.credits || 0);
+          }, 0);
+      }
+
+      // Ưu tiên 2: Lấy theo ctdtSummary từ trường nếu chưa cấu hình MasterCurriculum
+      if ((!totalRequiredCredits || totalRequiredCredits === 0) && ctdtSummary && ctdtSummary.totalCredits) {
+        totalRequiredCredits = Number(ctdtSummary.totalCredits);
+      }
+
+      // Ưu tiên 3: Lấy theo Curriculum lưu trong cache
+      if (!totalRequiredCredits || totalRequiredCredits === 0) {
+        const Curriculum = require('../models/Curriculum');
+        const cCredits = await Curriculum.sum('credits', { where: { userId: req.user.id } });
+        if (cCredits && cCredits > 0) {
+          totalRequiredCredits = cCredits;
+        }
       }
     } catch (e) {}
 
-    if (!totalRequiredCredits || totalRequiredCredits === 0) {
-      if (pool && req.user.tuafStudentId) {
-        try {
-          const tuafQueries = require('../services/tuafQueries');
-          const ctdtSummary = await tuafQueries.getStudentCurriculumSummary(pool, req.user.tuafStudentId);
-          // Ghi chú: So_hoc_trinh đôi khi lưu theo ĐVHT (VD 190 ĐVHT ~ 150 TC), chỉ dùng nếu <= 165
-          if (ctdtSummary && ctdtSummary.totalCredits && ctdtSummary.totalCredits <= 165) {
-            totalRequiredCredits = Number(ctdtSummary.totalCredits);
-          }
-        } catch (ctErr) {
-          console.warn('⚠️ [API /grades/all] Không thể lấy CTĐT summary:', ctErr.message);
-        }
-      }
-    }
-
     // Mặc định chuẩn đại học nếu không có thông tin
     if (!totalRequiredCredits || totalRequiredCredits === 0) {
-      totalRequiredCredits = 154;
+      totalRequiredCredits = 153;
     }
 
     // 3. Gom nhóm theo semester + schoolYear theo thứ tự thời gian
@@ -886,11 +914,43 @@ router.get('/curriculum', authMiddleware, async (req, res) => {
       }
     }
 
-    // 1. Lấy khung chuẩn MasterCurriculum (cho ngành của SV, mặc định '7480201' - 'K56')
-    const masterList = await MasterCurriculum.findAll({
-      where: { majorCode: '7480201', cohort: 'K56', isActive: true },
-      order: [['semester', 'ASC'], ['stt', 'ASC'], ['courseName', 'ASC']]
-    });
+    // 1. Lấy thông tin ngành & khóa đào tạo của sinh viên từ SQL Server để tra đúng khung chuẩn
+    let studentSummary = null;
+    if (pool && req.user.tuafStudentId) {
+      try {
+        const tuafQueries = require('../services/tuafQueries');
+        studentSummary = await tuafQueries.getStudentCurriculumSummary(pool, req.user.tuafStudentId);
+      } catch (sErr) {
+        console.warn('⚠️ [API /curriculum] Lỗi lấy thông tin ngành của sinh viên:', sErr.message);
+      }
+    }
+
+    // 1.1 Tìm MasterCurriculum phù hợp cho sinh viên:
+    // Ưu tiên 1: Theo idDt (Chương trình đào tạo gán theo lớp sinh viên)
+    // Ưu tiên 2: Theo majorCode và cohort (ví dụ 7480201 - K56)
+    // Ưu tiên 3: Mặc định ngành 7480201 - K56
+    let masterList = [];
+    if (studentSummary?.ID_dt) {
+      masterList = await MasterCurriculum.findAll({
+        where: { idDt: studentSummary.ID_dt, isActive: true },
+        order: [['semester', 'ASC'], ['stt', 'ASC'], ['courseName', 'ASC']]
+      });
+    }
+
+    if (masterList.length === 0 && studentSummary?.majorCode) {
+      const cohortCode = studentSummary.cohort ? (String(studentSummary.cohort).startsWith('K') ? String(studentSummary.cohort) : `K${studentSummary.cohort}`) : 'K56';
+      masterList = await MasterCurriculum.findAll({
+        where: { majorCode: studentSummary.majorCode, cohort: cohortCode, isActive: true },
+        order: [['semester', 'ASC'], ['stt', 'ASC'], ['courseName', 'ASC']]
+      });
+    }
+
+    if (masterList.length === 0) {
+      masterList = await MasterCurriculum.findAll({
+        where: { majorCode: '7480201', cohort: 'K56', isActive: true },
+        order: [['semester', 'ASC'], ['stt', 'ASC'], ['courseName', 'ASC']]
+      });
+    }
 
     // Fallback: nếu chưa cấu hình MasterCurriculum, dùng rawCurriculum
     const rawCurriculum = await Curriculum.findAll({
@@ -1144,9 +1204,27 @@ router.get('/curriculum', authMiddleware, async (req, res) => {
       courses: []
     };
 
+    const unorganizedGroup = {
+      semester: 99,
+      semesterName: 'Môn tự chọn chưa/không tổ chức mở lớp (Dự phòng)',
+      totalCredits: 0,
+      passedCredits: 0,
+      totalCourses: 0,
+      passedCourses: 0,
+      courses: []
+    };
+
     for (const item of mergedList) {
       const sem = item.semester;
-      if (sem && semesterGroups[sem]) {
+      if (item.isOrganized === false) {
+        unorganizedGroup.totalCourses++;
+        unorganizedGroup.totalCredits += item.credits;
+        if (item.status === 'passed') {
+          unorganizedGroup.passedCourses++;
+          unorganizedGroup.passedCredits += item.credits;
+        }
+        unorganizedGroup.courses.push(item);
+      } else if (sem && semesterGroups[sem]) {
         semesterGroups[sem].totalCourses++;
         semesterGroups[sem].totalCredits += item.credits;
         if (item.status === 'passed') {
@@ -1168,23 +1246,39 @@ router.get('/curriculum', authMiddleware, async (req, res) => {
     if (otherGroup.courses.length > 0) {
       bySemester.push(otherGroup);
     }
-
-    // 10. Thống kê tiến độ tốt nghiệp chuẩn
-    let totalGraduationCredits = 154;
-    if (rawCurriculum.length > 0) {
-      const cCredits = rawCurriculum.reduce((sum, c) => sum + (c.credits || 0), 0);
-      if (cCredits > 0) totalGraduationCredits = cCredits;
-    } else if (masterList.length > 0) {
-      const nonConditionCredits = masterList.filter(c => !c.isCondition).reduce((sum, c) => sum + (c.credits || 0), 0);
-      totalGraduationCredits = nonConditionCredits > 154 ? 150 : nonConditionCredits;
+    if (unorganizedGroup.courses.length > 0) {
+      bySemester.push(unorganizedGroup);
     }
 
+    // 10. Thống kê tiến độ tốt nghiệp chuẩn
+    let totalGraduationCredits = 153;
+    if (masterList.length > 0) {
+      const seenGradCodes = new Set();
+      const calcCredits = masterList
+        .filter(c => c.isOrganized !== false && !c.isCondition)
+        .reduce((sum, c) => {
+          const code = (c.courseCode || '').toUpperCase().trim();
+          if (code && seenGradCodes.has(code)) return sum;
+          if (code) seenGradCodes.add(code);
+          return sum + (c.credits || 0);
+        }, 0);
+      if (calcCredits > 0) totalGraduationCredits = calcCredits;
+    } else if (rawCurriculum.length > 0) {
+      const cCredits = rawCurriculum.reduce((sum, c) => sum + (c.credits || 0), 0);
+      if (cCredits > 0) totalGraduationCredits = cCredits;
+    }
+
+    const passedGraduationCodes = new Set();
     const passedCredits = mergedList
       .filter(c => !c.isCondition && c.status === 'passed')
-      .reduce((sum, c) => sum + (c.credits || 0), 0);
+      .reduce((sum, c) => {
+        const code = (c.courseCode || '').toUpperCase().trim();
+        if (code && passedGraduationCodes.has(code)) return sum;
+        if (code) passedGraduationCodes.add(code);
+        return sum + (c.credits || 0);
+      }, 0);
 
-    const conditionCreditsTarget = 3;
-    const effectiveTotalCredits = totalGraduationCredits > 150 ? totalGraduationCredits - conditionCreditsTarget : totalGraduationCredits;
+    const effectiveTotalCredits = totalGraduationCredits > 0 ? totalGraduationCredits : 153;
 
     const failedCount = mergedList.filter(c => c.status === 'failed').length;
     const studyingCount = mergedList.filter(c => c.status === 'studying').length;

@@ -489,6 +489,11 @@ export default function CurriculumView({ user }) {
                                 <Text style={styles.electiveTagText}>Tự chọn</Text>
                               </View>
                             )}
+                            {course.isOrganized === false && (
+                              <View style={[styles.electiveTag, { backgroundColor: '#F3F4F6' }]}>
+                                <Text style={[styles.electiveTagText, { color: '#6B7280' }]}>Chưa/Không mở</Text>
+                              </View>
+                            )}
                           </View>
                         </View>
                       </View>

@@ -1972,6 +1972,7 @@ async function getStudentCurriculumSummary(pool, idSv) {
     const result = await safeQuery(pool,
       `SELECT TOP 1 
          ct.ID_dt,
+         ct.Khoa_hoc AS cohort,
          ct.So_hoc_trinh AS totalCredits,
          ct.So_ky_hoc AS totalSemesters,
          cn.Ma_chuyen_nganh AS majorCode,

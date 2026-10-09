@@ -3470,6 +3470,8 @@ function initCurriculumTab() {
       const majorCode = majorSelect?.value || '7480201';
       const selectedOpt = majorSelect?.options[majorSelect.selectedIndex];
       const majorName = selectedOpt ? selectedOpt.getAttribute('data-name') : 'Công nghệ và đổi mới sáng tạo';
+      const idDt = selectedOpt ? selectedOpt.getAttribute('data-iddt') : null;
+      const trainingSystem = 'Kỹ sư';
 
       if (!confirm(`Bạn có chắc chắn muốn lưu và kích hoạt ${currentComparisonData.comparison.length} môn vào Khung chương trình chuẩn (153 TC) của ngành ${majorCode} (K${cohort})?`)) {
         return;
@@ -3486,6 +3488,8 @@ function initCurriculumTab() {
             majorCode,
             cohort: `K${cohort}`,
             majorName,
+            idDt: idDt ? parseInt(idDt) : null,
+            trainingSystem,
             courses: currentComparisonData.comparison
           })
         });
@@ -3749,6 +3753,7 @@ function renderBlocksSection(filteredCourses) {
             <td style="padding: 8px 10px; font-family: var(--font-mono); font-weight: 700; color: #e2e8f0; width: 105px;">${escapeHtml(c.courseCode)}</td>
             <td style="padding: 8px 10px;">
               <strong style="color: #fff;">${escapeHtml(c.courseName)}</strong>
+              ${c.isOrganized === false ? '<span style="display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 4px; background: rgba(148,163,184,0.15); color: #94a3b8; font-size: 10.5px; font-weight: 600;">(Tự chọn không mở)</span>' : ''}
             </td>
             <td style="padding: 8px 10px; color: #94a3b8; font-style: italic; font-size: 11.5px;">
               ${escapeHtml(c.courseNameEn || '')}
@@ -3866,8 +3871,8 @@ function renderSemestersSection(filteredCourses) {
       headerBadge = `<div class="sem-badge" style="background: rgba(59,130,246,0.2); color: #93c5fd; border-color: rgba(59,130,246,0.4);">${semCredits} Tín chỉ • ${list.length} môn dự phòng</div>`;
     } else if (isUnassigned) {
       headerLabel = 'các môn chưa phân kỳ';
-      headerTitle = `<div class="sem-title" style="color: #f59e0b;">⏳ CHƯA PHÂN KỲ TRÊN HỆ THỐNG TRƯỜNG</div>`;
-      headerBadge = `<div class="sem-badge" style="background: rgba(245,158,11,0.15); color: #f59e0b; border-color: rgba(245,158,11,0.3);">${semCredits} Tín chỉ • ${list.length} môn</div>`;
+      headerTitle = `<div class="sem-title" style="color: #94a3b8;">📦 MÔN TỰ CHỌN CHƯA MỞ LỚP / CHƯA PHÂN KỲ</div>`;
+      headerBadge = `<div class="sem-badge" style="background: rgba(148,163,184,0.15); color: #94a3b8; border-color: rgba(148,163,184,0.3);">${semCredits} Tín chỉ • ${list.length} môn</div>`;
     } else {
       headerLabel = `học kỳ ${sKey}`;
       headerTitle = `<div class="sem-title">📅 HỌC KỲ ${sKey}</div>`;
@@ -3925,6 +3930,7 @@ function renderSemestersSection(filteredCourses) {
           <td style="padding: 8px 10px; font-family: var(--font-mono); font-weight: 700; color: #e2e8f0; width: 105px;">${escapeHtml(c.schoolCourseCode || c.courseCode)}</td>
           <td style="padding: 8px 10px;">
             <strong style="color: #fff;">${escapeHtml(c.schoolCourseName || c.courseName)}</strong>
+            ${c.isOrganized === false ? '<span style="display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 4px; background: rgba(148,163,184,0.15); color: #94a3b8; font-size: 10.5px; font-weight: 600;">(Tự chọn không mở)</span>' : ''}
           </td>
           <td style="padding: 8px 10px; color: #94a3b8; font-style: italic; font-size: 11.5px;">
             ${escapeHtml(c.courseNameEn || '')}

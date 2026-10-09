@@ -112,6 +112,20 @@ const MasterCurriculum = sequelize.define('MasterCurriculum', {
     allowNull: false,
     defaultValue: false // true đối với GDTC, GDQP (không tính vào 153 TC)
   },
+  isOrganized: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true // true nếu môn được phân kỳ/tổ chức giảng dạy ở Part 2
+  },
+  idDt: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  },
+  trainingSystem: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    defaultValue: 'Kỹ sư'
+  },
   isActive: {
     type: DataTypes.BOOLEAN,
     allowNull: false,

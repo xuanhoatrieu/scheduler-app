@@ -132,9 +132,16 @@ class ExcelCurriculumService {
     }
 
     const totalScheduledCredits = Object.values(semesterCredits).reduce((a, b) => a + b, 0);
-    // Tính chuẩn tích lũy tốt nghiệp từ Excel (không tính các môn điều kiện như GDTC, GDQP...)
+    // Tính chuẩn tích lũy tốt nghiệp từ Excel (chỉ tính môn tổ chức & không tính các môn điều kiện như GDTC, GDQP...)
+    const seenGradCodes = new Set();
     const excelGraduationCredits = excelCourses
-      ? excelCourses.filter(c => !c.isCondition).reduce((s, c) => s + (c.credits || 0), 0)
+      ? excelCourses.filter(c => {
+          if (c.isOrganized !== false && !c.isCondition && !seenGradCodes.has(c.courseCode)) {
+            seenGradCodes.add(c.courseCode);
+            return true;
+          }
+          return false;
+        }).reduce((s, c) => s + (c.credits || 0), 0)
       : 153;
     const totalGraduationCredits = excelGraduationCredits > 0 ? excelGraduationCredits : 153;
     const isDeficient = totalScheduledCredits < totalGraduationCredits;
@@ -217,6 +224,7 @@ class ExcelCurriculumService {
           courseType: ec.courseType,
           isElective: ec.isElective || isElectiveReserve,
           isCondition: ec.isCondition,
+          isOrganized: ec.isOrganized !== false,
           // Thông tin trường
           schoolCourseCode: sc.schoolCourseCode,
           schoolCourseName: sc.schoolCourseName,
@@ -256,6 +264,7 @@ class ExcelCurriculumService {
           courseType: ec.courseType,
           isElective: ec.isElective,
           isCondition: ec.isCondition,
+          isOrganized: ec.isOrganized !== false,
           schoolCourseCode: null,
           schoolCourseName: null,
           schoolCredits: null,
@@ -314,7 +323,7 @@ class ExcelCurriculumService {
   /**
    * Lưu khung chuẩn vào MasterCurriculum
    */
-  static async saveMasterCurriculum(courses, majorCode = '7480201', cohort = 'K56', majorName = 'Công nghệ và đổi mới sáng tạo') {
+  static async saveMasterCurriculum(courses, majorCode = '7480201', cohort = 'K56', majorName = 'Công nghệ và đổi mới sáng tạo', idDt = null, trainingSystem = 'Kỹ sư') {
     // 1. Xóa khung cũ của ngành & khóa nếu có
     await MasterCurriculum.destroy({
       where: { majorCode, cohort }
@@ -325,6 +334,8 @@ class ExcelCurriculumService {
       majorCode,
       majorName,
       cohort,
+      idDt: idDt ? parseInt(idDt) : null,
+      trainingSystem: trainingSystem || 'Kỹ sư',
       stt: c.stt || idx + 1,
       courseCode: c.courseCode,
       courseName: c.courseName,
@@ -344,6 +355,7 @@ class ExcelCurriculumService {
       isElective: Boolean(c.isElective),
       electiveGroup: c.electiveGroup || '',
       isCondition: Boolean(c.isCondition),
+      isOrganized: c.isOrganized !== undefined ? Boolean(c.isOrganized) : true,
       isActive: true
     }));
 
@@ -352,7 +364,9 @@ class ExcelCurriculumService {
       success: true,
       count: created.length,
       majorCode,
-      cohort
+      cohort,
+      idDt,
+      trainingSystem
     };
   }
 

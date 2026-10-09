@@ -670,7 +670,7 @@ class AdminController {
    */
   async saveMasterCurriculum(req, res) {
     try {
-      const { courses, majorCode, cohort, majorName } = req.body;
+      const { courses, majorCode, cohort, majorName, idDt, trainingSystem } = req.body;
       if (!courses || !Array.isArray(courses) || courses.length === 0) {
         return res.status(400).json({ success: false, message: 'Danh sách môn học trống' });
       }
@@ -680,7 +680,9 @@ class AdminController {
         courses,
         majorCode || '7480201',
         cleanCohort,
-        majorName || 'Công nghệ và đổi mới sáng tạo'
+        majorName || 'Công nghệ và đổi mới sáng tạo',
+        idDt,
+        trainingSystem
       );
 
       return res.json({
