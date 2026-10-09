@@ -3,6 +3,7 @@ const { execFile } = require('child_process');
 const namvietConnector = require('./namvietConnector');
 const sql = require('mssql');
 const MasterCurriculum = require('../models/MasterCurriculum');
+const { parseCurriculumExcel } = require('./parsers/pureExcelParser');
 
 /**
  * Service xử lý parse Excel, đối soát với CSDL SQL Server trường và lưu MasterCurriculum
@@ -10,26 +11,35 @@ const MasterCurriculum = require('../models/MasterCurriculum');
 class ExcelCurriculumService {
 
   /**
-   * Gọi script Python để parse file Excel CTĐT
+   * Parse file Excel CTĐT bằng pure Node.js (không cần python3 trên máy chủ)
    */
-  static parseExcel(filePath) {
-    return new Promise((resolve, reject) => {
-      const scriptPath = path.join(__dirname, 'parsers', 'parse_excel_curriculum.py');
-      execFile('python3', [scriptPath, filePath], { maxBuffer: 10 * 1024 * 1024 }, (err, stdout, stderr) => {
-        if (err) {
-          return reject(new Error(`Lỗi khi parse file Excel: ${stderr || err.message}`));
-        }
-        try {
-          const data = JSON.parse(stdout);
-          if (data.error) {
-            return reject(new Error(data.error));
+  static async parseExcel(filePath) {
+    try {
+      // 1. Ưu tiên xử lý bằng pure JavaScript parser (không cần python3 / subprocess)
+      const data = parseCurriculumExcel(filePath);
+      return data;
+    } catch (pureErr) {
+      console.warn('⚠️ [ExcelService] Pure parser error, thử fallback python3:', pureErr.message);
+
+      // 2. Dự phòng: gọi script Python nếu máy chủ có cài python3
+      return new Promise((resolve, reject) => {
+        const scriptPath = path.join(__dirname, 'parsers', 'parse_excel_curriculum.py');
+        execFile('python3', [scriptPath, filePath], { maxBuffer: 10 * 1024 * 1024 }, (err, stdout, stderr) => {
+          if (err) {
+            return reject(new Error(`Lỗi khi parse file Excel: ${pureErr.message || stderr || err.message}`));
           }
-          resolve(data);
-        } catch (e) {
-          reject(new Error(`Không thể phân tích dữ liệu JSON trả về từ parser: ${e.message}`));
-        }
+          try {
+            const data = JSON.parse(stdout);
+            if (data.error) {
+              return reject(new Error(data.error));
+            }
+            resolve(data);
+          } catch (e) {
+            reject(new Error(`Không thể phân tích dữ liệu JSON trả về từ parser: ${e.message}`));
+          }
+        });
       });
-    });
+    }
   }
 
   /**
