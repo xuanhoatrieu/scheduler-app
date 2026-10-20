@@ -43,6 +43,7 @@ const connectDB = async () => {
     console.log('📡 PostgreSQL Connected successfully via Sequelize ORM!');
     
     // Tự động đồng bộ cấu trúc các bảng và thêm các cột mới còn thiếu (tuafStudentId, periodText, ...)
+    await sequelize.query('ALTER TABLE "Exams" ADD COLUMN IF NOT EXISTS "idDotThiPhong" INTEGER;').catch(e => console.warn('⚠️ [Migration] Exams.idDotThiPhong:', e.message));
     await sequelize.sync({ alter: true });
     console.log('✅ All database models synchronized successfully.');
   } catch (error) {

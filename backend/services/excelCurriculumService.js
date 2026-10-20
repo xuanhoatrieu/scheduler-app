@@ -130,14 +130,6 @@ class ExcelCurriculumService {
       if (sem !== null && sem !== undefined && sem >= 1) {
         semesterCredits[sem] = (semesterCredits[sem] || 0) + cr;
         semesterCourseCounts[sem] = (semesterCourseCounts[sem] || 0) + 1;
-      } else if (sem === 0) {
-        reserveCredits += cr;
-        reserveCount++;
-        reserveCourses.push({
-          code: sc.schoolCourseCode,
-          name: sc.schoolCourseName,
-          credits: cr
-        });
       }
     }
 
@@ -157,7 +149,7 @@ class ExcelCurriculumService {
     const isDeficient = totalScheduledCredits < totalGraduationCredits;
     const deficitCredits = isDeficient ? (totalGraduationCredits - totalScheduledCredits) : 0;
     const deficitWarning = isDeficient 
-      ? `Tổng tín chỉ đã phân kỳ (từ Kỳ 1 trở đi) trên phần mềm đào tạo hiện là ${totalScheduledCredits}/${totalGraduationCredits} TC (còn thiếu ${deficitCredits} TC so với chuẩn tốt nghiệp). Kỳ 0 đang chứa ${reserveCount} môn tự chọn dự phòng (${reserveCredits} TC). Vui lòng kiểm tra phần mềm quản lý đào tạo!`
+      ? `Tổng tín chỉ đã phân kỳ trên phần mềm đào tạo hiện là ${totalScheduledCredits}/${totalGraduationCredits} TC (còn thiếu ${deficitCredits} TC so với Khung chuẩn tốt nghiệp). Vui lòng kiểm tra lại phân kỳ trên phần mềm đào tạo!`
       : null;
 
     const comparisonList = [];
@@ -302,8 +294,22 @@ class ExcelCurriculumService {
       }
     }
 
+    // 3. Lấy danh sách các lớp học áp dụng khung này (STU_Lop.ID_dt = actualIdDt)
+    let assignedClasses = [];
+    const actualIdDt = parsedIdDt || (schoolCtdtCourses && schoolCtdtCourses[0] && schoolCtdtCourses[0].ID_dt);
+    if (pool && actualIdDt) {
+      try {
+        const tuafQueries = require('./tuafQueries');
+        assignedClasses = await tuafQueries.getClassesByCurriculum(pool, actualIdDt);
+      } catch (classErr) {
+        console.warn('⚠️ [ExcelCurriculumService] Lỗi lấy danh sách lớp của CTĐT:', classErr.message);
+      }
+    }
+
     return {
       dbConnected,
+      idDt: actualIdDt,
+      assignedClasses,
       summary: {
         totalExcelCourses: excelCourses.length,
         matchedCount,

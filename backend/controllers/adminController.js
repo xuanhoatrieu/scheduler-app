@@ -555,17 +555,36 @@ class AdminController {
   }
 
   /**
-   * [GET] /api/admin/curriculum/majors — Lấy danh sách ngành của 1 khóa học
+   * [GET] /api/admin/curriculum/filters — Lấy danh mục bộ lọc: Hệ đào tạo, Khoa, Khóa học
+   */
+  async getCurriculumFilters(req, res) {
+    try {
+      const pool = await namvietConnector.getPool();
+      const filters = await tuafQueries.getCurriculumFilters(pool);
+      return res.json({
+        success: true,
+        data: filters
+      });
+    } catch (err) {
+      console.error('❌ [AdminController] getCurriculumFilters error:', err);
+      return res.status(500).json({ success: false, message: err.message });
+    }
+  }
+
+  /**
+   * [GET] /api/admin/curriculum/majors — Lấy danh sách ngành lọc theo Khóa, Hệ đào tạo, Khoa
    */
   async getMajorsByCohort(req, res) {
     try {
       const cohortRaw = req.query.cohort || '56';
       const cohortNum = parseInt(String(cohortRaw).replace(/^[kK]/, '')) || 56;
+      const idHe = req.query.idHe ? parseInt(req.query.idHe) : null;
+      const idKhoa = req.query.idKhoa ? parseInt(req.query.idKhoa) : null;
 
       let schoolMajors = [];
       try {
         const pool = await namvietConnector.getPool();
-        schoolMajors = await tuafQueries.getMajorsByCohort(pool, cohortNum);
+        schoolMajors = await tuafQueries.getMajorsByCohort(pool, { cohort: cohortNum, idHe, idKhoa });
       } catch (e) {
         console.warn('⚠️ [AdminController] Lỗi kết nối SQL Server lấy majors:', e.message);
       }
@@ -585,6 +604,10 @@ class AdminController {
       const majorList = schoolMajors.map(m => ({
         idDt: m.idDt,
         cohort: m.cohort,
+        idHe: m.idHe,
+        trainingSystemName: m.trainingSystemName,
+        idKhoa: m.idKhoa,
+        facultyName: m.facultyName,
         majorCode: m.majorCode,
         majorName: m.majorName,
         specializationName: m.specializationName,
@@ -618,6 +641,27 @@ class AdminController {
       });
     } catch (err) {
       console.error('❌ [AdminController] getMajorsByCohort error:', err);
+      return res.status(500).json({ success: false, message: err.message });
+    }
+  }
+
+  /**
+   * [GET] /api/admin/curriculum/classes — Lấy danh sách lớp được gán vào Khung CTĐT
+   */
+  async getClassesByCurriculum(req, res) {
+    try {
+      const { idDt } = req.query;
+      if (!idDt) {
+        return res.json({ success: true, data: [] });
+      }
+      const pool = await namvietConnector.getPool();
+      const classes = await tuafQueries.getClassesByCurriculum(pool, parseInt(idDt));
+      return res.json({
+        success: true,
+        data: classes
+      });
+    } catch (err) {
+      console.error('❌ [AdminController] getClassesByCurriculum error:', err);
       return res.status(500).json({ success: false, message: err.message });
     }
   }

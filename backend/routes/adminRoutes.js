@@ -39,8 +39,10 @@ router.get('/users/inspect', (req, res) => adminController.inspectUser(req, res)
 router.post('/users/sync', (req, res) => adminController.forceSyncUser(req, res));
 
 // 5. Khung CTĐT & Đối soát (Curriculum Master & Diff)
+router.get('/curriculum/filters', (req, res) => adminController.getCurriculumFilters(req, res));
 router.get('/curriculum/cohorts', (req, res) => adminController.getCohorts(req, res));
 router.get('/curriculum/majors', (req, res) => adminController.getMajorsByCohort(req, res));
+router.get('/curriculum/classes', (req, res) => adminController.getClassesByCurriculum(req, res));
 router.post('/curriculum/parse-sample', (req, res) => adminController.parseSampleCurriculum(req, res));
 router.post('/curriculum/compare', (req, res) => adminController.compareCurriculum(req, res));
 router.post('/curriculum/save', (req, res) => adminController.saveMasterCurriculum(req, res));

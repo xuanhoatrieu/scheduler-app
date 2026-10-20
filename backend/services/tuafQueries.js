@@ -1850,6 +1850,56 @@ async function getStudentGradesWithSurvey(pool, idSv, hocKy, namHoc) {
 }
 
 /**
+ * Lấy bộ lọc Khung CTĐT từ CSDL trường: Hệ đào tạo, Khoa/Đơn vị, Khóa học
+ */
+async function getCurriculumFilters(pool) {
+  try {
+    const qHe = await safeQuery(pool,
+      `SELECT ID AS idHe, Ten_he_dt AS name 
+       FROM STU_HeDaoTao 
+       ORDER BY ID`,
+      [],
+      { username: 'admin-curriculum-filters' }
+    );
+
+    const qKhoa = await safeQuery(pool,
+      `SELECT ID_khoa AS idKhoa, RTRIM(Ma_khoa) AS code, Ten_khoa AS name 
+       FROM dmKhoa 
+       WHERE isActive = 1 
+       ORDER BY Ten_khoa`,
+      [],
+      { username: 'admin-curriculum-filters' }
+    );
+
+    const qCohort = await safeQuery(pool,
+      `SELECT DISTINCT Khoa_hoc AS cohort
+       FROM PLAN_ChuongTrinhDaoTao
+       WHERE Khoa_hoc IS NOT NULL AND Khoa_hoc > 0
+       ORDER BY Khoa_hoc DESC`,
+      [],
+      { username: 'admin-curriculum-filters' }
+    );
+
+    return {
+      trainingSystems: qHe.recordset || [],
+      faculties: qKhoa.recordset || [],
+      cohorts: (qCohort.recordset || []).map(r => r.cohort)
+    };
+  } catch (e) {
+    console.error('❌ [tuafQueries] getCurriculumFilters error:', e.message);
+    return {
+      trainingSystems: [
+        { idHe: 1, name: 'Chính quy' },
+        { idHe: 4, name: 'Mở rộng' },
+        { idHe: 5, name: 'Vừa làm vừa học' }
+      ],
+      faculties: [],
+      cohorts: [58, 57, 56, 55, 54, 53, 52, 51, 50]
+    };
+  }
+}
+
+/**
  * Lấy danh sách các Khóa học có CTĐT trong CSDL trường
  */
 async function getCohorts(pool) {
@@ -1870,14 +1920,35 @@ async function getCohorts(pool) {
 }
 
 /**
- * Lấy danh sách các Ngành / Chuyên ngành đào tạo của 1 Khóa học
+ * Lấy danh sách các Ngành / Chuyên ngành đào tạo lọc theo Khóa, Hệ đào tạo và Khoa
  */
-async function getMajorsByCohort(pool, cohort) {
+async function getMajorsByCohort(pool, options = {}) {
+  const cohort = typeof options === 'object' ? (options.cohort || 56) : options;
+  const idHe = typeof options === 'object' && options.idHe ? parseInt(options.idHe) : null;
+  const idKhoa = typeof options === 'object' && options.idKhoa ? parseInt(options.idKhoa) : null;
+
   try {
+    const whereClauses = ['ct.Khoa_hoc = @cohort'];
+    const params = [{ name: 'cohort', type: sql.Int, value: parseInt(cohort) || 56 }];
+
+    if (idHe) {
+      whereClauses.push('ct.ID_he = @idHe');
+      params.push({ name: 'idHe', type: sql.Int, value: idHe });
+    }
+
+    if (idKhoa) {
+      whereClauses.push('ct.ID_khoa = @idKhoa');
+      params.push({ name: 'idKhoa', type: sql.Int, value: idKhoa });
+    }
+
     const result = await safeQuery(pool,
       `SELECT DISTINCT
          ct.ID_dt AS idDt,
          ct.Khoa_hoc AS cohort,
+         ct.ID_he AS idHe,
+         he.Ten_he_dt AS trainingSystemName,
+         ct.ID_khoa AS idKhoa,
+         k.Ten_khoa AS facultyName,
          ct.ID_chuyen_nganh AS idChuyenNganh,
          ct.So_hoc_trinh AS totalCredits,
          ct.So_ky_hoc AS totalSemesters,
@@ -1886,16 +1957,49 @@ async function getMajorsByCohort(pool, cohort) {
          cn.Chuyen_nganh AS specializationName,
          n.Ten_nganh AS baseMajorName
        FROM PLAN_ChuongTrinhDaoTao ct
+       LEFT JOIN STU_HeDaoTao he ON ct.ID_he = he.ID
+       LEFT JOIN dmKhoa k ON ct.ID_khoa = k.ID_khoa
        LEFT JOIN dmChuyenNganh cn ON ct.ID_chuyen_nganh = cn.ID_chuyen_nganh
        LEFT JOIN dmNganh n ON cn.ID_nganh = n.ID_nganh
-       WHERE ct.Khoa_hoc = @cohort
+       WHERE ${whereClauses.join(' AND ')}
        ORDER BY majorName`,
-      [{ name: 'cohort', type: sql.Int, value: parseInt(cohort) || 56 }],
+      params,
       { username: 'admin-curriculum' }
     );
     return result.recordset;
   } catch (e) {
     console.error('❌ [tuafQueries] getMajorsByCohort error:', e.message);
+    return [];
+  }
+}
+
+/**
+ * Lấy danh sách các Lớp sinh viên đang được gán vào Khung CTĐT (l.ID_dt = @idDt)
+ */
+async function getClassesByCurriculum(pool, idDt) {
+  if (!idDt) return [];
+  try {
+    const result = await safeQuery(pool,
+      `SELECT 
+         l.ID_lop AS classId,
+         RTRIM(l.Ma_lop) AS classCode,
+         RTRIM(l.Ten_lop) AS className,
+         l.Khoa_hoc AS cohort,
+         l.ID_dt AS idDt,
+         cb.Ho_ten AS homeroomTeacher,
+         COUNT(ds.ID_sv) AS studentCount
+       FROM STU_Lop l
+       LEFT JOIN STU_DanhSach ds ON l.ID_lop = ds.ID_lop
+       LEFT JOIN HR_LyLich cb ON l.ID_cb = cb.ID_cb
+       WHERE l.ID_dt = @idDt
+       GROUP BY l.ID_lop, l.Ma_lop, l.Ten_lop, l.Khoa_hoc, l.ID_dt, cb.Ho_ten
+       ORDER BY l.Ma_lop, l.Ten_lop`,
+      [{ name: 'idDt', type: sql.Int, value: parseInt(idDt) }],
+      { username: 'admin-curriculum-classes' }
+    );
+    return result.recordset || [];
+  } catch (e) {
+    console.error('❌ [tuafQueries] getClassesByCurriculum error:', e.message);
     return [];
   }
 }
@@ -2509,8 +2613,10 @@ module.exports = {
   bulkGrades,
   bulkFinance,
   bulkDRL,
+  getCurriculumFilters,
   getCohorts,
   getMajorsByCohort,
+  getClassesByCurriculum,
   getClassStudents,
   getHomeroomClasses,
   isHomeroomOf,
