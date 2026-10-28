@@ -1047,44 +1047,135 @@ async function getClassStudents(pool, idLopTc) {
 }
 
 /**
- * Lấy danh sách thí sinh trong một phòng thi cụ thể (theo ID_dot_thi_phong)
- * Kèm SBD, Mã SV, Họ tên, Lớp sinh hoạt, Ngày sinh, Ghi chú
+ * Lấy danh sách thí sinh trong một phòng thi cụ thể (theo ID_dot_thi_phong hoặc ID_phong_thi)
+ * Kèm SBD, Mã SV, Họ tên, Lớp sinh hoạt, Ngày sinh, Ghi chú.
+ * Tự động fallback sang MARK_TochucThiChiTiet_TC và danh sách lớp học phần nếu TCT_DotThi_ThiSinh trống.
  */
-async function getExamRoomCandidates(pool, idDotThiPhong) {
-  const pId = parseInt(idDotThiPhong, 10);
-  if (isNaN(pId) || pId <= 0) return [];
-  const result = await safeQuery(pool,
-    `SELECT
-      ts.SBD AS sbd,
-      ts.Ghi_chu AS note,
-      sv.ID_sv AS idSv,
-      sv.Ma_sv AS studentCode,
-      sv.Ho_ten AS studentName,
-      COALESCE(l.Ten_lop, l.Ma_lop, sv.Lop, '') AS studentClass,
-      sv.Ngay_sinh AS dob
-    FROM TCT_DotThi_ThiSinh ts
-    JOIN STU_HoSoSinhVien sv ON ts.ID_sv = sv.ID_sv
-    LEFT JOIN (
-      SELECT dsl.ID_sv, MAX(dsl.ID_lop) AS ID_lop
-      FROM STU_DanhSach dsl
-      WHERE ISNULL(dsl.Trang_thai, 0) = 0
-      GROUP BY dsl.ID_sv
-    ) dsl ON sv.ID_sv = dsl.ID_sv
-    LEFT JOIN STU_Lop l ON dsl.ID_lop = l.ID_lop
-    WHERE ts.ID_dot_thi_phong = @idDotThiPhong
-    ORDER BY ts.SBD ASC, sv.Ho_ten ASC`,
-    [{ name: 'idDotThiPhong', type: sql.Int, value: pId }],
-    { username: 'exam-room-candidates' }
-  );
+async function getExamRoomCandidates(pool, idDotThiPhong, idPhongThi = null) {
+  const pDotThiPhong = parseInt(idDotThiPhong, 10);
+  const pPhongThi = parseInt(idPhongThi || idDotThiPhong, 10);
 
-  return (result.recordset || []).map(r => ({
-    sbd: (r.sbd || '').trim(),
+  const normalizeRows = (rows) => (rows || []).map((r, idx) => ({
+    sbd: (r.sbd || String(idx + 1).padStart(2, '0')).trim(),
     studentCode: (r.studentCode || '').trim(),
     studentName: (r.studentName || '').trim(),
     studentClass: (r.studentClass || '').trim(),
-    dob: r.dob,
+    dob: r.dob || null,
     note: (r.note || '').trim() || null
   }));
+
+  // 1. Ưu tiên đọc từ TCT_DotThi_ThiSinh
+  if (!isNaN(pDotThiPhong) && pDotThiPhong > 0) {
+    try {
+      const result = await safeQuery(pool,
+        `SELECT
+          ts.SBD AS sbd,
+          ts.Ghi_chu AS note,
+          sv.ID_sv AS idSv,
+          sv.Ma_sv AS studentCode,
+          sv.Ho_ten AS studentName,
+          COALESCE(l.Ten_lop, l.Ma_lop, sv.Lop, '') AS studentClass,
+          sv.Ngay_sinh AS dob
+        FROM TCT_DotThi_ThiSinh ts
+        JOIN STU_HoSoSinhVien sv ON ts.ID_sv = sv.ID_sv
+        LEFT JOIN (
+          SELECT dsl.ID_sv, MAX(dsl.ID_lop) AS ID_lop
+          FROM STU_DanhSach dsl
+          WHERE ISNULL(dsl.Trang_thai, 0) = 0
+          GROUP BY dsl.ID_sv
+        ) dsl ON sv.ID_sv = dsl.ID_sv
+        LEFT JOIN STU_Lop l ON dsl.ID_lop = l.ID_lop
+        WHERE ts.ID_dot_thi_phong = @idDotThiPhong
+        ORDER BY ts.SBD ASC, sv.Ho_ten ASC`,
+        [{ name: 'idDotThiPhong', type: sql.Int, value: pDotThiPhong }],
+        { username: 'exam-room-candidates' }
+      );
+      if (result.recordset && result.recordset.length > 0) {
+        return normalizeRows(result.recordset);
+      }
+    } catch (err) {
+      console.warn('⚠️ [tuafQueries] getExamRoomCandidates step 1 warning:', err.message);
+    }
+  }
+
+  // 2. Fallback sang MARK_TochucThiChiTiet_TC (theo ID_phong_thi hoặc nối qua MARK_ToChucThiPhong_TC)
+  if (!isNaN(pPhongThi) && pPhongThi > 0) {
+    try {
+      const markRes = await safeQuery(pool,
+        `SELECT
+          ct.So_bao_danh AS sbd,
+          ct.Ghi_chu AS note,
+          sv.ID_sv AS idSv,
+          sv.Ma_sv AS studentCode,
+          sv.Ho_ten AS studentName,
+          COALESCE(l.Ten_lop, l.Ma_lop, sv.Lop, '') AS studentClass,
+          sv.Ngay_sinh AS dob
+        FROM MARK_TochucThiChiTiet_TC ct
+        LEFT JOIN MARK_ToChucThiPhong_TC mtp ON ct.ID_phong_thi = mtp.ID_phong_thi
+        JOIN STU_HoSoSinhVien sv ON ct.ID_sv = sv.ID_sv
+        LEFT JOIN (
+          SELECT dsl.ID_sv, MAX(dsl.ID_lop) AS ID_lop
+          FROM STU_DanhSach dsl
+          WHERE ISNULL(dsl.Trang_thai, 0) = 0
+          GROUP BY dsl.ID_sv
+        ) dsl ON sv.ID_sv = dsl.ID_sv
+        LEFT JOIN STU_Lop l ON dsl.ID_lop = l.ID_lop
+        WHERE ct.ID_phong_thi = @pPhongThi
+           OR mtp.ID_dot_thi_phong = @pDotThiPhong
+        ORDER BY ct.So_bao_danh ASC, sv.Ho_ten ASC`,
+        [
+          { name: 'pPhongThi', type: sql.Int, value: pPhongThi },
+          { name: 'pDotThiPhong', type: sql.Int, value: !isNaN(pDotThiPhong) ? pDotThiPhong : pPhongThi }
+        ],
+        { username: 'exam-room-candidates-mark-fallback' }
+      );
+      if (markRes.recordset && markRes.recordset.length > 0) {
+        return normalizeRows(markRes.recordset);
+      }
+    } catch (err) {
+      console.warn('⚠️ [tuafQueries] getExamRoomCandidates step 2 warning:', err.message);
+    }
+  }
+
+  // 3. Fallback sang danh sách lớp tín chỉ gắn với phòng thi (ID_lop_tcs trong TCT_DotThi_Phong)
+  if (!isNaN(pDotThiPhong) && pDotThiPhong > 0) {
+    try {
+      const roomRes = await safeQuery(pool,
+        `SELECT ID_lop_tcs FROM TCT_DotThi_Phong WHERE ID_dot_thi_phong = @idDotThiPhong`,
+        [{ name: 'idDotThiPhong', type: sql.Int, value: pDotThiPhong }],
+        { username: 'exam-room-candidates-loptcs' }
+      );
+      if (roomRes.recordset && roomRes.recordset.length > 0) {
+        const lopTcsStr = roomRes.recordset[0].ID_lop_tcs || '';
+        const lopIds = lopTcsStr.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n) && n > 0);
+        if (lopIds.length > 0) {
+          const allStudents = [];
+          const seenCodes = new Set();
+          for (const lId of lopIds) {
+            const clsStudents = await getClassStudents(pool, lId);
+            for (const st of clsStudents) {
+              if (st.studentCode && !seenCodes.has(st.studentCode)) {
+                seenCodes.add(st.studentCode);
+                allStudents.push({
+                  sbd: String(allStudents.length + 1).padStart(2, '0'),
+                  studentCode: st.studentCode,
+                  studentName: st.studentName,
+                  studentClass: st.studentClass,
+                  dob: st.dob || null,
+                  note: null
+                });
+              }
+            }
+          }
+          if (allStudents.length > 0) return allStudents;
+        }
+      }
+    } catch (err) {
+      console.warn('⚠️ [tuafQueries] getExamRoomCandidates step 3 warning:', err.message);
+    }
+  }
+
+  return [];
 }
 
 /**
@@ -2037,7 +2128,12 @@ async function getInspectorClassesByDate(pool, dateStr, thuSql) {
         ltc.ID_lop_tc AS idLopTc,
         ltc.Ten_lop_hp AS classCode,
         COALESCE(cb.Ho_ten, 'Chưa phân công') AS teacherName,
-        COALESCE(sk.ID_cb, ltc.ID_cb) AS lecturerId
+        COALESCE(sk.ID_cb, ltc.ID_cb) AS lecturerId,
+        (
+          SELECT COUNT(1)
+          FROM STU_DanhSachLopTinChi dsltc
+          WHERE dsltc.ID_lop_tc = ltc.ID_lop_tc AND ISNULL(dsltc.Huy_dang_ky, 0) = 0
+        ) AS studentCount
       FROM PLAN_SukiensTinChi_TC sk
       JOIN PLAN_LopTinChi_TC ltc ON sk.ID_lop_tc = ltc.ID_lop_tc
       JOIN PLAN_MonTinChi_TC mtc ON ltc.ID_mon_tc = mtc.ID_mon_tc
@@ -2060,12 +2156,193 @@ async function getInspectorClassesByDate(pool, dateStr, thuSql) {
       room: (r.room || '').replace(/[\r\n]+/g, '').trim(),
       teacherName: (r.teacherName || 'Chưa phân công').replace(/[\r\n]+/g, '').trim(),
       classCode: (r.classCode || '').replace(/[\r\n]+/g, '').trim(),
-      courseName: (r.courseName || '').replace(/[\r\n]+/g, '').trim()
+      courseName: (r.courseName || '').replace(/[\r\n]+/g, '').trim(),
+      studentCount: Number(r.studentCount) || 0
     }));
   } catch (e) {
     console.error('❌ [tuafQueries] getInspectorClassesByDate error:', e.message);
     return [];
   }
+}
+
+/**
+ * Lấy danh sách toàn bộ phòng thi / ca thi diễn ra trong ngày trên toàn trường (phục vụ Thanh tra Khảo thí)
+ * Kết hợp cả hai phân hệ: TCT_DotThi_Phong (xếp lịch thi) và MARK_ToChucThiPhong_TC (tổ chức thi/nhập điểm)
+ * @param {sql.ConnectionPool} pool
+ * @param {string} dateStr - 'YYYY-MM-DD'
+ */
+async function getInspectorExamRoomsByDate(pool, dateStr) {
+  const cleanStr = (val) => String(val || '').replace(/[\r\n]+/g, '').trim();
+  const roomsList = [];
+  const seenKeys = new Set();
+
+  // 1. Truy vấn từ TCT_DotThi_Phong kết hợp TCT_DotThi, TCT_DotThi_Mon, MARK_ToChucThiPhong_TC
+  try {
+    const tctRes = await safeQuery(pool,
+      `SELECT
+        dtp.ID_dot_thi_phong AS idDotThiPhong,
+        mtp.ID_phong_thi AS idPhongThi,
+        dtp.Ngay_thi AS examDateRaw,
+        COALESCE(NULLIF(LTRIM(RTRIM(mtp.Gio_thi)), ''), '') AS gioThi,
+        COALESCE(dtp.Tu_tiet, mtp.Tu_tiet, 1) AS tuTiet,
+        COALESCE(dtp.So_tiet, mtp.So_tiet, 2) AS soTiet,
+        CASE
+          WHEN dmph.So_phong IS NOT NULL AND nha.Ten_nha IS NOT NULL AND nha.Ten_nha NOT LIKE '%Nông Lâm%'
+            THEN LTRIM(RTRIM(dmph.So_phong)) + ' (' + LTRIM(RTRIM(nha.Ten_nha)) + ')'
+          WHEN dmph.So_phong IS NOT NULL AND dtp.Ten_phong IS NOT NULL AND LTRIM(RTRIM(dmph.So_phong)) <> LTRIM(RTRIM(dtp.Ten_phong))
+            THEN LTRIM(RTRIM(dmph.So_phong)) + ' (' + LTRIM(RTRIM(dtp.Ten_phong)) + ')'
+          ELSE COALESCE(dmph.So_phong, dtp.Ten_phong, mtp.Ten_phong, '')
+        END AS room,
+        COALESCE(
+          NULLIF(dtp.Si_so, 0),
+          NULLIF(mtp.So_sv, 0),
+          (SELECT COUNT(1) FROM TCT_DotThi_ThiSinh ts WHERE ts.ID_dot_thi_phong = dtp.ID_dot_thi_phong),
+          0
+        ) AS studentCount,
+        COALESCE(mh.Ky_hieu, '') AS courseCode,
+        COALESCE(mh.Ten_mon, dt.Ten_dot, 'Môn thi học phần') AS courseName,
+        COALESCE(dtm.ID_hinh_thuc, 1) AS hinhThucId,
+        COALESCE(ht.Ten_hinh_thuc, '') AS tenHinhThuc,
+        COALESCE(ht.So_phut_thi, 60) AS soPhutThi,
+        COALESCE(dt.Lan_thi, 1) AS lanThi,
+        COALESCE(dt.Ten_dot, '') AS tenDot,
+        COALESCE(cb1.Ho_ten, '') AS cbCoiThi1,
+        COALESCE(cb2.Ho_ten, '') AS cbCoiThi2
+      FROM TCT_DotThi_Phong dtp
+      LEFT JOIN TCT_DotThi dt ON dtp.ID_dot_thi = dt.ID_dot_thi
+      LEFT JOIN MARK_ToChucThiPhong_TC mtp ON dtp.ID_dot_thi_phong = mtp.ID_dot_thi_phong
+      OUTER APPLY (
+        SELECT TOP 1 m.ID_mon, m.ID_hinh_thuc
+        FROM TCT_DotThi_Mon m
+        WHERE m.ID_dot_thi = dtp.ID_dot_thi
+          AND (
+            dtp.ID_mons = CAST(m.ID_mon AS VARCHAR)
+            OR dtp.ID_mons LIKE '%,' + CAST(m.ID_mon AS VARCHAR) + ',%'
+            OR dtp.ID_mons LIKE CAST(m.ID_mon AS VARCHAR) + ',%'
+            OR dtp.ID_mons LIKE '%,' + CAST(m.ID_mon AS VARCHAR)
+          )
+      ) dtm
+      LEFT JOIN dmMonHoc mh ON mh.ID_mon = COALESCE(
+        dtm.ID_mon,
+        CASE WHEN ISNUMERIC(dtp.ID_mons) = 1 THEN CAST(dtp.ID_mons AS INT) ELSE NULL END
+      )
+      LEFT JOIN dmHinhThucThi ht ON dtm.ID_hinh_thuc = ht.ID_hinh_thuc
+      LEFT JOIN dmPhongHoc dmph ON COALESCE(dtp.ID_phong, mtp.ID_phong) = dmph.ID_phong
+      LEFT JOIN dmToaNha nha ON dmph.ID_nha = nha.ID_nha
+      LEFT JOIN HR_LyLich cb1 ON COALESCE(dtp.ID_cb_coi_thi1, mtp.ID_cb_coi_thi1) = cb1.ID_cb
+      LEFT JOIN HR_LyLich cb2 ON COALESCE(dtp.ID_cb_coi_thi2, mtp.ID_cb_coi_thi2) = cb2.ID_cb
+      WHERE CAST(dtp.Ngay_thi AS DATE) = @targetDate
+      ORDER BY COALESCE(dtp.Tu_tiet, mtp.Tu_tiet, 1) ASC, room ASC`,
+      [{ name: 'targetDate', type: sql.Date, value: dateStr }],
+      { username: 'inspector-exams-tct' }
+    );
+
+    for (const r of (tctRes.recordset || [])) {
+      const key = r.idDotThiPhong
+        ? `dtp_${r.idDotThiPhong}`
+        : `${cleanStr(r.courseCode)}_${cleanStr(r.room)}_${r.tuTiet}`;
+      if (!seenKeys.has(key)) {
+        seenKeys.add(key);
+        roomsList.push({
+          idDotThiPhong: r.idDotThiPhong ? Number(r.idDotThiPhong) : null,
+          idPhongThi: r.idPhongThi ? Number(r.idPhongThi) : null,
+          gioThi: cleanStr(r.gioThi),
+          tuTiet: r.tuTiet != null ? Number(r.tuTiet) : 1,
+          soTiet: r.soTiet != null ? Number(r.soTiet) : 2,
+          room: cleanStr(r.room),
+          studentCount: Number(r.studentCount) || 0,
+          courseCode: cleanStr(r.courseCode),
+          courseName: cleanStr(r.courseName),
+          hinhThucId: Number(r.hinhThucId) || 1,
+          tenHinhThuc: cleanStr(r.tenHinhThuc),
+          soPhutThi: Number(r.soPhutThi) || 60,
+          lanThi: Number(r.lanThi) || 1,
+          tenDot: cleanStr(r.tenDot),
+          cbCoiThi1: cleanStr(r.cbCoiThi1),
+          cbCoiThi2: cleanStr(r.cbCoiThi2)
+        });
+      }
+    }
+  } catch (errTct) {
+    console.warn('⚠️ [tuafQueries] getInspectorExamRoomsByDate (TCT) warning:', errTct.message);
+  }
+
+  // 2. Truy vấn bổ sung từ MARK_ToChucThiPhong_TC (các phòng chỉ tạo bên phân hệ MARK)
+  try {
+    const markRes = await safeQuery(pool,
+      `SELECT
+        mtp.ID_dot_thi_phong AS idDotThiPhong,
+        mtp.ID_phong_thi AS idPhongThi,
+        COALESCE(mtp.Ngay_thi, thi.Ngay_thi) AS examDateRaw,
+        COALESCE(NULLIF(LTRIM(RTRIM(mtp.Gio_thi)), ''), NULLIF(LTRIM(RTRIM(thi.Gio_thi)), ''), '') AS gioThi,
+        COALESCE(mtp.Tu_tiet, 1) AS tuTiet,
+        COALESCE(mtp.So_tiet, thi.So_tiet, 2) AS soTiet,
+        CASE
+          WHEN dmph.So_phong IS NOT NULL AND nha.Ten_nha IS NOT NULL AND nha.Ten_nha NOT LIKE '%Nông Lâm%'
+            THEN LTRIM(RTRIM(dmph.So_phong)) + ' (' + LTRIM(RTRIM(nha.Ten_nha)) + ')'
+          WHEN dmph.So_phong IS NOT NULL AND mtp.Ten_phong IS NOT NULL AND LTRIM(RTRIM(dmph.So_phong)) <> LTRIM(RTRIM(mtp.Ten_phong))
+            THEN LTRIM(RTRIM(dmph.So_phong)) + ' (' + LTRIM(RTRIM(mtp.Ten_phong)) + ')'
+          ELSE COALESCE(dmph.So_phong, mtp.Ten_phong, '')
+        END AS room,
+        COALESCE(
+          NULLIF(mtp.So_sv, 0),
+          (SELECT COUNT(1) FROM MARK_TochucThiChiTiet_TC ct WHERE ct.ID_phong_thi = mtp.ID_phong_thi),
+          0
+        ) AS studentCount,
+        COALESCE(mh.Ky_hieu, '') AS courseCode,
+        COALESCE(mh.Ten_mon, 'Môn thi học phần') AS courseName,
+        COALESCE(thi.Hinh_thuc_thi, 1) AS hinhThucId,
+        COALESCE(ht.Ten_hinh_thuc, '') AS tenHinhThuc,
+        COALESCE(ht.So_phut_thi, 60) AS soPhutThi,
+        COALESCE(thi.Lan_thi, 1) AS lanThi,
+        CAST(COALESCE(thi.Dot_thi, 1) AS VARCHAR(50)) AS tenDot,
+        COALESCE(cb1.Ho_ten, '') AS cbCoiThi1,
+        COALESCE(cb2.Ho_ten, '') AS cbCoiThi2
+      FROM MARK_ToChucThiPhong_TC mtp
+      JOIN MARK_TochucThi_TC thi ON COALESCE(mtp.ID_thi_main, mtp.ID_thi_ke_hoach) = thi.ID_thi
+      JOIN dmMonHoc mh ON thi.ID_mon = mh.ID_mon
+      LEFT JOIN dmHinhThucThi ht ON thi.Hinh_thuc_thi = ht.ID_hinh_thuc
+      LEFT JOIN dmPhongHoc dmph ON mtp.ID_phong = dmph.ID_phong
+      LEFT JOIN dmToaNha nha ON dmph.ID_nha = nha.ID_nha
+      LEFT JOIN HR_LyLich cb1 ON mtp.ID_cb_coi_thi1 = cb1.ID_cb
+      LEFT JOIN HR_LyLich cb2 ON mtp.ID_cb_coi_thi2 = cb2.ID_cb
+      WHERE CAST(COALESCE(mtp.Ngay_thi, thi.Ngay_thi) AS DATE) = @targetDate
+      ORDER BY COALESCE(mtp.Tu_tiet, 1) ASC, room ASC`,
+      [{ name: 'targetDate', type: sql.Date, value: dateStr }],
+      { username: 'inspector-exams-mark' }
+    );
+
+    for (const r of (markRes.recordset || [])) {
+      const dtpKey = r.idDotThiPhong ? `dtp_${r.idDotThiPhong}` : null;
+      const ptKey = r.idPhongThi ? `pt_${r.idPhongThi}` : `${cleanStr(r.courseCode)}_${cleanStr(r.room)}_${r.tuTiet}`;
+      if ((dtpKey && seenKeys.has(dtpKey)) || seenKeys.has(ptKey)) continue;
+      if (dtpKey) seenKeys.add(dtpKey);
+      seenKeys.add(ptKey);
+
+      roomsList.push({
+        idDotThiPhong: r.idDotThiPhong ? Number(r.idDotThiPhong) : null,
+        idPhongThi: r.idPhongThi ? Number(r.idPhongThi) : null,
+        gioThi: cleanStr(r.gioThi),
+        tuTiet: r.tuTiet != null ? Number(r.tuTiet) : 1,
+        soTiet: r.soTiet != null ? Number(r.soTiet) : 2,
+        room: cleanStr(r.room),
+        studentCount: Number(r.studentCount) || 0,
+        courseCode: cleanStr(r.courseCode),
+        courseName: cleanStr(r.courseName),
+        hinhThucId: Number(r.hinhThucId) || 1,
+        tenHinhThuc: cleanStr(r.tenHinhThuc),
+        soPhutThi: Number(r.soPhutThi) || 60,
+        lanThi: Number(r.lanThi) || 1,
+        tenDot: cleanStr(r.tenDot),
+        cbCoiThi1: cleanStr(r.cbCoiThi1),
+        cbCoiThi2: cleanStr(r.cbCoiThi2)
+      });
+    }
+  } catch (errMark) {
+    console.warn('⚠️ [tuafQueries] getInspectorExamRoomsByDate (MARK) warning:', errMark.message);
+  }
+
+  return roomsList;
 }
 
 /**
@@ -2629,6 +2906,7 @@ module.exports = {
   getClassFinanceSummaryByTerm,
   parseNamVietBalance,
   getInspectorClassesByDate,
+  getInspectorExamRoomsByDate,
   getExamRoomCandidates,
   isAuthorizedForExamRoom
 };

@@ -15,13 +15,17 @@ function initInspectorCronJobs() {
       const today = new Date(new Date().toLocaleString('en-US', { timeZone: VN_TZ }));
       const todayStr = today.toISOString().split('T')[0];
 
-      console.log(`🔔 [Cron 18:00] Bắt đầu tự động gửi Báo cáo Ngày ${todayStr}...`);
+      console.log(`🔔 [Cron 18:00] Kiểm tra điều kiện gửi Báo cáo Ngày ${todayStr}...`);
       const result = await sendInspectorReportEmail({
         from: todayStr,
         to: todayStr,
         periodType: 'daily'
       });
-      console.log('🏁 [Cron 18:00] Kết quả gửi báo cáo ngày:', result.success ? 'THÀNH CÔNG' : result.message);
+      if (result.skipped) {
+        console.log(`⏭️ [Cron 18:00] Bỏ qua gửi báo cáo ngày: ${result.message}`);
+      } else {
+        console.log('🏁 [Cron 18:00] Kết quả gửi báo cáo ngày:', result.success ? 'THÀNH CÔNG' : result.message);
+      }
     } catch (err) {
       console.error('❌ [Cron 18:00] Lỗi khi chạy Báo cáo Ngày:', err.message);
     }

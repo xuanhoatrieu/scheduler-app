@@ -530,6 +530,71 @@ export const getInspectorClassesByDate = async (dateStr) => {
 };
 
 /**
+ * Lấy danh sách phòng thi / ca thi theo ngày cho Thanh tra
+ */
+export const getInspectorExamsByDate = async (dateStr) => {
+  try {
+    const response = await api.get(`/inspector/exams?date=${encodeURIComponent(dateStr)}`);
+    return response.data;
+  } catch (error) {
+    return { success: false, message: error.response?.data?.message || 'Không thể tải lịch thi thanh tra!' };
+  }
+};
+
+/**
+ * Ghi nhận trạng thái kiểm tra Phòng thi & Cán bộ coi thi
+ */
+export const submitInspectorExamRoomStatus = async (payload) => {
+  try {
+    const response = await api.post('/inspector/exams/room-status', payload);
+    return response.data;
+  } catch (error) {
+    return { success: false, message: error.response?.data?.message || 'Không thể lưu trạng thái phòng thi!' };
+  }
+};
+
+/**
+ * Lấy danh sách thí sinh phòng thi kèm biên bản vi phạm (dành cho Thanh tra)
+ */
+export const getInspectorExamCandidates = async ({ idDotThiPhong, idPhongThi, examDate, roomKey } = {}) => {
+  try {
+    const params = new URLSearchParams();
+    if (idDotThiPhong) params.append('idDotThiPhong', idDotThiPhong);
+    if (idPhongThi) params.append('idPhongThi', idPhongThi);
+    if (examDate) params.append('examDate', examDate);
+    if (roomKey) params.append('roomKey', roomKey);
+    const response = await api.get(`/inspector/exams/candidates?${params.toString()}`);
+    return response.data;
+  } catch (error) {
+    return { success: false, message: error.response?.data?.message || 'Không thể tải danh sách thí sinh phòng thi!' };
+  }
+};
+
+/**
+ * Lập mới hoặc cập nhật biên bản vi phạm quy chế thi của thí sinh
+ */
+export const submitInspectorExamViolation = async (payload) => {
+  try {
+    const response = await api.post('/inspector/exams/violation', payload);
+    return response.data;
+  } catch (error) {
+    return { success: false, message: error.response?.data?.message || 'Không thể lưu biên bản vi phạm thi!' };
+  }
+};
+
+/**
+ * Xóa biên bản vi phạm quy chế thi
+ */
+export const deleteInspectorExamViolation = async (id) => {
+  try {
+    const response = await api.delete(`/inspector/exams/violation/${encodeURIComponent(id)}`);
+    return response.data;
+  } catch (error) {
+    return { success: false, message: error.response?.data?.message || 'Không thể xóa biên bản vi phạm thi!' };
+  }
+};
+
+/**
  * Gửi email báo cáo thanh tra theo yêu cầu
  */
 export const sendInspectorEmailReport = async (payload) => {
@@ -674,6 +739,293 @@ export const markAnnouncementRead = async (id) => {
     return { success: true };
   } catch (error) {
     return { success: false };
+  }
+};
+
+// ═══════════════════════════════════════
+// PHÂN HỆ HÀNH CHÍNH MỘT CỬA SỐ (ONE-STOP SERVICE)
+// ═══════════════════════════════════════
+
+/** Lấy danh sách thủ tục Một cửa đang mở */
+export const getOneStopServices = async () => {
+  try {
+    const response = await api.get('/services');
+    const data = response.data?.data || [];
+    await AsyncStorage.setItem('cached_onestop_services', JSON.stringify(data));
+    return { success: true, data, source: 'network' };
+  } catch (error) {
+    const cached = await AsyncStorage.getItem('cached_onestop_services');
+    if (cached) {
+      return { success: true, data: JSON.parse(cached), source: 'cache' };
+    }
+    return {
+      success: false,
+      data: [],
+      message: error.response?.data?.message || 'Lỗi tải danh mục thủ tục Một cửa!',
+    };
+  }
+};
+
+/** Sinh viên nộp hồ sơ thủ tục Một cửa mới */
+export const createOneStopRequest = async (payload) => {
+  try {
+    const response = await api.post('/services/requests', payload, { timeout: 60000 });
+    return {
+      success: true,
+      data: response.data?.data,
+      message: response.data?.message || 'Nộp hồ sơ thành công!',
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Lỗi gửi hồ sơ Một cửa!',
+    };
+  }
+};
+
+/** Lấy danh sách hồ sơ Một cửa của sinh viên đang đăng nhập */
+export const getMyOneStopRequests = async (status = '') => {
+  try {
+    const response = await api.get('/services/my-requests', {
+      params: status ? { status } : {},
+    });
+    const data = response.data?.data || [];
+    return { success: true, data };
+  } catch (error) {
+    return {
+      success: false,
+      data: [],
+      message: error.response?.data?.message || 'Lỗi tải lịch sử hồ sơ!',
+    };
+  }
+};
+
+/** Xem chi tiết 1 hồ sơ Một cửa */
+export const getOneStopRequestDetail = async (id) => {
+  try {
+    const response = await api.get(`/services/requests/${id}`);
+    return { success: true, data: response.data?.data };
+  } catch (error) {
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Lỗi tải chi tiết hồ sơ!',
+    };
+  }
+};
+
+/** Sinh viên tải lên ảnh biên lai VietQR hoặc bổ sung minh chứng */
+export const uploadOneStopReceipt = async (id, payload) => {
+  try {
+    const response = await api.post(`/services/requests/${id}/upload-receipt`, payload, {
+      timeout: 60000,
+    });
+    return {
+      success: true,
+      data: response.data?.data,
+      message: response.data?.message || 'Đã tải lên thành công!',
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Lỗi tải lên biên lai / minh chứng!',
+    };
+  }
+};
+
+/** Sinh viên hủy yêu cầu khi chưa xử lý */
+export const cancelOneStopRequest = async (id, reason = '') => {
+  try {
+    const response = await api.post(`/services/requests/${id}/cancel`, { reason });
+    return {
+      success: true,
+      data: response.data?.data,
+      message: response.data?.message || 'Đã hủy yêu cầu!',
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Không thể hủy hồ sơ!',
+    };
+  }
+};
+
+/** Sinh viên đánh giá chất lượng phục vụ (1-5 sao) */
+export const rateOneStopRequest = async (id, payload) => {
+  try {
+    const response = await api.post(`/services/requests/${id}/rate`, payload);
+    return {
+      success: true,
+      data: response.data?.data,
+      message: response.data?.message || 'Cảm ơn bạn đã đánh giá!',
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Lỗi gửi đánh giá!',
+    };
+  }
+};
+
+/** Cán bộ / Giảng viên: Kiểm tra xem tài khoản hiện tại có được Admin phân công phụ trách thủ tục Một cửa nào không */
+export const getMyOneStopStaffRole = async () => {
+  try {
+    const response = await api.get('/services/staff/my-role');
+    return {
+      success: true,
+      isAssignedStaff: Boolean(response.data?.isAssignedStaff),
+      assignedServices: response.data?.assignedServices || [],
+      pendingCount: Number(response.data?.pendingCount) || 0,
+    };
+  } catch (_error) {
+    return {
+      success: false,
+      isAssignedStaff: false,
+      assignedServices: [],
+      pendingCount: 0,
+    };
+  }
+};
+
+/** Giáo viên chủ nhiệm (GVCN): Lấy danh sách hồ sơ Một cửa của sinh viên lớp chủ nhiệm */
+export const getHomeroomOneStopRequests = async (idLop) => {
+  try {
+    const response = await api.get(`/services/homeroom/${idLop}/requests`);
+    return {
+      success: true,
+      data: response.data?.data || [],
+      className: response.data?.className || '',
+      classCode: response.data?.classCode || '',
+    };
+  } catch (error) {
+    return {
+      success: false,
+      data: [],
+      message: error.response?.data?.message || 'Không thể tải danh sách hồ sơ Một cửa của lớp!',
+    };
+  }
+};
+
+/** Giáo viên chủ nhiệm (GVCN): Ghi ý kiến xác nhận / nhận xét vào hồ sơ Một cửa của sinh viên lớp mình */
+export const submitHomeroomOneStopNote = async (idLop, requestId, homeroomNote) => {
+  try {
+    const response = await api.post(`/services/homeroom/${idLop}/requests/${requestId}/note`, {
+      homeroomNote,
+    });
+    return {
+      success: true,
+      data: response.data?.data,
+      message: response.data?.message || 'Đã lưu ý kiến Giáo viên chủ nhiệm!',
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Lỗi lưu ý kiến Giáo viên chủ nhiệm!',
+    };
+  }
+};
+
+/** Cán bộ / Chuyên viên: Lấy danh sách hồ sơ cần xử lý trên App */
+export const getStaffOneStopRequests = async (params = {}) => {
+  try {
+    const response = await api.get('/services/staff/requests', { params });
+    return {
+      success: true,
+      data: response.data?.data || [],
+      stats: response.data?.stats || {},
+    };
+  } catch (error) {
+    return {
+      success: false,
+      data: [],
+      stats: {},
+      message: error.response?.data?.message || 'Lỗi tải danh sách hồ sơ Một cửa!',
+    };
+  }
+};
+
+/** Cán bộ: Xác nhận biên lai lệ phí hợp lệ */
+export const confirmOneStopPayment = async (id, note = '') => {
+  try {
+    const response = await api.post(`/services/staff/requests/${id}/confirm-payment`, { note });
+    return {
+      success: true,
+      data: response.data?.data,
+      message: response.data?.message || 'Đã xác nhận lệ phí!',
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Lỗi xác nhận lệ phí!',
+    };
+  }
+};
+
+/** Cán bộ: Từ chối biên lai lệ phí */
+export const rejectOneStopPayment = async (id, reason) => {
+  try {
+    const response = await api.post(`/services/staff/requests/${id}/reject-payment`, { reason });
+    return {
+      success: true,
+      data: response.data?.data,
+      message: response.data?.message || 'Đã yêu cầu tải lại biên lai!',
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Lỗi từ chối biên lai!',
+    };
+  }
+};
+
+/** Cán bộ: Cập nhật tiến độ xử lý & giải trình quá hạn SLA */
+export const processOneStopRequest = async (id, payload) => {
+  try {
+    const response = await api.patch(`/services/staff/requests/${id}/process`, payload);
+    return {
+      success: true,
+      data: response.data?.data,
+      message: response.data?.message || 'Đã cập nhật tiến độ hồ sơ!',
+    };
+  } catch (error) {
+    return {
+      success: false,
+      code: error.response?.data?.code,
+      message: error.response?.data?.message || 'Lỗi xử lý hồ sơ!',
+    };
+  }
+};
+
+/** Cán bộ: Giải trình nguyên nhân quá hạn SLA */
+export const explainOneStopOverdue = async (id, payload) => {
+  try {
+    const response = await api.post(`/services/staff/requests/${id}/explain-overdue`, payload);
+    return {
+      success: true,
+      data: response.data?.data,
+      message: response.data?.message || 'Đã lưu giải trình quá hạn!',
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Lỗi lưu giải trình quá hạn!',
+    };
+  }
+};
+
+/** Cán bộ: Bàn giao bản giấy tại quầy bằng mã QR / mã hồ sơ */
+export const handoverOneStopRequest = async (idOrScan, payload = {}) => {
+  try {
+    const response = await api.post(`/services/staff/requests/${idOrScan}/handover`, payload);
+    return {
+      success: true,
+      data: response.data?.data,
+      message: response.data?.message || 'Đã bàn giao bản giấy thành công!',
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Lỗi bàn giao bản giấy!',
+    };
   }
 };
 

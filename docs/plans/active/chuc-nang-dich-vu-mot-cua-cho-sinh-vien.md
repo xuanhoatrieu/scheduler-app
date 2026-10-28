@@ -1,249 +1,271 @@
-# Kế hoạch phát triển: Chức năng Dịch vụ Một cửa cho Sinh viên (TUAF One-Stop Service)
+# Kế hoạch Triển khai Chi tiết: Phân hệ Dịch vụ Một cửa Số (TUAF One-Stop Service)
 
-## 1. Bối cảnh & Khảo sát thực tiễn (Benchmark Research)
-- **Mô hình tại các trường đại học lớn (HUST eHUST, PTIT S-Link, NEU, UEH, OneVNU, UNETI, ASC-Student)**:
-  - Chuyển dịch toàn bộ thủ tục hành chính sinh viên từ nộp đơn giấy trực tiếp sang cổng một cửa số hóa (Web Portal + Mobile App).
-  - Tự động điền trước (pre-fill) thông tin sinh viên từ CSDL quản lý đào tạo, giảm thiểu sai sót và thao tác gõ lại.
-  - Phân loại 2 hình thức trả kết quả:
-    + **Bản điện tử (PDF)** có mã QR Code định danh tra cứu tính pháp lý trực tuyến (dành cho giấy xác nhận SV, vay vốn, bảng điểm).
-    + **Bản giấy có dấu đỏ**: Đặt lịch hẹn nhận tại quầy tiếp nhận Một cửa hoặc gửi bưu điện.
-  - Tracking tiến độ trực quan theo thời gian thực (Stepper timeline), thông báo trạng thái qua Push Notification & Email.
-  - Phân luồng đơn tự động tới các phòng ban chức năng: Phòng CTSV, Phòng Đào tạo, Phòng Khảo thí & ĐBCL, Ban KTX...
-- **Quy chuẩn Pháp lý & Hành chính nhà nước (Nghị định 61/2018/NĐ-CP & Nghị định 118/2025/NĐ-CP)**:
-  - Quy định rõ về thời hạn giải quyết thủ tục (SLA).
-  - Bắt buộc có cơ chế thông báo/xin lỗi gia hạn khi quá hạn (chậm nhất trước 01 ngày).
-  - Quy định trách nhiệm giải trình của cán bộ thụ lý hồ sơ khi để xảy ra chậm trễ.
-  - Báo cáo định kỳ công khai tỷ lệ giải quyết đúng hạn cho Lãnh đạo đơn vị.
+- **Mã kế hoạch:** `PLAN-TUAF-OSS-202610`
+- **Story ID:** `US-OSS-01`
+- **Tài liệu đặc tả gốc:** [TUAF_ONE_STOP_SERVICE_SPECIFICATION.md](file:///home/trieuhoa/lichhoc-app/docs/TUAF_ONE_STOP_SERVICE_SPECIFICATION.md)
+- **Áp dụng cho:** Backend API (`backend/`), Admin & Web Portal (`backend/public/`), Mobile App (`mobile/`)
+- **Phương án đã chốt:**
+  1. **App Sinh viên**: Thêm Tab **"Một Cửa"** trực tiếp trên thanh Bottom Navigation ([AppNavigator.js](file:///home/trieuhoa/lichhoc-app/mobile/navigation/AppNavigator.js)).
+  2. **Kênh xử lý của Cán bộ**: Hỗ trợ xử lý hồ sơ trên **CẢ Web Admin** ([index.html](file:///home/trieuhoa/lichhoc-app/backend/public/admin/index.html)) lẫn trong mục **"Tiện ích"** trên App Giảng viên/Cán bộ ([LecturerUtilitiesScreen.js](file:///home/trieuhoa/lichhoc-app/mobile/screens/lecturer/LecturerUtilitiesScreen.js)).
+  3. **Phạm vi**: Triển khai trọn gói cả 4 giai đoạn (Backend & SLA Engine + Quản trị Admin động + App Sinh viên & Cán bộ + Cổng Web Cựu SV `/onegate` & Xác thực QR `/verify`).
+- **Trạng thái:** `Đã phê duyệt kế hoạch chi tiết — Sẵn sàng triển khai (Approved)`
 
-## 2. Mục tiêu cốt lõi (Core Outcomes)
-- [ ] **Quản lý Danh mục Dịch vụ Động từ Trang Admin**: Toàn bộ dịch vụ Một cửa được Admin tạo mới, chỉnh sửa, gán cán bộ, thiết lập phí, SLA và Bật/Tắt hiển thị trực tiếp từ trang Admin. KHÔNG HARDCODE trên App.
-- [ ] **Sinh viên xem & nộp đơn theo danh mục động trên App Mobile**: App tự động fetch danh sách dịch vụ đang kích hoạt (`isActive = true`), form nộp đơn tự động thích ứng với cấu hình dịch vụ đó.
-- [ ] **Thông báo đa kênh cho Cán bộ phụ trách**: Ngay khi có đơn mới, cán bộ được phân công theo cấu hình nhận Push Notification trên App và Email thông báo kèm liên kết xử lý nhanh.
-- [ ] **Theo dõi tiến độ & Thời hạn SLA tự động**: Đếm ngược thời gian cam kết; cảnh báo sắp đến hạn (trước 4 giờ) và cảnh báo quá hạn.
-- [ ] **Quy trình Giải trình Quá hạn bắt buộc**: Khi hồ sơ bị quá hạn, cán bộ phải nhập báo cáo giải trình lý do chậm trễ trước khi hoàn tất hồ sơ; dữ liệu lưu vết vào nhật ký kiểm toán (Audit Trail) và gửi đến Lãnh đạo quản lý được cấu hình.
-- [ ] **Báo cáo Giám sát dành cho Lãnh đạo (Dashboard & Executive Digest)**: Cung cấp màn hình thống kê KPI (tỷ lệ đúng hạn, quá hạn, thời gian xử lý trung bình theo phòng ban/cán bộ) và tự động gửi Email báo cáo định kỳ cho Ban Giám hiệu/Trưởng phòng.
-- [ ] **Cấp giấy tờ điện tử có mã QR xác thực công khai**: Hỗ trợ quét mã QR để tra cứu tính pháp lý trực tuyến chống làm giả giấy tờ.
+---
 
-## 3. Danh mục Dịch vụ Động & Các Tiêu chí Cấu hình trong Trang Admin
+## 1. Kết quả Rà soát Hệ thống Hiện tại vs. Bản Đặc tả Một cửa
 
-> [!IMPORTANT]
-> **Nguyên tắc triển khai cuốn chiếu (Gradual Rollout)**:
-> Không phải tất cả dịch vụ đều được triển khai ngay lập tức. Nhà trường sẽ dùng trang Quản trị Admin để bật trước 2–3 dịch vụ thử nghiệm (Giai đoạn 1: Giấy xác nhận SV, Giấy giới thiệu thực tập). Khi quy trình vận hành trơn tru, Admin chỉ cần bấm công tắc Bật (`isActive = true`) để mở thêm các dịch vụ tiếp theo trên App mà **không cần phải phát hành bản cập nhật mới trên CH Play / App Store**.
+Qua đối chiếu toàn bộ mã nguồn hiện có (`backend/` và `mobile/`) với bản dự thảo [chuc-nang-dich-vu-mot-cua-cho-sinh-vien.md](file:///home/trieuhoa/lichhoc-app/docs/plans/active/chuc-nang-dich-vu-mot-cua-cho-sinh-vien.md) và [TUAF_ONE_STOP_SERVICE_SPECIFICATION.md](file:///home/trieuhoa/lichhoc-app/docs/TUAF_ONE_STOP_SERVICE_SPECIFICATION.md), dưới đây là các điểm kỹ thuật cốt lõi cần chuẩn hóa để khớp 100% với kiến trúc dự án:
 
-### 3.1. Các thông số cấu hình khi Admin thêm/sửa một Dịch vụ
-Khi Admin mở modal **"Thêm thủ tục Một cửa mới"** hoặc **"Chỉnh sửa thủ tục"** trên Trang Admin, hệ thống cung cấp các trường cấu hình toàn diện:
+1. **Chuẩn hóa Khóa chính & Khóa ngoại (`UUID` thay vì `INTEGER` cho `User`)**:
+   - Trong hệ thống hiện tại ([User.js](file:///home/trieuhoa/lichhoc-app/backend/models/User.js#L4-L9)), bảng `Users` dùng `id: DataTypes.UUID` (UUIDv4).
+   - Do đó, các cột liên kết tài khoản cán bộ/người dùng trong `ServiceCatalog` (`assigneeUserId`), `ServiceRequest` (`studentUserId`, `assignedTo`, `overdueExplainedBy`, `paymentConfirmedBy`), và `ServiceRequestLog` (`actorId`) phải dùng kiểu **`DataTypes.UUID`** để đồng bộ hoàn toàn với `Users.id` và hệ thống Push Notification ([notificationCenter.js](file:///home/trieuhoa/lichhoc-app/backend/services/notificationCenter.js)).
 
-1. **Thông tin thủ tục**:
-   - **Tên dịch vụ**: (Ví dụ: *Giấy xác nhận sinh viên vay vốn NHCSXH*, *Cấp bản sao bằng tốt nghiệp*...).
-   - **Mã thủ tục** (`code`): Mã duy nhất định danh dịch vụ (vd: `XN_VAY_VON`, `CAP_THE_SV`, `BAN_SAO_BANG`...).
-   - **Nhóm lĩnh vực** (`department`): Phân loại phòng ban chịu trách nhiệm (*Phòng Công tác Sinh viên*, *Phòng Đào tạo*, *Phòng Khảo thí & ĐBCL*, *Ký túc xá*, *Tài chính kế toán*...).
-   - **Biểu tượng (Icon)** & **Mô tả ngắn gọn**: Giúp sinh viên nhận diện nhanh trên app (icon lịch, bảng điểm, thẻ, tiền, chứng nhận...).
-   - **Thứ tự hiển thị** (`displayOrder`): Ưu tiên thủ tục nào lên đầu màn hình app.
+2. **Tận dụng Hạ tầng Thông báo Đẩy (`NotificationOutbox`) & Email (`emailReportService`) sẵn có**:
+   - Hệ thống đã có sẵn [`notificationCenter.js`](file:///home/trieuhoa/lichhoc-app/backend/services/notificationCenter.js) + bảng [`NotificationOutbox`](file:///home/trieuhoa/lichhoc-app/backend/models/NotificationOutbox.js) (xử lý gửi Expo Push theo lô, tự động retry) và [`emailReportService.js`](file:///home/trieuhoa/lichhoc-app/backend/services/emailReportService.js) (Nodemailer SMTP).
+   - Phân hệ Một cửa sẽ tích hợp trực tiếp vào 2 dịch vụ này để bắn **Push Notification + Email** tức thời cho:
+     - **Cán bộ thụ lý** khi có đơn mới hoặc khi sinh viên tải biên lai nộp phí.
+     - **Sinh viên** khi hồ sơ chuyển trạng thái (Đã duyệt phí, Đang xử lý, Có kết quả PDF / Sẵn sàng nhận tại quầy / Đã gửi bưu điện, hoặc Xin lỗi gia hạn khi quá hạn).
+     - **Lãnh đạo phòng (`leaderEmail`)** khi hồ sơ quá hạn SLA hoặc khi cán bộ nộp giải trình.
 
-2. **Cán bộ phụ trách & Lãnh đạo theo dõi**:
-   - **Cán bộ thụ lý mặc định** (`assigneeName`, `assigneeEmail`, `assigneePhone`): Cán bộ trực tiếp tiếp nhận hồ sơ, nhận thông báo push trên app và email công vụ mỗi khi có đơn mới.
-   - **Lãnh đạo quản lý theo dõi** (`leaderName`, `leaderEmail`): Trưởng phòng / Phó Trưởng phòng phụ trách lĩnh vực đó $\rightarrow$ tự động nhận thông báo cảnh báo khi hồ sơ của phòng mình bị quá hạn SLA và đọc báo cáo giải trình của cán bộ.
+3. **Cơ chế Upload File (Minh chứng, Biên lai chuyển khoản, File PDF kết quả)**:
+   - Tương tự [`documentRoutes.js`](file:///home/trieuhoa/lichhoc-app/backend/routes/documentRoutes.js#L134-L160), hệ thống đã hỗ trợ truyền tải Base64 JSON (`express.json({ limit: '50mb' })` tại [server.js](file:///home/trieuhoa/lichhoc-app/backend/server.js#L67)) mà không cần cài thêm thư viện ngoài.
+   - Lưu trữ phân tách an toàn tại `backend/public/uploads/onegate/{attachments,receipts,results}` với kiểm tra định dạng (`jpg`, `png`, `pdf`), giới hạn dung lượng (≤ 10MB/file) và chống Path Traversal.
 
-3. **Thời hạn cam kết xử lý (SLA)**:
-   - **Số giờ hoàn thành** (`slaHours`): Ví dụ `24` giờ (1 ngày làm việc), `48` giờ (2 ngày), `72` giờ (3 ngày).
-   - Hệ thống tự động tính hạn chót theo giờ hành chính (trừ T7, CN).
+4. **Vị trí trên Mobile App cho Sinh viên & Cán bộ**:
+   - **Sinh viên ([AppNavigator.js](file:///home/trieuhoa/lichhoc-app/mobile/navigation/AppNavigator.js))**: Hiện có 5 Bottom Tabs (`Lịch`, `Thông Báo`, `Điểm Số`, `Học Phí`, `Hồ Sơ`). Có thể thêm Tab **"Một Cửa"** trên thanh điều hướng dưới đáy (hoặc đặt lối tắt nổi bật trong màn hình Hồ sơ / Tiện ích).
+   - **Cán bộ / Giảng viên ([LecturerNavigator.js](file:///home/trieuhoa/lichhoc-app/mobile/navigation/LecturerNavigator.js))**: Đã có sẵn tab **"Tiện ích"** ([LecturerUtilitiesScreen.js](file:///home/trieuhoa/lichhoc-app/mobile/screens/lecturer/LecturerUtilitiesScreen.js)) — rất thuận tiện để bổ sung mục **"Xử lý Hồ sơ Một cửa"** (duyệt đơn, duyệt biên lai, quét mã Pickup QR, nhập giải trình quá hạn) ngay trên điện thoại của cán bộ, song song với giao diện Web Admin.
 
-4. **Chính sách Thu lệ phí & Hướng dẫn chuyển khoản**:
-   - **Loại phí**: `Miễn phí` HOẶC `Có thu phí`.
-   - **Mức thu lệ phí** (`feeAmount`): Số tiền cụ thể (ví dụ: `0đ`, `35.000đ`, `50.000đ`...).
-   - **Thông tin tài khoản nhận tiền**: Số tài khoản, Tên tài khoản, Ngân hàng thu sự nghiệp của Nhà trường (nếu thủ tục có thu phí).
-   - **Cú pháp chuyển khoản gợi ý**: `MC<MãHồSơ> <MSSV>`.
+---
 
-5. **Hình thức trả kết quả cho phép** (Checkboxes):
-   - `[x] Bản điện tử (PDF có mã QR tải trên App)`
-   - `[x] Nhận bản giấy tại Quầy Một cửa (có mã Pickup QR)`
-   - `[x] Chuyển phát bưu điện tận nhà (VNPost / Viettel Post)`
+## 2. Kiến trúc Dữ liệu Chi tiết (Database Models — PostgreSQL / Sequelize)
 
-6. **Yêu cầu minh chứng đính kèm & Đối tượng**:
-   - **Yêu cầu minh chứng** (`requiresAttachment`): Không cần / Tùy chọn / Bắt buộc (kèm hướng dẫn minh chứng cho SV: ví dụ *Ảnh 2 mặt CCCD*, *Hồ sơ y tế*...).
-   - **Cho phép Cựu sinh viên** (`allowAlumni`): Bật/Tắt để cho phép thủ tục này hiển thị ngoài cổng Web cho Cựu SV.
+### 2.1. Bảng `ServiceCatalog` (`backend/models/ServiceCatalog.js`)
+Quản lý danh mục thủ tục hành chính động do Admin cấu hình (Không hardcode trên App):
+- `id`: `INTEGER` (PK, Auto Increment)
+- `code`: `STRING(50)` (Unique, Not Null — VD: `XN_SINH_VIEN`, `XN_VAY_VON`, `GIAY_GIOI_THIEU`, `CAP_LAI_THE_SV`, `BAN_SAO_BANG`)
+- `name`: `STRING(255)` (Not Null — Tên thủ tục hiển thị)
+- `department`: `STRING(100)` (Not Null — `CTSV`, `DAO_TAO`, `KHAO_THI`, `KTX`, `KHTC`)
+- `icon`: `STRING(50)` (Default `'document-text-outline'`)
+- `description`: `TEXT` (Mô tả & hướng dẫn thủ tục)
+- `displayOrder`: `INTEGER` (Default `0` — Thứ tự ưu tiên hiển thị)
+- `slaHours`: `INTEGER` (Default `24` — Số giờ làm việc cam kết xử lý)
+- `assigneeName`: `STRING(120)` (Họ tên cán bộ thụ lý mặc định)
+- `assigneeEmail`: `STRING(150)` (Email công vụ cán bộ nhận thông báo đơn mới)
+- `assigneePhone`: `STRING(30)` (SĐT hỗ trợ)
+- `assigneeUserId`: `UUID` (Nullable, FK `Users.id` — Tài khoản App của cán bộ để nhận Push Notification & xử lý trên App)
+- `leaderName`: `STRING(120)` (Họ tên Trưởng/Phó phòng phụ trách)
+- `leaderEmail`: `STRING(150)` (Email Lãnh đạo nhận cảnh báo quá hạn & giải trình)
+- `isPaid`: `BOOLEAN` (Default `false`)
+- `feeAmount`: `INTEGER` (Default `0` — Đơn giá lệ phí VNĐ)
+- `postalFeeAmount`: `INTEGER` (Default `30000` — Cước chuyển phát bưu điện nếu chọn gửi tận nhà)
+- `bankAccountInfo`: `JSONB` (`{ bankId: '970405', bankName: 'Agribank CN Thái Nguyên', accountNo: '888866669999', accountName: 'TRUONG DAI HOC NONG LAM TN' }`)
+- `deliveryOptions`: `JSONB` (Default `['digital', 'physical_pickup']` — Các hình thức trả kết quả cho phép: `'digital'`, `'physical_pickup'`, `'postal_delivery'`)
+- `formSchema`: `JSONB` (Default `[]` — Danh sách các trường nhập liệu động bổ sung: `[{ key, label, type: 'text'|'select'|'number', required, options }]`)
+- `requiresAttachment`: `STRING(20)` (Default `'none'` — `'none' | 'optional' | 'required'`)
+- `attachmentGuide`: `TEXT` (Hướng dẫn giấy tờ minh chứng cần chụp)
+- `allowAlumni`: `BOOLEAN` (Default `false` — Cho phép Cựu sinh viên nộp qua Web Portal `/onegate`)
+- `isActive`: `BOOLEAN` (Default `true` — Công tắc Bật/Tắt hiển thị tức thì trên Mobile App & Web)
 
-7. **Trạng thái kích hoạt**:
-   - **Công tắc Hoạt động** (`isActive: true / false`): Chỉ khi bật `true`, dịch vụ mới xuất hiện trên Mobile App và Web. Khi tắt `false`, dịch vụ tạm ẩn khỏi giao diện sinh viên.
+### 2.2. Bảng `ServiceRequest` (`backend/models/ServiceRequest.js`)
+Lưu trữ từng hồ sơ yêu cầu của Sinh viên / Cựu sinh viên:
+- `id`: `INTEGER` (PK, Auto Increment)
+- `requestCode`: `STRING(32)` (Unique, Not Null — VD: `MC-2026-0001`)
+- `serviceId`: `INTEGER` (Not Null, FK `ServiceCatalog.id`)
+- `isAlumni`: `BOOLEAN` (Default `false`)
+- `studentUserId`: `UUID` (Nullable, FK `Users.id`)
+- `studentUsername`: `STRING(50)` (MSSV — Nullable đối với cựu SV không nhớ MSSV)
+- `studentFullName`: `STRING(120)` (Họ tên người yêu cầu)
+- `studentClass`: `STRING(80)` (Lớp hành chính / Ngành học)
+- `studentPhone`: `STRING(30)` (SĐT liên hệ)
+- `studentEmail`: `STRING(150)` (Email nhận kết quả)
+- `alumniInfo`: `JSONB` (Nullable — `{ cccd, dob, graduationYear, major, cccdFrontUrl, cccdBackUrl }`)
+- `quantity`: `INTEGER` (Default `1` — Số bản đăng ký)
+- `formData`: `JSONB` (Default `{}` — Dữ liệu các trường động theo `formSchema` + lý do/ghi chú của SV)
+- `attachmentUrls`: `JSONB` (Default `[]` — Danh sách đường dẫn file minh chứng đính kèm)
+- `status`: `STRING(32)` (Default `'PENDING'` — `PENDING` | `WAITING_PAYMENT_PROOF` | `WAITING_PAYMENT_CONFIRM` | `PAID` | `PROCESSING` | `APPROVED` | `READY_FOR_PICKUP` | `DELIVERING` | `COMPLETED` | `REJECTED` | `CANCELLED`)
+- `deliveryMethod`: `STRING(30)` (Default `'digital'` — `'digital' | 'physical_pickup' | 'postal_delivery'`)
+- `postalAddress`: `TEXT` (Địa chỉ nhận bưu phẩm nếu `deliveryMethod === 'postal_delivery'`)
+- `postalTrackingNumber`: `STRING(64)` (Mã vận đơn VNPost / Viettel Post)
+- `trayLocation`: `STRING(64)` (Số khay/ngăn lưu bản giấy tại Quầy Một cửa — VD: `Khay A2 - P.102`)
+- `assignedTo`: `UUID` (Nullable, FK `Users.id` — Cán bộ thụ lý)
+- `assignedDepartment`: `STRING(100)`
+- `submittedAt`: `DATE` (Not Null)
+- `deadlineAt`: `DATE` (Not Null — Tính theo giờ hành chính trừ T7, CN)
+- `warningSentAt`: `DATE` (Nullable — Đánh dấu đã gửi cảnh báo sắp hết hạn ≤ 4h)
+- `completedAt`: `DATE` (Nullable)
+- `pickedUpAt`: `DATE` (Nullable)
+- `pickupQrCode`: `STRING(64)` (Mã QR nhận bản giấy tại quầy)
+- `isOverdue`: `BOOLEAN` (Default `false`)
+- `overdueNotifiedAt`: `DATE` (Nullable)
+- `overdueReasonCategory`: `STRING(100)` (Nhóm lý do quá hạn chuẩn hóa)
+- `overdueReason`: `TEXT` (Nội dung giải trình chi tiết của cán bộ)
+- `overdueExplainedAt`: `DATE` (Nullable)
+- `overdueExplainedBy`: `UUID` (Nullable, FK `Users.id`)
+- `leaderDirective`: `TEXT` (Ý kiến chỉ đạo của Lãnh đạo trên hồ sơ quá hạn)
+- `feeAmount`: `INTEGER` (Default `0` — Tổng lệ phí = Đơn giá × Số bản + Cước bưu điện)
+- `paymentStatus`: `STRING(24)` (Default `'UNPAID'` — `'NOT_REQUIRED' | 'UNPAID' | 'PENDING_CONFIRM' | 'PAID' | 'REJECTED_PROOF'`)
+- `paymentProofUrl`: `TEXT` (Đường dẫn ảnh biên lai chuyển khoản)
+- `paymentConfirmedAt`: `DATE` (Nullable)
+- `paymentConfirmedBy`: `UUID` (Nullable, FK `Users.id`)
+- `paymentNote`: `TEXT` (Lý do từ chối biên lai nếu có)
+- `staffNote`: `TEXT` (Phản hồi/hướng dẫn của cán bộ gửi sinh viên hoặc lý do từ chối đơn)
+- `resultPdfUrl`: `TEXT` (Đường dẫn file PDF kết quả điện tử)
+- `verifyQrCode`: `STRING(64)` (Unique — Mã định danh xác thực văn bản công khai `/verify/:code`)
+- `rating`: `INTEGER` (Nullable, 1–5 sao)
+- `ratingCriteria`: `JSONB` (Nullable — `{ speed, attitude, quality }`)
+- `ratingComment`: `TEXT` (Nullable)
+- `ratedAt`: `DATE` (Nullable)
 
-## 4. Thiết kế Luồng Phân luồng, Giám sát SLA & Báo cáo Lãnh đạo
+### 2.3. Bảng `ServiceRequestLog` (`backend/models/ServiceRequestLog.js`)
+Nhật ký kiểm toán (Audit Trail) toàn bộ vòng đời hồ sơ:
+- `id`: `INTEGER` (PK, Auto Increment)
+- `requestId`: `INTEGER` (Not Null, FK `ServiceRequest.id`)
+- `actorId`: `UUID` (Nullable, FK `Users.id`)
+- `actorName`: `STRING(120)`
+- `actorRole`: `STRING(40)` (`student` | `alumni` | `staff` | `admin` | `system`)
+- `action`: `STRING(40)` (`SUBMIT` | `UPLOAD_RECEIPT` | `PAYMENT_CONFIRMED` | `PAYMENT_REJECTED` | `START_PROCESS` | `OVERDUE_FLAGGED` | `OVERDUE_EXPLAIN` | `LEADER_DIRECTIVE` | `APPROVE_DIGITAL` | `READY_PICKUP` | `POSTAL_DISPATCH` | `HANDOVER_COMPLETE` | `REJECT` | `CANCEL` | `RATE`)
+- `fromStatus`: `STRING(32)`
+- `toStatus`: `STRING(32)`
+- `note`: `TEXT`
+- `createdAt`: `DATE`
 
-### 4.1. Luồng phân phối & Thông báo (Notification Dispatcher)
-```
-[Sinh viên tạo yêu cầu trên App]
-             │
-             ▼
-[Hệ thống xác định Cán bộ / Phòng ban phụ trách]
-     ├──► Gửi PUSH NOTIFICATION trên App tới thiết bị cán bộ ("🔔 Hồ sơ mới #MC-2026-0042...")
-     └──► Gửi EMAIL THÔNG BÁO tới hộp thư công vụ cán bộ (kèm SLA, link duyệt trực tiếp)
-```
+---
 
-### 4.2. Quản lý Thời hạn (SLA) & Quy trình Bắt buộc Giải trình Quá hạn
-- Mỗi dịch vụ gắn với một định mức thời gian xử lý: `slaHours` (ví dụ: Giấy xác nhận = 24h, Bảng điểm = 48h, Hoãn thi = 72h).
-- Hệ thống tính `deadlineAt = createdAt + slaHours` (tính theo giờ hành chính, trừ T7, CN).
-- **Trạng thái giám sát**:
-  - 🟢 **Trong hạn**: Đang xử lý bình thường.
-  - 🟡 **Sắp đến hạn (còn ≤ 4h)**: Gửi Push nhắc nhở cán bộ thụ lý.
-  - 🔴 **Quá hạn (`now > deadlineAt`)**:
-    1. Chuyển trạng thái cờ `isOverdue = true`.
-    2. Gửi Cảnh báo vi phạm SLA tới Cán bộ và CC cho Lãnh đạo phòng.
-    3. Gửi thông báo gia hạn & xin lỗi tự động cho Sinh viên trên App (chuẩn NĐ 61/2018/NĐ-CP).
-    4. **Bắt buộc Giải trình**: Khi cán bộ mở đơn để cập nhật/hoàn thành, hệ thống bắt buộc cán bộ phải chọn lý do và nhập văn bản giải trình (*Chờ SV bổ sung minh chứng gốc*, *Cần xác minh liên phòng ban*, *Lãnh đạo đi công tác*, *Lý do kỹ thuật/khác*). Báo cáo giải trình được lưu vết vĩnh viễn (`overdueReason`, `explainedAt`, `explainedBy`).
+## 3. Thiết kế Chi tiết các Phân hệ & Luồng Nghiệp vụ
 
-### 4.3. Báo cáo Giám sát dành cho Lãnh đạo
-- **Executive Dashboard (Web Portal & Mobile View dành cho Ban Giám hiệu / Trưởng phòng)**:
-  - Thống kê tỷ lệ hoàn thành đúng hạn toàn trường / từng phòng ban / từng cán bộ (%).
-  - Danh sách hồ sơ đang trễ hạn và nội dung cán bộ đã giải trình.
-  - Lãnh đạo có thể ghi ý kiến chỉ đạo trực tiếp vào hồ sơ.
-- **Weekly Executive Digest Email (Tự động gửi 17:00 thứ Sáu hàng tuần)**:
-  - Tổng số hồ sơ tiếp nhận và giải quyết trong tuần.
-  - Bảng danh sách các hồ sơ bị trễ hạn kèm theo lý do giải trình của cán bộ phụ trách.
+### Giai đoạn 1: Nền tảng Backend, Công cụ Tính SLA, VietQR & Tự sinh PDF Xác thực
+1. **Bộ tính thời hạn SLA giờ hành chính (`backend/utils/slaCalculator.js`)**:
+   - Hàm `calculateBusinessDeadline(submittedAt, slaHours)`: Cộng số giờ làm việc (bỏ qua Thứ 7 và Chủ Nhật) để ra `deadlineAt`.
+   - Hàm `evaluateSlaStatus(request, now)`: Trả về trạng thái `in_sla` (🟢), `near_due` (🟡 còn ≤ 4h), hoặc `overdue` (🔴 `now > deadlineAt`), kèm số giờ còn lại / số giờ trễ.
+2. **Bộ sinh mã VietQR & Mã Hồ sơ (`backend/utils/oneStopHelpers.js`)**:
+   - Sinh mã hồ sơ tuần tự `MC-YYYY-XXXX` và mã xác thực `verifyQrCode` ngẫu nhiên an toàn (`crypto.randomBytes`).
+   - Sinh URL ảnh VietQR chuẩn Napas247 (`https://img.vietqr.io/image/<bankId>-<accountNo>-compact2.png?amount=<feeAmount>&addInfo=<syntax>&accountName=<accountName>`).
+3. **Bộ sinh Văn bản Điện tử & Cổng Xác thực QR Công khai (`backend/services/oneStopPdfService.js`)**:
+   - Hỗ trợ cán bộ tải lên file PDF kết quả HOẶC tự động sinh văn bản xác nhận điện tử chuẩn mẫu Trường ĐH Nông Lâm Thái Nguyên có nhúng mã QR trỏ tới `https://scheduler.tuaf.edu.vn/verify/<verifyQrCode>`.
+4. **Seeder 10 Thủ tục Mẫu (`backend/services/oneStopSeeder.js`)**:
+   - Tự động khởi tạo 10 thủ tục thuộc 2 giai đoạn (trong đó bật sẵn `isActive = true` cho 4 thủ tục Giai đoạn 1: *Giấy xác nhận sinh viên*, *Giấy giới thiệu thực tập*, *Cấp lại thẻ sinh viên*, *Cấp bản sao bằng tốt nghiệp*; 6 thủ tục Giai đoạn 2 để `isActive = false` chờ Admin bật cuốn chiếu).
 
-### 4.4. Quy trình Trả Kết quả & Đánh giá Mức độ Hài lòng (Result Delivery & Handover)
-Quy trình trả kết quả được thiết kế phân luồng triệt để theo 2 phương thức mà sinh viên đã chọn:
+### Giai đoạn 2: Hệ thống API Một cửa & Cron Giám sát SLA (`backend/routes/oneStopRoutes.js` & `backend/jobs/oneStopSlaJob.js`)
+1. **Nhóm API Quản trị viên (`/api/admin/services/*`)**:
+   - `GET /api/admin/services`: Danh sách toàn bộ thủ tục (lọc theo phòng ban, trạng thái).
+   - `POST /api/admin/services`: Thêm mới thủ tục động.
+   - `PUT /api/admin/services/:id`: Cập nhật cấu hình thủ tục (nhân sự, SLA, lệ phí, formSchema, deliveryOptions).
+   - `PATCH /api/admin/services/:id/toggle`: Bật/Tắt nhanh `isActive` 1 chạm.
+   - `DELETE /api/admin/services/:id`: Xóa/lưu trữ thủ tục.
+   - `GET /api/admin/services/overview`: Thống kê KPI toàn trường, theo phòng ban, theo cán bộ, doanh thu lệ phí, điểm CSAT và danh sách hồ sơ quá hạn + giải trình.
+   - `POST /api/admin/services/requests/:id/directive`: Lãnh đạo ghi ý kiến chỉ đạo vào hồ sơ quá hạn.
+2. **Nhóm API Sinh viên & Cựu sinh viên (`/api/services/*`)**:
+   - `GET /api/services`: Lấy danh mục thủ tục đang mở (`isActive = true`, hỗ trợ lọc `alumni = true` cho cổng cựu SV).
+   - `POST /api/services/requests`: Nộp hồ sơ mới (tự động lấy thông tin SV từ token hoặc nhận `alumniInfo` cho cựu SV).
+   - `POST /api/services/requests/:id/upload-receipt`: Tải ảnh biên lai chuyển khoản lệ phí.
+   - `GET /api/services/my-requests`: Danh sách hồ sơ của sinh viên đang đăng nhập.
+   - `GET /api/services/requests/:id`: Chi tiết hồ sơ, lịch sử `ServiceRequestLog`, link VietQR, file PDF kết quả, mã Pickup QR.
+   - `POST /api/services/requests/:id/cancel`: Hủy yêu cầu khi còn ở trạng thái `PENDING` / `WAITING_PAYMENT_PROOF`.
+   - `POST /api/services/requests/:id/rate`: Đánh giá mức độ hài lòng CSAT (1–5 sao + nhận xét).
+   - `GET /api/services/public/track`: Tra cứu tiến độ công khai bằng `requestCode` + `MSSV/CCCD`.
+   - `GET /api/services/verify/:verifyQrCode`: API & Trang HTML công khai (`/verify/:code`) xác thực tính pháp lý của giấy tờ.
+3. **Nhóm API Cán bộ Thụ lý & Tiếp tân Một cửa (`/api/services/staff/*`)**:
+   - `GET /api/services/staff/requests`: Danh sách hồ sơ cần xử lý (lọc theo tab: `waiting_payment`, `processing`, `overdue`, `ready_pickup`, `completed`).
+   - `POST /api/services/staff/requests/:id/confirm-payment`: Duyệt biên lai chuyển khoản 1 chạm $\rightarrow$ `PAID` / `PROCESSING`.
+   - `POST /api/services/staff/requests/:id/reject-payment`: Từ chối biên lai (ảnh mờ/thiếu tiền) $\rightarrow$ yêu cầu SV tải lại.
+   - `POST /api/services/staff/requests/:id/explain-overdue`: Nộp báo cáo giải trình khi hồ sơ bị quá hạn SLA (bắt buộc trước khi được phép duyệt hoàn thành hồ sơ quá hạn).
+   - `PATCH /api/services/staff/requests/:id/process`: Cập nhật trạng thái xử lý, phê duyệt xuất PDF (Nhánh A), xếp khay hẹn nhận bản giấy tại quầy (Nhánh B), hoặc nhập mã vận đơn bưu điện (Nhánh C).
+   - `POST /api/services/staff/requests/:id/handover`: Quét/nhập mã `pickupQrCode` hoặc `requestCode` tại quầy để xác nhận bàn giao bản giấy $\rightarrow$ `COMPLETED`.
+4. **Cron Job Giám sát SLA & Báo cáo Tuần (`backend/jobs/oneStopSlaJob.js`)**:
+   - Chạy định kỳ mỗi 15 phút trong giờ hành chính:
+     - Quét các đơn sắp đến hạn (≤ 4h, chưa gửi cảnh báo) $\rightarrow$ bắn Push nhắc cán bộ.
+     - Quét các đơn quá hạn (`now > deadlineAt`, `isOverdue = false`) $\rightarrow$ bật cờ `isOverdue = true`, gửi cảnh báo cho Cán bộ + Email CC Lãnh đạo phòng, gửi thông báo xin lỗi gia hạn cho Sinh viên.
+   - Chạy lúc 17:00 Thứ Sáu hàng tuần: Gửi Email Weekly Executive Digest cho Ban Giám hiệu (chỉ gửi khi trong tuần có hồ sơ phát sinh).
 
-#### Nhánh A: Trả Kết quả Bản điện tử (Digital PDF - 80% thủ tục)
-1. **Cán bộ ký duyệt / xuất file**:
-   - Cán bộ bấm "Phê duyệt & Xuất kết quả".
-   - Hệ thống tự động sinh file PDF chính thức (hoặc cán bộ upload file đã có chữ ký số/con dấu số), nhúng **Mã QR Code xác thực duy nhất**.
-2. **Thông báo tức thì cho Sinh viên**:
-   - Push Notification: `🎉 [Một cửa TUAF] Hồ sơ #MC-2026-0042 đã có kết quả! Chạm để xem và tải về.`
-   - Email tự động gửi kèm tệp PDF đính kèm.
-3. **Sinh viên xem & tải file trực tiếp trên App**:
-   - Mở màn hình chi tiết hồ sơ $\rightarrow$ Nút **"Tải Giấy chứng nhận (PDF)"** / **"Mở xem ngay"**.
-   - Có thể lưu vào máy hoặc chia sẻ qua Zalo, Email, in ấn.
+### Giai đoạn 3: Giao diện Quản trị Admin, Bàn làm việc Cán bộ & Cổng Web Cựu Sinh viên
+1. **Trang Admin (`backend/public/admin/index.html`)**:
+   - Thêm mục Sidebar **"📋 Dịch vụ Một cửa"** gồm 3 sub-tabs:
+     1. **Quản lý Danh mục Thủ tục Động**: Bảng danh sách thủ tục, nút gạt Bật/Tắt `isActive` tức thì, Modal Thêm/Sửa thủ tục đầy đủ 5 nhóm cấu hình (Thông tin chung, Nhân sự & Lãnh đạo, SLA & Lệ phí + STK ngân hàng, Hình thức trả & Minh chứng, Cấu hình trường nhập liệu động `formSchema`).
+     2. **Xử lý Hồ sơ & Duyệt Lệ phí (Bàn làm việc Một cửa trên Web)**: Lọc đơn theo trạng thái, Lightbox phóng to ảnh biên lai để duyệt tiền 1 chạm, Modal bắt buộc nhập giải trình khi đơn quá hạn, Xuất PDF xác thực / Nhập số khay bản giấy / Nhập mã vận đơn bưu điện, Ô quét mã Pickup QR bàn giao tại quầy.
+     3. **Dashboard Giám sát SLA & Giải trình (Dành cho Lãnh đạo)**: Thống kê KPI đúng hạn/quá hạn, doanh thu lệ phí, điểm CSAT 5 sao theo phòng ban, bảng hồ sơ trễ hạn kèm nguyên văn giải trình của cán bộ và nút nhập ý kiến chỉ đạo.
+2. **Cổng Web Cựu Sinh viên & Tra cứu Xác thực QR Công khai (`backend/public/onegate/index.html` & `/verify/:code`)**:
+   - Trang `/onegate`: Phục vụ Cựu sinh viên nộp hồ sơ trực tuyến không cần tài khoản App (nhập CCCD, thông tin khóa học, tải ảnh CCCD, chọn nhận qua Bưu điện, quét VietQR nộp phí & tải ảnh biên lai) và tra cứu tiến độ bằng Mã hồ sơ.
+   - Trang `/verify/:code`: Giao diện xác thực văn bản điện tử chính thức của Trường ĐH Nông Lâm Thái Nguyên khi quét mã QR trên giấy chứng nhận.
 
-#### Nhánh B: Trả Kết quả Bản giấy có Dấu đỏ (Physical Copy tại Quầy Một cửa)
-1. **Cán bộ chuẩn bị bản cứng**:
-   - In văn bản, xin dấu mộc đỏ của Nhà trường, xếp vào khay tài liệu tại Quầy Một cửa (đánh số khay theo mã hồ sơ).
-   - Bấm cập nhật trạng thái: `SẴN_SÀNG_NHẬN_KẾT_QUẢ`.
-2. **Sinh viên nhận Giấy hẹn & Mã QR nhận kết quả (Pickup QR)**:
-   - Push Notification & Email: `🎉 Kết quả bản giấy hồ sơ #MC-2026-0042 đã sẵn sàng! Vui lòng đến Quầy Một cửa (Phòng 102 - Nhà Hiệu bộ) để nhận.`
-   - Màn hình hồ sơ trên App hiển thị thẻ **Mã QR Nhận kết quả** và mã rút gọn (vd: `#MC-0042`), cùng hướng dẫn giờ làm việc và giấy tờ cần mang theo (Thẻ SV/CCCD).
-3. **Bàn giao đối soát tại Quầy Một cửa**:
-   - Sinh viên đưa màn hình App có Mã QR cho cán bộ Một cửa quét (bằng máy quét mã vạch hoặc camera máy tính bảng/điện thoại cán bộ).
-   - Màn hình cán bộ hiển thị ngay thông tin hồ sơ và vị trí khay giấy tờ $\rightarrow$ cán bộ lấy giấy trao cho sinh viên.
-   - Sinh viên ký nhận (ký điện tử trên màn hình hoặc ký sổ giao nhận).
-   - Cán bộ bấm "Đã bàn giao cho sinh viên" $\rightarrow$ Hồ sơ hoàn tất và đóng lại (`CLOSED`).
+### Giai đoạn 4: Giao diện Mobile App cho Sinh viên & Cán bộ (`mobile/`)
+1. **Màn hình Dịch vụ Một cửa cho Sinh viên (`mobile/screens/OneStopServiceScreen.js`)**:
+   - **Tab 1 — Danh mục Thủ tục**: Tự động tải từ `GET /api/services`, lọc theo phòng ban / từ khóa, hiển thị rõ thời gian SLA, mức phí (`Miễn phí` / `Có thu phí`), nút **"Nộp hồ sơ"**.
+   - **Modal Nộp Hồ sơ Động**: Tự động điền sẵn (pre-fill) Họ tên, MSSV, Lớp từ thông tin tài khoản; tự động hiển thị các trường động theo `formSchema`, chọn hình thức nhận kết quả (`Bản điện tử PDF`, `Nhận bản giấy tại Quầy`, `Gửi Bưu điện`), đính kèm ảnh minh chứng (nếu thủ tục yêu cầu).
+   - **Tab 2 — Hồ sơ của tôi & Tiến trình (Stepper Timeline)**:
+     - Hiển thị đồng hồ đếm ngược SLA (`🟢 Trong hạn`, `🟡 Sắp đến hạn`, `🔴 Quá hạn - Đã gia hạn`).
+     - Nếu thủ tục có phí: Hiển thị **Thẻ VietQR tự động điền số tiền & nội dung `MC...`** + nút tải ảnh chụp biên lai chuyển khoản.
+     - Khi có kết quả:
+       - Nhánh A: Nút **"Xem / Tải Giấy chứng nhận (PDF có QR)"**.
+       - Nhánh B: Thẻ **Mã Pickup QR** + vị trí khay/phòng để xuất trình tại Quầy Một cửa.
+       - Nhánh C: Hiển thị **Mã vận đơn Bưu điện** để theo dõi giao hàng.
+     - **Modal Đánh giá Hài lòng 5 Sao (CSAT)** sau khi nhận kết quả.
+2. **Màn hình Xử lý Một cửa trên App cho Cán bộ (`mobile/screens/lecturer/StaffOneStopScreen.js`)**:
+   - Tích hợp vào tab **Tiện ích** của Giảng viên/Cán bộ (`LecturerUtilitiesScreen.js`): Cho phép cán bộ phụ trách duyệt biên lai, cập nhật trạng thái đơn, nhập giải trình quá hạn và xác nhận bàn giao hồ sơ ngay trên điện thoại.
 
-#### Đánh giá Mức độ Hài lòng của Sinh viên (CSAT - 5 sao)
-- Ngay sau khi sinh viên tải bản PDF thành công hoặc nhận bản giấy tại quầy, App hiển thị pop-up đánh giá 1 chạm:
-  - Điểm số: 1 đến 5 sao (⭐ ⭐ ⭐ ⭐ ⭐).
-  - Tiêu chí đánh giá nhanh: *Tốc độ xử lý (Nhanh/Đúng hạn/Chậm)*, *Thái độ phục vụ (Tận tình/Bình thường/Chưa tốt)*, *Chất lượng kết quả*.
-  - Khung góp ý ngắn gọn (tùy chọn).
-- Dữ liệu đánh giá đổ trực tiếp về Dashboard Lãnh đạo để xếp hạng chất lượng phục vụ của từng phòng ban.
+---
 
-### 4.5. Cơ chế Nộp Lệ phí: Chuyển khoản & Đính kèm Minh chứng (Proof of Payment)
-Nhằm đơn giản hóa quy trình kỹ thuật, không phụ thuộc vào thủ tục tích hợp Webhook ngân hàng phức tạp của khối trường công lập, hệ thống áp dụng cơ chế **Chuyển khoản trực tiếp kèm Đính kèm ảnh biên lai giao dịch**:
+## 4. Kế hoạch Kiểm chứng Bảo mật (Security Verification Plan)
+Tuân thủ nghiêm ngặt `mandatory-secure-web-skills`:
+- **Phân quyền & Chống IDOR (Broken Access Control)**:
+  - Sinh viên chỉ được xem, tải biên lai, hủy và đánh giá đúng các `ServiceRequest` có `studentUserId === req.user.id` hoặc `studentUsername === req.user.username`.
+  - Các API xử lý nghiệp vụ (`/api/services/staff/*`) bắt buộc xác thực JWT (`lecturer` được gán quyền thụ lý hoặc `inspector`/`admin`) hoặc `adminLocalGuard`.
+- **An toàn Tải tệp (File Upload Security)**:
+  - Chỉ chấp nhận định dạng trong allow-list (`image/jpeg`, `image/png`, `application/pdf`), kiểm tra kích thước tối đa, chuẩn hóa tên file ngẫu nhiên (`crypto.randomUUID()`) và dùng `path.resolve()` kiểm tra đường dẫn nằm trong thư mục `public/uploads/onegate` để chống Path Traversal.
+- **Chống XSS / HTML Injection**:
+  - Toàn bộ dữ liệu người dùng nhập (`formData`, `overdueReason`, `studentFullName`, `alumniInfo`) khi render lên Admin Dashboard, trang `/verify/:code` và Email thông báo đều phải đi qua hàm `escapeHtml()`.
 
-1. **Hiển thị Bảng tính tiền & Thông tin Tài khoản (kèm VietQR tiện ích)**:
-   - Hệ thống tự động tính tổng tiền: `Tổng = (Đơn giá x Số lượng) + Cước chuyển phát (nếu có)`.
-   - Màn hình App / Web hiển thị rõ:
-     - **Tên đơn vị thụ hưởng**: Trường Đại học Nông Lâm Thái Nguyên (hoặc Trung tâm Một cửa TUAF).
-     - **Số tài khoản & Ngân hàng**: (Ví dụ: BIDV / Agribank / VietinBank...).
-     - **Số tiền cần nộp**: (Ví dụ: `70.000 VNĐ`).
-     - **Nội dung chuyển khoản chuẩn**: `MC<MãHồSơ> <MSSV>` (Ví dụ: `MC20260042 2051010001`).
-     - **Ảnh mã VietQR tĩnh/động**: Sinh sẵn để người nộp chỉ cần quét bằng app ngân hàng là tự điền đúng số tiền và nội dung, tránh gõ nhầm.
-2. **Sinh viên chuyển khoản & Tải ảnh biên lai (Receipt Upload)**:
-   - Người nộp thực hiện chuyển khoản trên app ngân hàng của mình và chụp màn hình biên lai giao dịch thành công.
-   - Nhấn nút **"Tải lên minh chứng chuyển khoản"** $\rightarrow$ chọn ảnh từ thư viện hoặc chụp trực tiếp.
-   - Bấm **"Gửi minh chứng"** $\rightarrow$ Hồ sơ chuyển sang trạng thái: `CHỜ_XÁC_NHẬN_THANH_TOÁN`.
-3. **Cán bộ / Kế toán Một cửa duyệt tiền 1 chạm**:
-   - Trên giao diện xử lý của cán bộ, hồ sơ hiển thị tab riêng **"Chờ duyệt lệ phí"**.
-   - Cán bộ bấm vào hồ sơ $\rightarrow$ xem ảnh chụp biên lai giao dịch (có thể phóng to xem rõ mã GD, số tiền, ngày giờ).
-   - Hai thao tác nhanh:
-     - 🟢 **Nút "Xác nhận đã nhận tiền"**: Hồ sơ tự động chuyển sang `ĐÃ_THANH_TOÁN_CHỜ_XỬ_LÝ`, chuyển giao tiếp cho cán bộ chuyên môn in ấn/làm bằng.
-     - 🔴 **Nút "Yêu cầu nộp lại minh chứng"**: Nhập lý do (ví dụ: *"Số tiền nộp thiếu 25.000đ cước bưu điện"*, *"Biên lai mờ không thấy mã giao dịch"*) $\rightarrow$ Hệ thống tự động bắn Push Notification & Email yêu cầu sinh viên tải lại ảnh biên lai đúng.
+---
 
-### 4.6. Cổng Dịch vụ dành cho Cựu Sinh viên (Alumni Web Portal)
-Cựu sinh viên thường đã tốt nghiệp nhiều năm, không còn cài app hoặc tài khoản đào tạo đã hết hạn. Do đó, hệ thống cung cấp cổng Web chuyên dụng:
+## 5. Danh mục Check-list Thực hiện Chi tiết (Implementation Checklist)
 
-1. **Cổng nộp hồ sơ trực tuyến (Web One-Gate)**:
-   - Truy cập công khai tại: `https://scheduler.tuaf.edu.vn/onegate` (hoặc `motcua.tuaf.edu.vn`).
-   - **Xác thực danh tính**: Nhập Họ tên, Ngày sinh, Số CCCD, Ngành học, Khóa/Năm tốt nghiệp + Số điện thoại nhận OTP xác nhận.
-   - **Tải minh chứng nhân thân**: Tải ảnh 2 mặt thẻ CCCD (bắt buộc theo quy định cấp bản sao văn bằng từ sổ gốc để chống mạo danh).
-2. **Tùy chọn nhận kết quả từ xa qua Bưu điện (Postal Delivery)**:
-   - Do cựu sinh viên đa số đã đi làm xa trường, cổng web hỗ trợ nhập Địa chỉ nhận thư, Số điện thoại người nhận.
-   - Tự động tính cước vận chuyển bưu điện (khoảng 25.000đ - 35.000đ) cộng gộp vào tổng lệ phí cần chuyển khoản.
-   - Cựu sinh viên chuyển khoản và tải ảnh biên lai ngay trên web.
-   - Sau khi hoàn thành, cán bộ dán mã vận đơn (VNPost / Viettel Post) $\rightarrow$ Cựu sinh viên nhận mã vận đơn để theo dõi hành trình chuyển phát bưu phẩm về tận nhà.
-3. **Tra cứu tiến độ không cần đăng nhập**:
-   - Cựu sinh viên tra cứu trạng thái hồ sơ bất kỳ lúc nào bằng cách nhập `Mã hồ sơ` + `Số CCCD`.
+### 📋 Giai đoạn 1: Models, SLA Engine, VietQR, PDF Xác thực & Seeder (`backend/`)
+- [x] **1.1. Models PostgreSQL:**
+  - [x] Tạo `backend/models/ServiceCatalog.js` (Danh mục thủ tục động, liên kết `assigneeUserId` kiểu `UUID`).
+  - [x] Tạo `backend/models/ServiceRequest.js` (Hồ sơ yêu cầu SV/Cựu SV, SLA, thanh toán, QR, giải trình, CSAT).
+  - [x] Tạo `backend/models/ServiceRequestLog.js` (Audit trail lịch sử xử lý).
+  - [x] Đăng ký 3 models vào `backend/config/db.js`.
+- [x] **1.2. Tiện ích Nghiệp vụ Một cửa:**
+  - [x] Tạo `backend/utils/slaCalculator.js`: Tính `deadlineAt` theo giờ hành chính (trừ T7, CN) và đánh giá trạng thái SLA (`in_sla`, `near_due`, `overdue`).
+  - [x] Tạo `backend/utils/oneStopHelpers.js`: Sinh mã hồ sơ `MC-YYYY-XXXX`, mã `verifyQrCode`, `pickupQrCode`, URL VietQR động chuẩn Napas247 và lưu file upload Base64 an toàn (kiểm tra allow-list định dạng & chống Path Traversal).
+  - [x] Tạo `backend/services/oneStopPdfService.js`: Sinh giấy xác nhận điện tử / biên nhận điện tử có mã QR xác thực trực tuyến.
+  - [x] Tạo `backend/services/oneStopSeeder.js`: Khởi tạo 10 thủ tục mẫu (bật sẵn 4 thủ tục Giai đoạn 1, ẩn 6 thủ tục Giai đoạn 2 để Admin bật cuốn chiếu).
 
-## 5. Kiến trúc kỹ thuật & Mô hình dữ liệu
+### 📋 Giai đoạn 2: Hệ thống API Một cửa, Thông báo Đa kênh & Cron Giám sát SLA (`backend/`)
+- [x] **2.1. Routes & Controllers (`backend/routes/oneStopRoutes.js`):**
+  - [x] Nhóm API Admin (`/api/admin/services/*`): CRUD danh mục thủ tục, Bật/Tắt nhanh 1 chạm (`toggle`), thống kê KPI (`overview`), danh sách quá hạn & giải trình, nhập ý kiến chỉ đạo của Lãnh đạo (`directive`).
+  - [x] Nhóm API Sinh viên & Công khai (`/api/services/*`): Lấy danh mục đang mở, nộp đơn mới, tải ảnh biên lai lệ phí, danh sách đơn cá nhân, chi tiết đơn + timeline, hủy đơn, đánh giá CSAT 5 sao, tra cứu công khai (`public/track`) và xác thực QR (`verify/:code`).
+  - [x] Nhóm API Cán bộ thụ lý (`/api/services/staff/*`): Danh sách hồ sơ cần xử lý, duyệt/từ chối biên lai lệ phí 1 chạm, nộp báo cáo giải trình quá hạn bắt buộc, phê duyệt xuất kết quả (PDF / Khay bản giấy / Mã vận đơn bưu điện), quét mã Pickup QR bàn giao tại quầy (`handover`).
+- [x] **2.2. Thông báo Push + Email & Cron SLA (`backend/jobs/oneStopSlaJob.js`):**
+  - [x] Tích hợp gửi Push Notification (qua `NotificationOutbox`) và Email HTML (qua `emailReportService`) cho Cán bộ, Sinh viên và Lãnh đạo phòng.
+  - [x] Thiết lập Cron quét SLA định kỳ (cảnh báo sắp hết hạn ≤ 4h, đánh dấu quá hạn + gửi thư xin lỗi gia hạn cho SV + báo cáo Lãnh đạo) và Báo cáo tổng hợp tuần (Weekly Executive Digest - chỉ gửi khi trong tuần có hồ sơ/sự kiện).
+  - [x] Đăng ký routes và cron job vào `backend/server.js`.
 
-### 5.1. Mô hình Database (PostgreSQL / SQLite via Sequelize)
-- `ServiceCatalog` (Quản lý Danh mục Dịch vụ động do Admin cấu hình):
-  - `id`: Khóa chính
-  - `code`: Mã duy nhất (vd: `XN_VAY_VON`, `CAP_THE_SV`...)
-  - `name`: Tên dịch vụ hiển thị
-  - `department`: Phòng ban chịu trách nhiệm (`CTSV`, `DAO_TAO`, `KHAO_THI`, `KTX`, `KHTC`...)
-  - `icon`: Tên biểu tượng (vd: `document-text`, `school`, `wallet`, `ribbon`, `card`...)
-  - `description`: Mô tả tóm tắt dịch vụ & hướng dẫn sinh viên
-  - `displayOrder`: Thứ tự hiển thị (số nguyên tăng dần)
-  - `slaHours`: Thời hạn hoàn thành chuẩn (giờ hành chính)
-  - `assigneeName`: Họ tên cán bộ thụ lý
-  - `assigneeEmail`: Email cán bộ nhận thông báo đơn mới
-  - `assigneePhone`: Số điện thoại cán bộ
-  - `assigneeUserId`: FK User (nếu cán bộ có tài khoản app để nhận push)
-  - `leaderName`: Họ tên Lãnh đạo phòng/Trưởng bộ phận theo dõi
-  - `leaderEmail`: Email Lãnh đạo nhận cảnh báo quá hạn & báo cáo giải trình
-  - `isPaid`: Có thu phí hay không (BOOL)
-  - `feeAmount`: Mức thu lệ phí (DECIMAL)
-  - `bankAccountInfo`: Thông tin tài khoản ngân hàng nhà trường nhận tiền (JSON: STK, Chủ TK, Ngân hàng)
-  - `deliveryOptions`: Các hình thức nhận kết quả cho phép (JSON: `["digital", "physical_pickup", "postal_delivery"]`)
-  - `formSchema`: Cấu hình các trường form động bổ sung (JSON: các trường tùy biến theo từng thủ tục)
-  - `requiresAttachment`: Yêu cầu minh chứng đính kèm (`none`, `optional`, `required`)
-  - `attachmentGuide`: Lời dặn sinh viên về tài liệu cần tải lên
-  - `allowAlumni`: Cho phép Cựu sinh viên đăng ký qua Web hay không (BOOL)
-  - `isActive`: Trạng thái Bật/Tắt hiển thị trên App & Web (BOOL, mặc định `true`)
+### 📋 Giai đoạn 3: Giao diện Web Admin, Cổng Cựu Sinh viên (`/onegate`) & Trang Xác thực (`/verify`)
+- [x] **3.1. Trang Quản trị Admin (`backend/public/admin/index.html`):**
+  - [x] Thêm Tab Sidebar **"📋 Dịch vụ Một cửa"** gồm 3 phân khu:
+    1. **Danh mục Thủ tục Động**: Bảng quản lý, nút gạt Bật/Tắt hiển thị trên App tức thì, Modal Thêm/Sửa thủ tục đầy đủ cấu hình.
+    2. **Bàn làm việc Xử lý Hồ sơ & Duyệt Lệ phí**: Lọc hồ sơ, Lightbox xem ảnh biên lai duyệt tiền 1 chạm, Modal bắt buộc nhập giải trình khi quá hạn, xuất kết quả & quét mã Pickup QR.
+    3. **Dashboard Giám sát SLA & Giải trình Lãnh đạo**: Thống kê tỷ lệ đúng hạn/quá hạn, doanh thu lệ phí, điểm CSAT 5 sao, xem giải trình và ghi ý kiến chỉ đạo.
+- [x] **3.2. Cổng Web Cựu Sinh viên & Xác thực Công khai:**
+  - [x] Tạo `backend/public/onegate/index.html` (truy cập tại `/onegate`): Nộp hồ sơ dành cho Cựu sinh viên (nhập CCCD, thông tin khóa học, tải ảnh CCCD, chọn nhận Bưu điện, quét VietQR & tải biên lai) + Tra cứu tiến độ hồ sơ không cần đăng nhập.
+  - [x] Tạo route & giao diện xác thực văn bản công khai `/verify/:code` hiển thị thông tin gốc của giấy chứng nhận khi quét mã QR.
 
-- `ServiceRequest` (Hồ sơ yêu cầu của Sinh viên / Cựu sinh viên):
-  - `id`, `requestCode` (MC-2026-XXXX), `isAlumni` (BOOL), `studentUsername` (MSSV - nullable cho cựu sinh viên), `alumniInfo` (JSONB: họ tên, CCCD, ngày sinh, năm tốt nghiệp, SĐT, email), `serviceId` (FK ServiceCatalog), `formData` (JSONB), `status` (`PENDING`, `WAITING_PAYMENT_PROOF`, `WAITING_PAYMENT_CONFIRM`, `PAID`, `PROCESSING`, `APPROVED`, `READY_FOR_PICKUP`, `DELIVERING`, `COMPLETED`, `REJECTED`, `CANCELLED`), `deliveryMethod` (`digital`, `physical_pickup`, `postal_delivery`), `postalAddress` (TEXT), `postalTrackingNumber` (STRING), `assignedTo` (FK User cán bộ), `assignedDepartment` (STRING), `submittedAt`, `deadlineAt`, `completedAt`, `pickedUpAt`, `pickupQrCode` (STRING), `isOverdue` (BOOL), `overdueReason` (TEXT), `overdueExplainedAt` (DATE), `overdueExplainedBy` (FK User), `feeAmount` (DECIMAL), `paymentStatus` (`UNPAID`, `PENDING_CONFIRM`, `PAID`, `REJECTED_PROOF`), `paymentProofUrl` (STRING - đường dẫn ảnh biên lai chuyển khoản), `paymentConfirmedAt` (DATE), `paymentConfirmedBy` (FK User cán bộ xác nhận), `paymentNote` (TEXT - lý do nếu từ chối biên lai), `resultPdfUrl` (STRING), `verifyQrCode` (STRING, unique), `rating` (INT 1-5), `ratingComment` (TEXT), `ratedAt` (DATE).
+### 📋 Giai đoạn 4: Giao diện Mobile App cho Sinh viên & Cán bộ (`mobile/`)
+- [x] **4.1. API Client (`mobile/services/api.js`) & Navigation (`mobile/navigation/AppNavigator.js`):**
+  - [x] Bổ sung các hàm gọi API Một cửa (Sinh viên & Cán bộ) vào `mobile/services/api.js`.
+  - [x] Thêm Tab **"Một Cửa"** (`OneStop`) lên thanh Bottom Navigation của Sinh viên trong `mobile/navigation/AppNavigator.js`.
+- [x] **4.2. Màn hình Một cửa cho Sinh viên (`mobile/screens/OneStopServiceScreen.js`):**
+  - [x] Tab **Thủ tục hành chính**: Hiển thị danh mục động từ server, tìm kiếm, lọc theo phòng ban, mở Modal nộp đơn tự điền sẵn thông tin SV + form động + đính kèm ảnh minh chứng.
+  - [x] Tab **Hồ sơ của tôi**: Theo dõi tiến trình Stepper Timeline, đếm ngược SLA, hiển thị mã VietQR & tải ảnh biên lai chuyển khoản, xem/tải file PDF kết quả, hiển thị thẻ **Pickup QR** nhận tại quầy hoặc mã vận đơn bưu điện, và đánh giá **CSAT 5 sao**.
+- [x] **4.3. Màn hình Xử lý Một cửa cho Cán bộ (`mobile/screens/lecturer/StaffOneStopScreen.js`):**
+  - [x] Tích hợp vào màn hình **Tiện ích** của Giảng viên/Cán bộ (`mobile/screens/lecturer/LecturerUtilitiesScreen.js` & `LecturerNavigator.js`).
+  - [x] Cho phép cán bộ xem danh sách đơn được phân công, đối soát & duyệt biên lai lệ phí, nhập báo cáo giải trình khi đơn quá hạn, cập nhật trạng thái trả kết quả và xác nhận bàn giao tại quầy.
 
-- `ServiceRequestLog` (Nhật ký xử lý & Kiểm toán):
-  - `id`, `requestId` (FK), `actorId` (FK User), `action` (`SUBMIT`, `UPLOAD_RECEIPT`, `PAYMENT_CONFIRMED`, `PAYMENT_REJECTED`, `NOTIFY_STAFF`, `ASSIGN`, `START_PROCESS`, `REQUEST_INFO`, `APPROVE`, `READY_PICKUP`, `POSTAL_DISPATCH`, `HANDOVER`, `OVERDUE_EXPLAIN`, `COMPLETE`, `RATING`), `note` (TEXT), `createdAt`.
+### 📋 Giai đoạn 5: Kiểm thử & Nghiệm thu (Validation)
+- [x] Viết bộ unit & integration tests tại `backend/tests/oneStopService.test.js` kiểm tra:
+  - Tính hạn SLA theo giờ hành chính (bỏ qua Thứ 7, CN) và chuyển trạng thái quá hạn.
+  - Quy trình nộp đơn miễn phí vs. có thu phí (VietQR, upload biên lai, duyệt/từ chối biên lai).
+  - Ràng buộc bắt buộc giải trình khi cán bộ hoàn tất hồ sơ quá hạn (`isOverdue = true`).
+  - Phân quyền truy cập hồ sơ (chống IDOR) và làm sạch dữ liệu chống XSS.
+- [x] Chạy `npm test` đảm bảo toàn bộ test suites PASS 100%.
 
-### 5.2. Backend APIs
-
-#### 🛠️ Nhóm API Dành cho Quản trị viên (Admin Portal):
-- `GET /api/admin/services`: Lấy danh sách toàn bộ thủ tục (kèm bộ lọc theo phòng ban, trạng thái active/inactive).
-- `POST /api/admin/services`: **Thêm mới thủ tục dịch vụ** (với đầy đủ các cấu hình: phòng ban, cán bộ, lãnh đạo, SLA, lệ phí, hình thức nhận, Bật/Tắt...).
-- `PUT /api/admin/services/:id`: Chỉnh sửa toàn bộ cấu hình của một thủ tục.
-- `PATCH /api/admin/services/:id/toggle`: **Bật/Tắt trạng thái hoạt động** nhanh 1 chạm (`isActive: true <-> false`).
-- `DELETE /api/admin/services/:id`: Xóa hoặc lưu trữ dịch vụ.
-- `GET /api/admin/overview`: Thống kê KPI toàn trường, tỷ lệ đúng hạn/quá hạn, tổng thu lệ phí và điểm hài lòng (CSAT).
-- `GET /api/admin/overdue-reports`: Báo cáo chi tiết các vụ việc quá hạn và giải trình của cán bộ.
-- `POST /api/admin/send-digest`: Kích hoạt gửi email báo cáo tuần cho Ban Giám hiệu.
-
-#### 📱 Nhóm API Dành cho Sinh viên & Cựu sinh viên (App & Web):
-- `GET /api/services`: **Lấy danh mục dịch vụ đang hoạt động** (`where: { isActive: true }`, sắp xếp theo `displayOrder`). Dùng để render giao diện động trên App và Web.
-- `POST /api/services/requests`: Tạo yêu cầu mới (chọn nhận `digital` hoặc `physical`, kèm minh chứng nếu có).
-- `POST /api/services/requests/:id/upload-receipt`: Tải ảnh biên lai minh chứng chuyển khoản (dùng Multer).
-- `GET /api/services/my-requests`: Danh sách yêu cầu của sinh viên kèm trạng thái, đếm ngược SLA và mã nhận kết quả.
-- `GET /api/services/requests/:id`: Chi tiết tiến trình hồ sơ, file PDF kết quả, thông tin tài khoản chuyển khoản hoặc mã vận đơn.
-- `GET /api/services/public/track`: Tra cứu hồ sơ dành riêng cho cựu sinh viên (bằng mã hồ sơ + CCCD).
-- `POST /api/services/requests/:id/rate`: Sinh viên đánh giá chất lượng dịch vụ (1-5 sao).
-
-#### 👨‍💼 Nhóm API Dành cho Cán bộ thụ lý & Tiếp tân Một cửa:
-- `POST /api/services/staff/requests/:id/confirm-payment`: Cán bộ Một cửa / Kế toán xác nhận biên lai hợp lệ $\rightarrow$ chuyển trạng thái đã nộp tiền.
-- `POST /api/services/staff/requests/:id/reject-payment`: Cán bộ từ chối biên lai kèm lý do (thiếu tiền, ảnh mờ) $\rightarrow$ yêu cầu nộp lại.
-- `GET /api/services/staff/requests`: Danh sách hồ sơ được phân công (lọc: Chờ duyệt tiền, Mới, Đang xử lý, Quá hạn, Chờ trả).
-- `PATCH /api/services/staff/requests/:id/status`: Cập nhật trạng thái (Tiếp nhận, Duyệt, Sẵn sàng nhận, Bàn giao bưu điện).
-- `POST /api/services/staff/requests/:id/handover`: Quét mã Pickup QR của sinh viên tại quầy để xác nhận đã trả kết quả.
-- `POST /api/services/staff/requests/:id/dispatch-postal`: Cập nhật mã vận đơn bưu điện (VNPost / Viettel Post).
-- `POST /api/services/staff/requests/:id/explain-overdue`: Gửi báo cáo giải trình lý do quá hạn.
-- `POST /api/services/staff/requests/:id/generate-pdf`: Tự động sinh PDF có mã QR xác thực.
-
-#### 🌐 Công khai:
-- `GET /api/services/verify/:documentCode`: Trang web công khai xác thực giấy tờ gốc qua mã QR.
-
-## 6. Kế hoạch triển khai kỹ thuật (Implementation Steps)
-1. **Bước 1 (Backend Foundation & Data Models)**: Tạo các models `ServiceCatalog`, `ServiceRequest`, `ServiceRequestLog`, viết seeder danh mục dịch vụ mẫu.
-2. **Bước 2 (Admin Portal Catalog Management)**: Thêm tab "Dịch vụ Một cửa" trong `backend/public/admin/index.html` với giao diện Thêm/Sửa/Bật-Tắt dịch vụ động, thiết lập phòng ban, cán bộ, lãnh đạo, SLA và phí.
-3. **Bước 3 (Dispatch & Notification Engine)**: Mở rộng `emailReportService.js` và `notificationCenter.js` để tự động gửi Push + Email cho đúng cán bộ và lãnh đạo theo cấu hình của từng dịch vụ.
-4. **Bước 4 (Payment & Receipt Upload Engine)**: Tích hợp module hiển thị VietQR và upload ảnh biên lai minh chứng, màn hình duyệt tiền 1 chạm cho cán bộ.
-5. **Bước 5 (SLA Monitor & Overdue Escalation Cron)**: Thiết lập cronjob kiểm tra deadline, tự động đánh dấu quá hạn, gửi email cảnh báo và ép buộc giải trình.
-6. **Bước 6 (Mobile Student Interface - Dynamic UI)**: Xây dựng màn hình Một cửa cho sinh viên trên App lấy dữ liệu động từ API `GET /api/services`: render danh mục đang active, form nộp đơn pre-fill, theo dõi tiến trình (stepper), tải PDF, mã Pickup QR và modal đánh giá 5 sao.
-7. **Bước 7 (Alumni Web Portal & Staff View)**: Xây dựng cổng web nộp đơn cho Cựu sinh viên, giao diện xử lý đơn cho cán bộ (duyệt, gán mã bưu điện, quét mã giao kết quả, modal giải trình) và dashboard báo cáo cho lãnh đạo.
-8. **Bước 8 (Verification Portal & Testing)**: Hoàn thiện trang web tra cứu QR code công khai và bộ kiểm thử tự động (Unit test, Integration test).

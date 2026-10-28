@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cổng Dịch Vụ Một Cửa Số & Cựu Sinh Viên — TUAF</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #166534;
+      --primary-dark: #14532d;
+      --primary-light: #dcfce7;
+      --accent: #f59e0b;
+      --danger: #dc2626;
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .hero {
+      background: linear-gradient(135deg, #14532d 0%, #166534 60%, #15803d 100%);
+      color: #fff;
+      padding: 28px 20px 36px;
+      text-align: center;
+    }
+    .hero-badge {
+      display: inline-block;
+      background: rgba(255, 255, 255, 0.16);
+      padding: 4px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      letter-spacing: 0.4px;
+    }
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: 24px;
+      font-weight: 800;
+    }
+    .hero p {
+      margin: 0 auto;
+      max-width: 680px;
+      font-size: 14px;
+      opacity: 0.92;
+    }
+    .container {
+      max-width: 980px;
+      margin: -22px auto 40px;
+      padding: 0 16px;
+    }
+    .tabs {
+      display: flex;
+      gap: 10px;
+      background: #fff;
+      padding: 8px;
+      border-radius: 14px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+      margin-bottom: 20px;
+    }
+    .tab-btn {
+      flex: 1;
+      border: none;
+      background: transparent;
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab-btn.active {
+      background: var(--primary);
+      color: #fff;
+    }
+    .card {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 24px;
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+      margin-bottom: 20px;
+    }
+    .card h2 {
+      margin: 0 0 6px;
+      font-size: 18px;
+      color: var(--primary-dark);
+    }
+    .card .sub {
+      margin: 0 0 18px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    @media (max-width: 680px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+    .form-group {
+      margin-bottom: 14px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: #334155;
+    }
+    .form-control {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+    }
+    .form-control:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(22, 101, 52, 0.12);
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: none;
+      border-radius: 10px;
+      padding: 11px 20px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-secondary { background: #e2e8f0; color: #1e293b; }
+    .service-pill-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .service-card {
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      cursor: pointer;
+      transition: all 0.15s;
+      background: #f8fafc;
+    }
+    .service-card.selected {
+      border-color: var(--primary);
+      background: #f0fdf4;
+    }
+    .service-card .title {
+      font-weight: 700;
+      font-size: 14px;
+      color: #0f172a;
+      margin-bottom: 4px;
+    }
+    .service-card .meta {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .badge-green { background: #dcfce7; color: #166534; }
+    .badge-amber { background: #fef3c7; color: #92400e; }
+    .badge-red { background: #fee2e2; color: #991b1b; }
+    .badge-blue { background: #dbeafe; color: #1e40af; }
+    .toast-box {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #0f172a;
+      color: #fff;
+      padding: 12px 18px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      z-index: 9999;
+      display: none;
+    }
+    .vietqr-box {
+      background: #f8fafc;
+      border: 1px dashed #94a3b8;
+      border-radius: 14px;
+      padding: 16px;
+      text-align: center;
+      margin-top: 14px;
+    }
+    .vietqr-box img {
+      max-width: 220px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+    .timeline-item {
+      border-left: 3px solid var(--primary);
+      padding-left: 12px;
+      margin-bottom: 10px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="hero">
+    <div class="hero-badge">TRƯỜNG ĐẠI HỌC NÔNG LÂM THÁI NGUYÊN (TUAF)</div>
+    <h1>CỔNG DỊCH VỤ HÀNH CHÍNH MỘT CỬA SỐ</h1>
+    <p>Đăng ký trực tuyến Bảng điểm, Bản sao văn bằng chứng chỉ, nhận kết quả qua Bưu điện hoặc bản điện tử PDF có QR xác thực và tra cứu tiến độ 24/7.</p>
+  </div>
+
+  <div class="container">
+    <div class="tabs">
+      <button class="tab-btn active" id="btnTabTrack" onclick="switchTab('track')">🔍 Tra cứu Tiến độ & Nộp Biên lai</button>
+      <button class="tab-btn" id="btnTabApply" onclick="switchTab('apply')">📝 Cựu Sinh Viên Nộp Hồ Sơ Trực Tuyến</button>
+    </div>
+
+    <!-- TAB 1: TRA CỨU TIẾN ĐỘ -->
+    <div id="panelTrack" class="card">
+      <h2>Tra cứu Tiến độ Hồ sơ Một cửa</h2>
+      <p class="sub">Dành cho cả Sinh viên đang theo học và Cựu sinh viên. Nhập Mã hồ sơ và Mã SV / Số CCCD / Số điện thoại đã đăng ký.</p>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Mã hồ sơ (VD: MC-2026-0001) *</label>
+          <input type="text" id="trackCode" class="form-control" placeholder="MC-2026-0001">
+        </div>
+        <div class="form-group">
+          <label>Mã Sinh viên / Số CCCD / SĐT *</label>
+          <input type="text" id="trackIdentifier" class="form-control" placeholder="Nhập Mã SV, CCCD hoặc Số điện thoại">
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="handleTrackRequest()">🔍 Tra cứu hồ sơ</button>
+
+      <div id="trackResultContainer" style="margin-top: 22px; display: none;"></div>
+    </div>
+
+    <!-- TAB 2: CỰU SINH VIÊN ĐĂNG KÝ -->
+    <div id="panelApply" class="card" style="display: none;">
+      <h2>Cựu Sinh Viên Đăng Ký Thủ Tục Trực Tuyến</h2>
+      <p class="sub">Không cần tài khoản đăng nhập. Chọn thủ tục bên dưới, điền thông tin định danh và phương thức nhận kết quả.</p>
+
+      <label style="font-size: 13px; font-weight: 700; display: block; margin-bottom: 8px;">1. Chọn thủ tục hành chính *</label>
+      <div id="alumniServiceList" class="service-pill-list"></div>
+
+      <div id="alumniFormArea" style="display: none;">
+        <h3 style="font-size: 15px; margin: 16px 0 10px; color: var(--primary-dark);">2. Thông tin Cựu sinh viên</h3>
+        <div class="grid-2">
+          <div class="form-group">
+            <label>Họ và tên đầy đủ *</label>
+            <input type="text" id="almFullName" class="form-control" placeholder="Nguyễn Văn A">
+          </div>
+          <div class="form-group">
+            <label>Số CCCD / CMND *</label>
+            <input type="text" id="almNationalId" class="form-control" placeholder="01909xxxxxxx">
+          </div>
+          <div class="form-group">
+            <label>Mã sinh viên cũ (nếu nhớ)</label>
+            <input type="text" id="almUsername" class="form-control" placeholder="DTNxxxx">
+          </div>
+          <div class="form-group">
+            <label>Khóa / Lớp / Ngành học & Năm tốt nghiệp *</label>
+            <input type="text" id="almClass" class="form-control" placeholder="VD: K48 Thú y - Tốt nghiệp 2021">
+          </div>
+          <div class="form-group">
+            <label>Số điện thoại liên hệ *</label>
+            <input type="text" id="almPhone" class="form-control" placeholder="09xxxxxxxx">
+          </div>
+          <div class="form-group">
+            <label>Email nhận thông báo & bản PDF điện tử *</label>
+            <input type="email" id="almEmail" class="form-control" placeholder="email@example.com">
+          </div>
+        </div>
+
+        <h3 style="font-size: 15px; margin: 16px 0 10px; color: var(--primary-dark);">3. Thông tin chi tiết thủ tục</h3>
+        <div id="dynamicSchemaFields" class="grid-2"></div>
+
+        <div class="grid-2" style="margin-top: 8px;">
+          <div class="form-group">
+            <label>Hình thức nhận kết quả *</label>
+            <select id="almDeliveryMethod" class="form-control" onchange="togglePostalField()"></select>
+          </div>
+          <div class="form-group" id="postalGroup" style="display: none;">
+            <label>Địa chỉ nhận thư bảo đảm qua Bưu điện *</label>
+            <input type="text" id="almPostalAddress" class="form-control" placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành phố">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label id="almAttachLabel">Đính kèm ảnh chụp CCCD / Văn bằng gốc (JPG, PNG, PDF tối đa 10MB)</label>
+          <input type="file" id="almAttachmentInput" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
+        </div>
+
+        <button class="btn btn-primary" id="btnSubmitAlumni" onclick="submitAlumniRequest()">🚀 Gửi Hồ Sơ Một Cửa</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toastBox" class="toast-box"></div>
+
+  <script>
+    let alumniServices = [];
+    let selectedService = null;
+
+    function esc(str) {
+      return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function showToast(msg, isError) {
+      const box = document.getElementById('toastBox');
+      box.textContent = msg;
+      box.style.background = isError ? '#dc2626' : '#166534';
+      box.style.display = 'block';
+      setTimeout(() => { box.style.display = 'none'; }, 4000);
+    }
+
+    function switchTab(tab) {
+      document.getElementById('btnTabTrack').classList.toggle('active', tab === 'track');
+      document.getElementById('btnTabApply').classList.toggle('active', tab === 'apply');
+      document.getElementById('panelTrack').style.display = tab === 'track' ? 'block' : 'none';
+      document.getElementById('panelApply').style.display = tab === 'apply' ? 'block' : 'none';
+    }
+
+    function formatStatusBadge(status) {
+      const map = {
+        pending_payment: ['Chờ nộp lệ phí', 'badge-amber'],
+        payment_review: ['Chờ đối soát lệ phí', 'badge-blue'],
+        submitted: ['Đã tiếp nhận', 'badge-blue'],
+        processing: ['Đang xử lý', 'badge-blue'],
+        need_more_info: ['Cần bổ sung hồ sơ', 'badge-amber'],
+        ready_for_pickup: ['Sẵn sàng trả kết quả', 'badge-green'],
+        completed: ['Đã hoàn thành', 'badge-green'],
+        rejected: ['Từ chối', 'badge-red'],
+        cancelled: ['Đã hủy', 'badge-red'],
+      };
+      const item = map[status] || [status, 'badge-blue'];
+      return `<span class="badge ${item[1]}">${esc(item[0])}</span>`;
+    }
+
+    async function loadAlumniServices() {
+      try {
+        const res = await fetch('/api/services?alumni=true');
+        const json = await res.json();
+        alumniServices = json.data || [];
+        const container = document.getElementById('alumniServiceList');
+        if (alumniServices.length === 0) {
+          container.innerHTML = '<p style="color:#64748b;font-size:13px;">Hiện chưa có thủ tục mở cho Cựu sinh viên.</p>';
+          return;
+        }
+        container.innerHTML = alumniServices.map((s) => `
+          <div class="service-card ${selectedService && selectedService.id === s.id ? 'selected' : ''}" onclick="selectAlumniService(${Number(s.id)})">
+            <div class="title">${esc(s.name)}</div>
+            <div class="meta">Đơn vị: ${esc(s.department)} • SLA: ${Number(s.slaHours)}h</div>
+            <div style="margin-top:6px;">
+              ${s.isPaid ? `<span class="badge badge-amber">Lệ phí: ${Number(s.feeAmount).toLocaleString('vi-VN')}đ/bản</span>` : '<span class="badge badge-green">Miễn phí</span>'}
+            </div>
+          </div>
+        `).join('');
+      } catch (e) {
+        showToast('Không thể tải danh mục thủ tục!', true);
+      }
+    }
+
+    function selectAlumniService(id) {
+      selectedService = alumniServices.find((s) => s.id === id) || null;
+      loadAlumniServices();
+      if (!selectedService) return;
+
+      document.getElementById('alumniFormArea').style.display = 'block';
+      const schemaBox = document.getElementById('dynamicSchemaFields');
+      const fields = Array.isArray(selectedService.formSchema) ? selectedService.formSchema : [];
+
+      schemaBox.innerHTML = fields.map((f) => {
+        const fName = f.name || f.key;
+        const inputId = `dyn_${esc(fName)}`;
+        if (f.type === 'select' && Array.isArray(f.options)) {
+          return `
+            <div class="form-group">
+              <label>${esc(f.label)} ${f.required ? '*' : ''}</label>
+              <select id="${inputId}" class="form-control">
+                ${f.options.map((opt) => `<option value="${esc(opt)}">${esc(opt)}</option>`).join('')}
+              </select>
+            </div>
+          `;
+        }
+        return `
+          <div class="form-group">
+            <label>${esc(f.label)} ${f.required ? '*' : ''}</label>
+            <input type="${f.type === 'number' ? 'number' : 'text'}" id="${inputId}" class="form-control" value="${esc(f.defaultValue || '')}" placeholder="${esc(f.placeholder || '')}">
+          </div>
+        `;
+      }).join('');
+
+      const delivSelect = document.getElementById('almDeliveryMethod');
+      const rawOpts = Array.isArray(selectedService.deliveryOptions) ? selectedService.deliveryOptions : ['digital_pdf'];
+      const opts = rawOpts.map((o) => o === 'digital' ? 'digital_pdf' : (o === 'physical_pickup' ? 'office_pickup' : o));
+      const labels = {
+        digital_pdf: 'Bản điện tử PDF có QR xác thực (Nhận qua Email / Web)',
+        office_pickup: 'Nhận bản giấy trực tiếp tại Quầy Một cửa TUAF',
+        postal_delivery: `Gửi chuyển phát bảo đảm qua Bưu điện (+${Number(selectedService.postalFeeAmount || 0).toLocaleString('vi-VN')}đ)`,
+      };
+      delivSelect.innerHTML = opts.map((o) => `<option value="${esc(o)}">${esc(labels[o] || o)}</option>`).join('');
+      togglePostalField();
+    }
+
+    function togglePostalField() {
+      const val = document.getElementById('almDeliveryMethod').value;
+      document.getElementById('postalGroup').style.display = val === 'postal_delivery' ? 'block' : 'none';
+    }
+
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function submitAlumniRequest() {
+      if (!selectedService) {
+        showToast('Vui lòng chọn một thủ tục!', true);
+        return;
+      }
+      const btn = document.getElementById('btnSubmitAlumni');
+      btn.disabled = true;
+      try {
+        const formData = {};
+        for (const f of (selectedService.formSchema || [])) {
+          const fName = f.name || f.key;
+          const el = document.getElementById(`dyn_${fName}`);
+          if (el) formData[fName] = el.value;
+        }
+
+        const attachmentsBase64 = [];
+        const fileInput = document.getElementById('almAttachmentInput');
+        if (fileInput.files && fileInput.files[0]) {
+          const b64 = await fileToBase64(fileInput.files[0]);
+          attachmentsBase64.push({ name: fileInput.files[0].name, base64: b64 });
+        }
+
+        const payload = {
+          serviceId: selectedService.id,
+          isAlumni: true,
+          studentFullName: document.getElementById('almFullName').value.trim(),
+          nationalId: document.getElementById('almNationalId').value.trim(),
+          studentUsername: document.getElementById('almUsername').value.trim(),
+          studentClass: document.getElementById('almClass').value.trim(),
+          studentPhone: document.getElementById('almPhone').value.trim(),
+          studentEmail: document.getElementById('almEmail').value.trim(),
+          deliveryMethod: document.getElementById('almDeliveryMethod').value,
+          postalAddress: document.getElementById('almPostalAddress').value.trim(),
+          formData,
+          attachmentsBase64,
+        };
+
+        const res = await fetch('/api/services/requests', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const json = await res.json();
+        if (!res.ok || !json.success) {
+          showToast(json.message || 'Lỗi tạo hồ sơ!', true);
+          return;
+        }
+
+        showToast('Đăng ký hồ sơ thành công!');
+        document.getElementById('trackCode').value = json.data.requestCode;
+        document.getElementById('trackIdentifier').value = payload.nationalId || payload.studentPhone;
+        switchTab('track');
+        renderTrackedRequest(json.data, payload.nationalId || payload.studentPhone);
+      } catch (err) {
+        showToast('Lỗi kết nối máy chủ!', true);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function handleTrackRequest() {
+      const code = document.getElementById('trackCode').value.trim();
+      const iden = document.getElementById('trackIdentifier').value.trim();
+      if (!code || !iden) {
+        showToast('Vui lòng nhập Mã hồ sơ và Mã SV / CCCD / SĐT!', true);
+        return;
+      }
+      try {
+        const res = await fetch(`/api/services/public/track?requestCode=${encodeURIComponent(code)}&identifier=${encodeURIComponent(iden)}`);
+        const json = await res.json();
+        if (!res.ok || !json.success) {
+          showToast(json.message || 'Không tìm thấy hồ sơ!', true);
+          return;
+        }
+        renderTrackedRequest(json.data, iden);
+      } catch (e) {
+        showToast('Lỗi tra cứu hồ sơ!', true);
+      }
+    }
+
+    function renderTrackedRequest(reqData, identifier) {
+      const box = document.getElementById('trackResultContainer');
+      box.style.display = 'block';
+      const deadlineStr = reqData.deadlineAt ? new Date(reqData.deadlineAt).toLocaleString('vi-VN') : '—';
+
+      let paymentSection = '';
+      if (reqData.paymentInfo && ['pending_payment', 'payment_review'].includes(reqData.status)) {
+        paymentSection = `
+          <div class="vietqr-box">
+            <h4 style="margin:0 0 8px;color:#166534;">💳 Thanh toán Lệ phí qua Mã VietQR</h4>
+            <img src="${esc(reqData.paymentInfo.qrImageUrl)}" alt="VietQR">
+            <p style="font-size:13px;margin:8px 0 4px;">Ngân hàng: <strong>${esc(reqData.paymentInfo.bankName)}</strong> — STK: <strong>${esc(reqData.paymentInfo.accountNo)}</strong></p>
+            <p style="font-size:13px;margin:0 0 4px;">Số tiền: <strong style="color:#dc2626;">${Number(reqData.paymentInfo.amount).toLocaleString('vi-VN')} VNĐ</strong></p>
+            <p style="font-size:13px;margin:0 0 12px;">Nội dung CK: <strong style="background:#fef3c7;padding:2px 8px;border-radius:6px;">${esc(reqData.paymentInfo.transferSyntax)}</strong></p>
+            <div style="max-width:400px;margin:0 auto;text-align:left;">
+              <label style="font-size:12px;font-weight:700;">Tải lên ảnh chụp màn hình biên lai chuyển khoản:</label>
+              <input type="file" id="receiptFileInput" class="form-control" accept=".jpg,.jpeg,.png,.pdf" style="margin:6px 0 10px;">
+              <button class="btn btn-primary" style="width:100%;" onclick="uploadTrackedReceipt(${Number(reqData.id)}, '${esc(identifier)}')">📤 Gửi ảnh biên lai xác nhận</button>
+            </div>
+          </div>
+        `;
+      }
+
+      let resultSection = '';
+      if (reqData.resultPdfUrl || reqData.verifyQrCode) {
+        resultSection = `
+          <div style="margin-top:14px;padding:14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;">
+            <strong style="color:#166534;">🎉 Kết quả Hồ sơ & Văn bản Điện tử:</strong>
+            <div style="margin-top:8px;display:flex;gap:10px;flex-wrap:wrap;">
+              ${reqData.resultPdfUrl ? `<a href="${esc(reqData.resultPdfUrl)}" target="_blank" class="btn btn-primary" style="text-decoration:none;">📥 Tải Văn bản PDF</a>` : ''}
+              ${reqData.verifyQrCode ? `<a href="/verify/${encodeURIComponent(reqData.verifyQrCode)}" target="_blank" class="btn btn-secondary" style="text-decoration:none;">🔒 Xem Trang Xác Thực QR</a>` : ''}
+            </div>
+            ${reqData.trayLocation ? `<p style="margin:8px 0 0;font-size:13px;">📍 Vị trí nhận bản giấy: <strong>${esc(reqData.trayLocation)}</strong></p>` : ''}
+            ${reqData.postalTrackingNumber ? `<p style="margin:8px 0 0;font-size:13px;">📦 Mã vận đơn Bưu điện: <strong>${esc(reqData.postalTrackingNumber)}</strong></p>` : ''}
+          </div>
+        `;
+      }
+
+      const logsHtml = (reqData.logs || []).map((l) => `
+        <div class="timeline-item">
+          <strong>${esc(l.action)}</strong> — <span style="color:#64748b;">${new Date(l.createdAt).toLocaleString('vi-VN')}</span>
+          <div>${esc(l.note || '')}</div>
+        </div>
+      `).join('');
+
+      box.innerHTML = `
+        <div style="border-top:2px solid #e2e8f0;padding-top:18px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+            <div>
+              <span style="font-size:12px;color:#64748b;font-weight:700;">MÃ HỒ SƠ: #${esc(reqData.requestCode)}</span>
+              <h3 style="margin:4px 0;">${esc(reqData.serviceName)}</h3>
+            </div>
+            <div>${formatStatusBadge(reqData.status)}</div>
+          </div>
+          <div class="grid-2" style="margin-top:12px;font-size:13px;">
+            <div><strong>Người nộp:</strong> ${esc(reqData.studentFullName)} (${esc(reqData.studentUsername || reqData.nationalId || '')})</div>
+            <div><strong>Đơn vị thụ lý:</strong> ${esc(reqData.assignedDepartment)}</div>
+            <div><strong>Hạn cam kết (SLA):</strong> ${esc(deadlineStr)} (${esc(reqData.slaStatus?.remainingText || '')})</div>
+            <div><strong>Ghi chú từ Cán bộ:</strong> ${esc(reqData.staffNote || 'Chưa có')}</div>
+          </div>
+          ${paymentSection}
+          ${resultSection}
+          <h4 style="margin:18px 0 10px;font-size:14px;">Nhật ký xử lý hồ sơ</h4>
+          <div>${logsHtml || '<p style="font-size:13px;color:#64748b;">Chưa có nhật ký.</p>'}</div>
+        </div>
+      `;
+    }
+
+    async function uploadTrackedReceipt(requestId, identifier) {
+      const fileInput = document.getElementById('receiptFileInput');
+      if (!fileInput || !fileInput.files || !fileInput.files[0]) {
+        showToast('Vui lòng chọn ảnh biên lai chuyển khoản!', true);
+        return;
+      }
+      try {
+        const b64 = await fileToBase64(fileInput.files[0]);
+        const res = await fetch(`/api/services/requests/${requestId}/upload-receipt`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-student-identifier': identifier,
+          },
+          body: JSON.stringify({ receiptBase64: b64, identifier }),
+        });
+        const json = await res.json();
+        if (!res.ok || !json.success) {
+          showToast(json.message || 'Lỗi tải biên lai!', true);
+          return;
+        }
+        showToast('Đã tải lên ảnh biên lai thành công!');
+        renderTrackedRequest(json.data, identifier);
+      } catch (e) {
+        showToast('Lỗi tải ảnh biên lai!', true);
+      }
+    }
+
+    loadAlumniServices();
+  </script>
+</body>
+</html>

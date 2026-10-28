@@ -133,7 +133,7 @@ test('Giảng viên: tiêu đề là giờ dạy', () => {
 test('getClassSessions: chỉ trả buổi học thật hôm nay', () => {
   const s = getClassSessions([cls({ periodText: '1-3' }), cls({ dayOfWeek: 3 })], { from: SAT(10, 0), days: 1 });
   assert.equal(s.length, 1);
-  assert.equal(s[0].endTime, '09:40');
+  assert.equal(s[0].endTime, '09:45');
 });
 
 // ─── Lịch thi ──────────────────────────────────────────────

@@ -8,6 +8,7 @@ import ExamsScreen from '../screens/ExamsScreen';
 import FinanceScreen from '../screens/FinanceScreen';
 import GradesScreen from '../screens/GradesScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
+import OneStopServiceScreen from '../screens/OneStopServiceScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import ScheduleScreen from '../screens/ScheduleScreen';
 import { Colors } from '../theme/colors';
@@ -17,6 +18,7 @@ const Tab = createBottomTabNavigator();
 
 const TAB_ICONS = {
   Schedule: { active: 'calendar', inactive: 'calendar-outline' },
+  OneStop: { active: 'document-text', inactive: 'document-text-outline' },
   Notifications: { active: 'notifications', inactive: 'notifications-outline' },
   Grades: { active: 'trophy', inactive: 'trophy-outline' },
   Finance: { active: 'wallet', inactive: 'wallet-outline' },
@@ -62,6 +64,12 @@ export default function AppNavigator({ user, onLogout }) {
           options={{ tabBarLabel: 'Lịch' }}
         >
           {(props) => <ScheduleScreen {...props} user={user} />}
+        </Tab.Screen>
+        <Tab.Screen
+          name="OneStop"
+          options={{ tabBarLabel: 'Một Cửa' }}
+        >
+          {(props) => <OneStopServiceScreen {...props} user={user} />}
         </Tab.Screen>
         <Tab.Screen
           name="Notifications"

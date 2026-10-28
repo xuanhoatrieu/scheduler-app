@@ -3,11 +3,16 @@
  * File này là JS thuần (không import React Native) để có thể unit test bằng Node.
  */
 
-/** Giờ bắt đầu từng tiết tại TUAF (tiết 1 → 15) */
+/** Giờ bắt đầu và kết thúc từng tiết tại TUAF theo bảng dmGioHoc (tiết 1 → 16) */
 export const PERIOD_START = {
-  1: '07:00', 2: '07:55', 3: '08:50', 4: '09:55', 5: '10:50',
-  6: '13:15', 7: '14:10', 8: '15:15', 9: '16:10', 10: '17:05',
-  11: '18:00', 12: '18:50', 13: '19:40', 14: '20:30', 15: '21:15',
+  1: '07:00', 2: '07:55', 3: '08:55', 4: '09:55', 5: '10:50',
+  6: '13:15', 7: '14:10', 8: '15:10', 9: '16:10', 10: '17:05',
+  11: '18:25', 12: '19:20', 13: '20:20', 14: '21:00', 15: '21:40', 16: '22:20',
+};
+export const PERIOD_END = {
+  1: '07:50', 2: '08:45', 3: '09:45', 4: '10:45', 5: '11:40',
+  6: '14:05', 7: '15:00', 8: '16:00', 9: '17:00', 10: '17:55',
+  11: '19:15', 12: '20:10', 13: '20:50', 14: '21:30', 15: '22:10', 16: '22:50',
 };
 const PERIOD_MINUTES = 50;
 
@@ -123,7 +128,7 @@ const minutesToHm = (mins) =>
 export const getPeriodTimes = (range) => {
   if (!range) return null;
   const startTime = PERIOD_START[range.start];
-  const endTime = minutesToHm(hmToMinutes(PERIOD_START[range.end]) + PERIOD_MINUTES);
+  const endTime = PERIOD_END[range.end] || minutesToHm(hmToMinutes(PERIOD_START[range.end]) + PERIOD_MINUTES);
   return { startTime, endTime };
 };
 

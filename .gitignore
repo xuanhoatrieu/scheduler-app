@@ -15,9 +15,10 @@ backend/test_*.js
 backend/scratch_html/
 legacy_student_code/
 
-# Build outputs
+# Build outputs & runtime uploads
 dist/
 build/
+backend/public/uploads/
 *.apk
 *.aab
 *.xlsx

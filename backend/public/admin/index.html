@@ -1240,6 +1240,11 @@ label {
           <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
           <span>Đẩy Thông báo</span>
         </button>
+
+        <button class="nav-item" data-tab="tab-onestop" id="nav-onestop">
+          <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="m9 15 2 2 4-4"></path></svg>
+          <span>Dịch vụ Một cửa</span>
+        </button>
       </nav>
 
       <div class="sidebar-footer">
@@ -2352,6 +2357,189 @@ label {
           </div>
         </div>
       </section>
+
+      <!-- TAB: PHÂN HỆ HÀNH CHÍNH MỘT CỬA SỐ (ONE-STOP SERVICE) -->
+      <section id="tab-onestop" class="tab-pane">
+        <div class="subtab-nav" style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+          <button type="button" class="btn btn-secondary os-subtab-btn active" data-os-subtab="os-pane-workbench">📋 1. Bàn làm việc Xử lý Hồ sơ & Duyệt Lệ phí</button>
+          <button type="button" class="btn btn-secondary os-subtab-btn" data-os-subtab="os-pane-catalog">⚙️ 2. Quản lý Danh mục Thủ tục Động</button>
+          <button type="button" class="btn btn-secondary os-subtab-btn" data-os-subtab="os-pane-sla">📊 3. Dashboard Giám sát SLA & Giải trình Lãnh đạo</button>
+          <a href="/onegate" target="_blank" class="btn btn-outline" style="margin-left:auto;text-decoration:none;">🌐 Mở Cổng Cựu SV (/onegate)</a>
+        </div>
+
+        <!-- SUBTAB 1: BÀN LÀM VIỆC -->
+        <div id="os-pane-workbench" class="os-subtab-pane" style="display:block;">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:18px;">
+            <div class="card glass-card" style="padding:16px;">
+              <div style="font-size:12px;color:var(--text-muted);">Tổng hồ sơ hiển thị</div>
+              <div id="os-stat-total" style="font-size:24px;font-weight:800;color:#fff;margin-top:4px;">0</div>
+            </div>
+            <div class="card glass-card" style="padding:16px;">
+              <div style="font-size:12px;color:var(--text-muted);">Chờ duyệt biên lai VietQR</div>
+              <div id="os-stat-payment" style="font-size:24px;font-weight:800;color:#60a5fa;margin-top:4px;">0</div>
+            </div>
+            <div class="card glass-card" style="padding:16px;">
+              <div style="font-size:12px;color:var(--text-muted);">Đang chờ & Đang xử lý</div>
+              <div id="os-stat-processing" style="font-size:24px;font-weight:800;color:#4ade80;margin-top:4px;">0</div>
+            </div>
+            <div class="card glass-card" style="padding:16px;">
+              <div style="font-size:12px;color:var(--text-muted);">Quá hạn cam kết SLA</div>
+              <div id="os-stat-overdue" style="font-size:24px;font-weight:800;color:#f87171;margin-top:4px;">0</div>
+            </div>
+          </div>
+
+          <div class="card glass-card" style="margin-bottom:18px;">
+            <div class="card-body" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+              <input type="text" id="os-filter-search" class="form-control" placeholder="Tìm Mã HS (MC-2026...), Tên SV, Mã SV..." style="max-width:260px;">
+              <select id="os-filter-status" class="form-control" style="max-width:190px;">
+                <option value="">-- Tất cả trạng thái --</option>
+                <option value="payment_review">Chờ duyệt biên lai</option>
+                <option value="submitted">Mới tiếp nhận</option>
+                <option value="processing">Đang xử lý</option>
+                <option value="need_more_info">Cần bổ sung HS</option>
+                <option value="ready_for_pickup">Sẵn sàng trả KQ</option>
+                <option value="completed">Đã hoàn thành</option>
+              </select>
+              <select id="os-filter-dept" class="form-control" style="max-width:210px;">
+                <option value="">-- Tất cả Phòng ban --</option>
+                <option value="Phòng Công tác HSSV">Phòng Công tác HSSV</option>
+                <option value="Phòng Đào tạo">Phòng Đào tạo</option>
+                <option value="Phòng Kế hoạch - Tài chính">Phòng Kế hoạch - Tài chính</option>
+                <option value="Ban Quản lý Ký túc xá">Ban Quản lý Ký túc xá</option>
+                <option value="Trung tâm CNTT / Thư viện">Trung tâm CNTT / Thư viện</option>
+              </select>
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+                <input type="checkbox" id="os-filter-overdue"> Chỉ hiện hồ sơ Quá hạn SLA
+              </label>
+              <button type="button" id="btn-os-filter" class="btn btn-primary btn-sm">🔍 Lọc hồ sơ</button>
+
+              <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+                <input type="text" id="os-inp-quick-qr" class="form-control code-font" placeholder="Quét QR / Nhập mã nhận giấy..." style="max-width:210px;">
+                <button type="button" id="btn-os-quick-handover" class="btn btn-outline btn-sm">🤝 Bàn giao nhanh</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card glass-card">
+            <div class="card-body" style="overflow-x:auto;">
+              <table class="data-table" style="width:100%;">
+                <thead>
+                  <tr>
+                    <th>Mã HS</th>
+                    <th>Sinh viên / Cựu SV</th>
+                    <th>Thủ tục & Đơn vị</th>
+                    <th>Trạng thái</th>
+                    <th>Thời hạn SLA</th>
+                    <th>Lệ phí</th>
+                    <th>Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody id="os-requests-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUBTAB 2: QUẢN LÝ DANH MỤC THỦ TỤC ĐỘNG -->
+        <div id="os-pane-catalog" class="os-subtab-pane" style="display:none;">
+          <div class="card glass-card">
+            <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+              <div class="card-title">
+                <span class="icon">⚙️</span>
+                <h3>Danh Mục Thủ Tục Hành Chính Động (Bật / Tắt Tức Thì Không Cần Sửa Code)</h3>
+              </div>
+              <button type="button" id="btn-os-new-service" class="btn btn-primary btn-sm">➕ Thêm Thủ Tục Mới</button>
+            </div>
+            <div class="card-body" style="overflow-x:auto;">
+              <table class="data-table" style="width:100%;">
+                <thead>
+                  <tr>
+                    <th>Mã Thủ Tục</th>
+                    <th>Tên Thủ Tục</th>
+                    <th>Phòng Ban Thụ Lý</th>
+                    <th>Cam Kết SLA</th>
+                    <th>Cán Bộ Phụ Trách</th>
+                    <th>Lệ Phí</th>
+                    <th>Trạng Thái App</th>
+                    <th>Tùy Chỉnh</th>
+                  </tr>
+                </thead>
+                <tbody id="os-catalog-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUBTAB 3: DASHBOARD GIÁM SÁT SLA & GIẢI TRÌNH -->
+        <div id="os-pane-sla" class="os-subtab-pane" style="display:none;">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:18px;">
+            <div class="card glass-card" style="padding:16px;">
+              <div style="font-size:12px;color:var(--text-muted);">Tỷ lệ Đúng hạn toàn trường</div>
+              <div id="os-kpi-ontime" style="font-size:26px;font-weight:800;color:#4ade80;margin-top:4px;">100%</div>
+            </div>
+            <div class="card glass-card" style="padding:16px;">
+              <div style="font-size:12px;color:var(--text-muted);">Tổng hồ sơ Quá hạn SLA</div>
+              <div id="os-kpi-overdue" style="font-size:26px;font-weight:800;color:#f87171;margin-top:4px;">0</div>
+            </div>
+            <div class="card glass-card" style="padding:16px;">
+              <div style="font-size:12px;color:var(--text-muted);">Quá hạn Chưa giải trình</div>
+              <div id="os-kpi-unexplained" style="font-size:26px;font-weight:800;color:#fbbf24;margin-top:4px;">0</div>
+            </div>
+            <div class="card glass-card" style="padding:16px;">
+              <div style="font-size:12px;color:var(--text-muted);">Điểm Hài lòng Sinh viên</div>
+              <div id="os-kpi-rating" style="font-size:26px;font-weight:800;color:#60a5fa;margin-top:4px;">5.0 ⭐</div>
+            </div>
+          </div>
+
+          <div class="card glass-card" style="margin-bottom:18px;">
+            <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+              <div class="card-title">
+                <span class="icon">🏢</span>
+                <h3>Bảng Xếp Hạng Kỷ Luật SLA Theo Phòng Ban</h3>
+              </div>
+              <button type="button" id="btn-os-send-digest" class="btn btn-outline btn-sm">📧 Gửi Email Báo Cáo Tổng Hợp SLA Ngay</button>
+            </div>
+            <div class="card-body" style="overflow-x:auto;">
+              <table class="data-table" style="width:100%;">
+                <thead>
+                  <tr>
+                    <th>Phòng Ban / Đơn Vị</th>
+                    <th>Tổng Hồ Sơ</th>
+                    <th>Đã Hoàn Thành</th>
+                    <th>Quá Hạn SLA</th>
+                    <th>Chưa Giải Trình</th>
+                  </tr>
+                </thead>
+                <tbody id="os-dept-sla-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card glass-card">
+            <div class="card-header">
+              <div class="card-title">
+                <span class="icon">🚨</span>
+                <h3>Danh Sách Hồ Sơ Quá Hạn SLA, Giải Trình Của Cán Bộ & Ý Kiến Chỉ Đạo Của Lãnh Đạo</h3>
+              </div>
+            </div>
+            <div class="card-body" style="overflow-x:auto;">
+              <table class="data-table" style="width:100%;">
+                <thead>
+                  <tr>
+                    <th>Mã HS</th>
+                    <th>Thủ Tục & Đơn Vị</th>
+                    <th>Cán Bộ Phụ Trách</th>
+                    <th>Giải Trình Nguyên Nhân Quá Hạn</th>
+                    <th>Ý Kiến Chỉ Đạo Lãnh Đạo</th>
+                    <th>Thao Tác</th>
+                  </tr>
+                </thead>
+                <tbody id="os-overdue-explain-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
     </main>
   </div>
 
@@ -2473,6 +2661,164 @@ label {
       <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 8px;">
         <button type="button" class="btn btn-secondary" data-close="modal-edit-inspector">Hủy</button>
         <button type="button" id="btn-submit-edit-inspector" class="btn btn-primary">Lưu Thay Đổi</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 4: Xử lý Hồ sơ Một cửa & Giải trình SLA -->
+  <div id="modal-os-request-detail" class="modal-overlay">
+    <div class="modal-card glass-card" style="max-width: 680px;">
+      <div class="modal-header">
+        <h3 id="os-modal-req-title">Xử Lý Hồ Sơ Một Cửa</h3>
+        <button class="modal-close" data-close="modal-os-request-detail">&times;</button>
+      </div>
+      <div class="modal-body" style="max-height: 75vh; overflow-y: auto;">
+        <p id="os-modal-student-info" style="font-size:13px;color:#fff;font-weight:600;margin-bottom:4px;"></p>
+        <p id="os-modal-sla-info" style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;"></p>
+
+        <div style="background:rgba(255,255,255,0.04);padding:12px;border-radius:10px;margin-bottom:14px;">
+          <div style="font-size:12px;color:var(--text-muted);font-weight:700;margin-bottom:6px;">THÔNG TIN BIỂU MẪU SINH VIÊN KHAI BÁO:</div>
+          <div id="os-modal-form-data"></div>
+          <div id="os-modal-homeroom-note" style="margin-top:8px;padding-top:8px;border-top:1px dashed rgba(255,255,255,0.1);font-size:12px;color:#4ade80;display:none;"></div>
+        </div>
+
+        <div id="os-modal-payment-section" style="background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.3);padding:12px;border-radius:10px;margin-bottom:14px;display:none;">
+          <div id="os-modal-fee-text" style="font-size:13px;font-weight:700;color:#93c5fd;margin-bottom:6px;"></div>
+          <div id="os-modal-proof-link" style="margin-bottom:10px;"></div>
+          <div style="display:flex;gap:8px;">
+            <button type="button" id="btn-os-confirm-payment" class="btn btn-primary btn-sm">✅ Xác nhận Biên lai Hợp lệ</button>
+            <button type="button" id="btn-os-reject-payment" class="btn btn-outline btn-sm" style="color:#fca5a5;">❌ Từ chối Biên lai (Yêu cầu tải lại)</button>
+          </div>
+        </div>
+
+        <div id="os-modal-overdue-section" style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.4);padding:12px;border-radius:10px;margin-bottom:14px;display:none;">
+          <div style="font-size:13px;font-weight:700;color:#fca5a5;margin-bottom:8px;">🚨 HỒ SƠ ĐÃ QUÁ HẠN SLA — BẮT BUỘC GIẢI TRÌNH TRƯỚC KHI DUYỆT HOÀN TẤT:</div>
+          <div class="form-group" style="margin-bottom:8px;">
+            <label style="font-size:12px;">Nhóm nguyên nhân quá hạn *</label>
+            <select id="os-inp-overdue-category" class="form-control">
+              <option value="waiting_signature">Chờ trình ký Lãnh đạo</option>
+              <option value="system_error">Lỗi hệ thống / phần mềm</option>
+              <option value="student_late_supplement">Sinh viên bổ sung hồ sơ muộn</option>
+              <option value="overload">Quá tải đợt cao điểm</option>
+              <option value="other">Nguyên nhân khác</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label style="font-size:12px;">Nội dung giải trình chi tiết báo cáo Trưởng đơn vị & BGH *</label>
+            <input type="text" id="os-inp-overdue-reason" class="form-control" placeholder="Ghi rõ lý do trễ hạn và biện pháp khắc phục...">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group col">
+            <label style="font-size:12px;">Chuyển trạng thái hồ sơ *</label>
+            <select id="os-inp-status" class="form-control">
+              <option value="processing">⏳ Đang xử lý</option>
+              <option value="need_more_info">📝 Yêu cầu bổ sung thông tin</option>
+              <option value="ready_for_pickup">🎉 Đã có kết quả (Chờ nhận tại quầy + Sinh QR)</option>
+              <option value="completed">✅ Hoàn thành (Cấp PDF có QR xác thực)</option>
+              <option value="rejected">❌ Từ chối hồ sơ</option>
+            </select>
+          </div>
+          <div class="form-group col">
+            <label style="font-size:12px;">Vị trí nhận bản giấy (Khay / Quầy)</label>
+            <input type="text" id="os-inp-tray-location" class="form-control" placeholder="VD: Quầy số 2 - Khay A">
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top:10px;">
+          <label style="font-size:12px;">Mã vận đơn Bưu điện (VNPost / ViettelPost - nếu gửi chuyển phát)</label>
+          <input type="text" id="os-inp-postal-tracking" class="form-control" placeholder="VD: EB123456789VN">
+        </div>
+
+        <div class="form-group" style="margin-top:10px;">
+          <label style="font-size:12px;">Ghi chú / Phản hồi gửi cho Sinh viên</label>
+          <input type="text" id="os-inp-staff-note" class="form-control" placeholder="Nhập hướng dẫn hoặc ghi chú xử lý...">
+        </div>
+      </div>
+      <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:8px;">
+        <button type="button" class="btn btn-secondary" data-close="modal-os-request-detail">Đóng</button>
+        <button type="button" id="btn-os-save-process" class="btn btn-primary">💾 Lưu & Cập Nhật Tiến Độ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 5: Thêm / Sửa Danh mục Thủ tục Một cửa -->
+  <div id="modal-os-service-editor" class="modal-overlay">
+    <div class="modal-card glass-card" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3 id="os-srv-modal-title">Cấu Hình Thủ Tục Một Cửa</h3>
+        <button class="modal-close" data-close="modal-os-service-editor">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group col">
+            <label style="font-size:12px;">Mã Thủ Tục (Code) *</label>
+            <input type="text" id="os-srv-code" class="form-control code-font" placeholder="VD: XN_SINH_VIEN">
+          </div>
+          <div class="form-group col">
+            <label style="font-size:12px;">Phòng Ban Thụ Lý *</label>
+            <input type="text" id="os-srv-dept" class="form-control" placeholder="Phòng Công tác HSSV">
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:10px;">
+          <label style="font-size:12px;">Tên Thủ Tục Hành Chính *</label>
+          <input type="text" id="os-srv-name" class="form-control" placeholder="Nhập tên thủ tục...">
+        </div>
+        <div class="form-row" style="margin-top:10px;">
+          <div class="form-group col">
+            <label style="font-size:12px;">Cam Kết SLA (Giờ làm việc)</label>
+            <input type="number" id="os-srv-sla" class="form-control" value="24">
+          </div>
+          <div class="form-group col">
+            <label style="font-size:12px;">Lệ Phí (VNĐ/bản, 0 = Miễn phí)</label>
+            <input type="number" id="os-srv-fee" class="form-control" value="0">
+          </div>
+          <div class="form-group col">
+            <label style="font-size:12px;">Phí Bưu Điện (VNĐ)</label>
+            <input type="number" id="os-srv-postal-fee" class="form-control" value="30000">
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:12px;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.25);padding:12px;border-radius:10px;">
+          <label style="font-size:12px;font-weight:700;color:#93c5fd;display:block;margin-bottom:6px;">🔑 Phân quyền Tài khoản Cán bộ Thụ lý trên App (Username / Mã cán bộ)</label>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="os-srv-assignee-username" class="form-control code-font" placeholder="VD: xuanhoatrieu (hoặc nhiều mã cách nhau dấu phẩy)..." style="flex:1;">
+            <button type="button" id="btn-os-lookup-staff" class="btn btn-secondary btn-sm" style="white-space:nowrap;">🔍 Tra cứu TUAF</button>
+          </div>
+          <span class="form-hint" style="display:block;margin-top:4px;font-size:11px;color:var(--text-muted);">Chỉ những tài khoản cán bộ có mã tại đây mới thấy chức năng "Xử Lý Một Cửa" của thủ tục này trên App.</span>
+        </div>
+        <div class="form-row" style="margin-top:10px;">
+          <div class="form-group col">
+            <label style="font-size:12px;">Tên Chuyên Viên Phụ Trách</label>
+            <input type="text" id="os-srv-assignee-name" class="form-control">
+          </div>
+          <div class="form-group col">
+            <label style="font-size:12px;">Email Chuyên Viên (Nhận cảnh báo)</label>
+            <input type="email" id="os-srv-assignee-email" class="form-control">
+          </div>
+        </div>
+        <div class="form-row" style="margin-top:10px;">
+          <div class="form-group col">
+            <label style="font-size:12px;">SĐT Chuyên Viên</label>
+            <input type="text" id="os-srv-assignee-phone" class="form-control">
+          </div>
+          <div class="form-group col">
+            <label style="font-size:12px;">Email Lãnh Đạo Đơn Vị (Nhận Escalation)</label>
+            <input type="email" id="os-srv-leader-email" class="form-control">
+          </div>
+        </div>
+        <div style="display:flex;gap:20px;margin-top:14px;">
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+            <input type="checkbox" id="os-srv-allow-alumni"> Mở cho cả Cựu sinh viên (/onegate)
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+            <input type="checkbox" id="os-srv-is-active" checked> Hiển thị trên App Sinh viên
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:8px;">
+        <button type="button" class="btn btn-secondary" data-close="modal-os-service-editor">Hủy</button>
+        <button type="button" id="btn-os-save-service" class="btn btn-primary">💾 Lưu Cấu Hình</button>
       </div>
     </div>
   </div>
@@ -2723,6 +3069,10 @@ function initTabs() {
     'tab-announcements': {
       title: '📢 Đẩy Thông Báo',
       desc: 'Gửi thông báo tới sinh viên, lớp, khóa, toàn trường hoặc giảng viên qua push và hộp thư trong app.'
+    },
+    'tab-onestop': {
+      title: '📋 Phân Hệ Hành Chính Một Cửa Số (One-Stop Service)',
+      desc: 'Quản lý danh mục thủ tục động, xử lý hồ sơ sinh viên & cựu sinh viên, đối soát VietQR và giám sát kỷ luật SLA.'
     }
   };
 
@@ -4959,5 +5309,6 @@ window.loadAdminDocuments = loadAdminDocuments;
 window.initDocumentsTab = initDocumentsTab;
 </script>
 <script src="/admin/js/announcements.js"></script>
+<script src="/admin/js/onestop.js"></script>
 </body>
 </html>

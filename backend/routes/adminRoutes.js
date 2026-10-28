@@ -59,4 +59,8 @@ router.get('/inspectors/lookup', (req, res) => adminController.lookupTuafStaff(r
 // 7. Đẩy thông báo tới SV / lớp / khóa / toàn trường / giảng viên (thêm lớp khóa an toàn riêng)
 router.use('/announcements', require('./adminAnnouncements'));
 
+// 8. Quản trị Phân hệ Hành chính Một cửa Số (One-Stop Service Catalog & SLA Dashboard)
+const { oneStopAdminRouter } = require('./oneStopRoutes');
+router.use('/services', oneStopAdminRouter);
+
 module.exports = router;

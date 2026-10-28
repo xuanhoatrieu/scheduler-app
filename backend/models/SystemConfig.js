@@ -9,7 +9,6 @@ const SystemConfig = sequelize.define('SystemConfig', {
   key: {
     type: DataTypes.STRING,
     allowNull: false,
-    unique: true,
     primaryKey: true,
     comment: 'Tên biến cấu hình (VD: TUAF_DB_SERVER, DATA_SOURCE, ...)'
   },

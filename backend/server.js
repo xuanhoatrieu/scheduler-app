@@ -9,6 +9,11 @@ const { connectDB } = require('./config/db');
 const { initCronJob } = require('./jobs/syncScheduler');
 const { initInspectorCronJobs } = require('./jobs/inspectorReportJob');
 const { initPushJobs } = require('./jobs/pushJobs');
+const { initOneStopCronJobs } = require('./jobs/oneStopSlaJob');
+const { seedInitialServices } = require('./services/oneStopSeeder');
+const { renderVerificationPageHtml } = require('./services/oneStopPdfService');
+const ServiceRequest = require('./models/ServiceRequest');
+const ServiceCatalog = require('./models/ServiceCatalog');
 const configService = require('./services/configService');
 
 const authRoutes = require('./routes/auth');
@@ -20,6 +25,7 @@ const adminRoutes = require('./routes/adminRoutes');
 const documentRoutes = require('./routes/documentRoutes');
 const deviceRoutes = require('./routes/devices');
 const announcementRoutes = require('./routes/announcements');
+const { oneStopRouter } = require('./routes/oneStopRoutes');
 const { adminLocalGuard } = require('./middleware/adminAuth');
 
 const app = express();
@@ -115,6 +121,35 @@ app.get('/terms', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'terms.html'));
 });
 
+// Cổng Dịch vụ Một cửa Số cho Cựu sinh viên & Tra cứu công khai
+app.get('/onegate', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'onegate', 'index.html'));
+});
+
+// Cổng Xác thực Văn bản Điện tử QR Code Công khai (/verify/:code)
+app.get('/verify/:code', async (req, res) => {
+  try {
+    const code = String(req.params.code || '').trim();
+    const requestRow = await ServiceRequest.findOne({
+      where: { verifyQrCode: code },
+      include: [{ model: ServiceCatalog, as: 'service' }],
+    });
+    const baseUrl =
+      process.env.PUBLIC_BASE_URL ||
+      `${req.protocol}://${req.get('host') || 'scheduler.tuaf.edu.vn'}`;
+    const html = renderVerificationPageHtml({
+      request: requestRow,
+      service: requestRow?.service || null,
+      baseUrl,
+    });
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return res.status(requestRow ? 200 : 404).send(html);
+  } catch (err) {
+    console.error('❌ [VerifyQR] Error:', err.message);
+    return res.status(500).send('Lỗi tra cứu xác thực văn bản điện tử.');
+  }
+});
+
 // Admin API Routes (Protected with Local Guard)
 app.use('/api/admin', adminRoutes);
 
@@ -129,6 +164,7 @@ app.use('/api/inspector', inspectorRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/devices', deviceRoutes);
 app.use('/api/announcements', announcementRoutes);
+app.use('/api/services', oneStopRouter);
 
 // Health Check Route for Docker & Caddy
 app.get('/health', (req, res) => {
@@ -172,13 +208,15 @@ const startServices = async () => {
     // 1. Kết nối và đồng bộ PostgreSQL
     await connectDB();
     
-    // 2. Khởi tạo và nạp cấu hình hệ thống từ DB
+    // 2. Khởi tạo và nạp cấu hình hệ thống từ DB + Seed Danh mục Thủ tục Một cửa
     await configService.init();
+    await seedInitialServices();
     
     // 3. Khởi chạy lịch chạy ngầm Cron Job
     initCronJob();
     initInspectorCronJobs();
     initPushJobs();
+    initOneStopCronJobs();
     
     // 4. Khởi động Web API Server lắng nghe trên 0.0.0.0 (tất cả card mạng LAN & Local)
     app.listen(PORT, '0.0.0.0', () => {

@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Modal,
   RefreshControl,
   SafeAreaView,
@@ -15,12 +16,24 @@ import {
 import {
   getHomeroomAlerts,
   getHomeroomClasses,
+  getHomeroomOneStopRequests,
   getHomeroomRegistration,
   getHomeroomTuition,
   markHomeroomAlertRead,
+  submitHomeroomOneStopNote,
 } from '../../services/api';
 import StudentTuitionDetailModal from '../../components/StudentTuitionDetailModal';
 import { Colors } from '../../theme/colors';
+
+const ONESTOP_STATUS_META = {
+  SUBMITTED: { label: 'Mới tiếp nhận', color: '#0284c7', bg: '#e0f2fe' },
+  PROCESSING: { label: 'Đang xử lý', color: '#d97706', bg: '#fef3c7' },
+  NEED_MORE_INFO: { label: 'Yêu cầu bổ sung', color: '#e11d48', bg: '#ffe4e6' },
+  READY_FOR_PICKUP: { label: 'Chờ nhận KQ', color: '#7c3aed', bg: '#ede9fe' },
+  COMPLETED: { label: 'Hoàn thành', color: '#15803d', bg: '#dcfce7' },
+  REJECTED: { label: 'Từ chối', color: '#b91c1c', bg: '#fee2e2' },
+  CANCELLED: { label: 'Đã hủy', color: '#64748b', bg: '#f1f5f9' },
+};
 
 const formatCurrency = (amount) => {
   if (!amount && amount !== 0) return '0 đ';
@@ -69,6 +82,13 @@ export default function HomeroomScreen({ user }) {
   const [alerts, setAlerts] = useState([]);
   const [alertsLoading, setAlertsLoading] = useState(false);
 
+  // Tab 4: One-Stop Service requests of homeroom students
+  const [oneStopData, setOneStopData] = useState(null);
+  const [oneStopLoading, setOneStopLoading] = useState(false);
+  const [selectedOneStopReq, setSelectedOneStopReq] = useState(null);
+  const [homeroomNoteText, setHomeroomNoteText] = useState('');
+  const [savingNote, setSavingNote] = useState(false);
+
   const [searchQuery, setSearchQuery] = useState('');
 
   // 1. Load classes first
@@ -107,6 +127,44 @@ export default function HomeroomScreen({ user }) {
       const res = await getHomeroomAlerts();
       if (res.success) setAlerts(res.data || []);
       setAlertsLoading(false);
+    } else if (activeSubTab === 'onestop') {
+      if (!selectedClassId) return;
+      setOneStopLoading(true);
+      const res = await getHomeroomOneStopRequests(selectedClassId);
+      if (res.success) setOneStopData(res.data);
+      setOneStopLoading(false);
+    }
+  };
+
+  const handleOpenHomeroomNoteModal = (reqItem) => {
+    setSelectedOneStopReq(reqItem);
+    setHomeroomNoteText(reqItem.homeroomNote || '');
+  };
+
+  const handleSaveHomeroomNote = async () => {
+    if (!selectedOneStopReq || !selectedClassId) return;
+    if (!homeroomNoteText.trim()) {
+      Alert.alert('Thiếu thông tin', 'Vui lòng nhập ý kiến / xác nhận của GVCN.');
+      return;
+    }
+    setSavingNote(true);
+    try {
+      const res = await submitHomeroomOneStopNote(
+        selectedClassId,
+        selectedOneStopReq.id,
+        homeroomNoteText.trim()
+      );
+      if (res.success) {
+        Alert.alert('Thành công', 'Đã lưu ý kiến xác nhận của GVCN vào hồ sơ Một cửa.');
+        setSelectedOneStopReq(null);
+        await loadTabData();
+      } else {
+        Alert.alert('Không thể lưu', res.message || 'Lỗi lưu ý kiến GVCN.');
+      }
+    } catch (e) {
+      Alert.alert('Lỗi', e.message || 'Không thể lưu ý kiến GVCN.');
+    } finally {
+      setSavingNote(false);
     }
   };
 
@@ -292,15 +350,29 @@ export default function HomeroomScreen({ user }) {
         >
           <Ionicons
             name={activeSubTab === 'alerts' ? 'notifications' : 'notifications-outline'}
-            size={16}
+            size={15}
             color={activeSubTab === 'alerts' ? Colors.primary : Colors.textMuted}
           />
           <Text style={[styles.subTabText, activeSubTab === 'alerts' && styles.subTabTextActive]}>
-            Nhật ký điểm danh
+            Điểm danh
           </Text>
           {alerts.filter(a => !a.isRead).length > 0 && (
             <View style={styles.unreadDot} />
           )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.subTabBtn, activeSubTab === 'onestop' && styles.subTabActive]}
+          onPress={() => setActiveSubTab('onestop')}
+        >
+          <Ionicons
+            name={activeSubTab === 'onestop' ? 'document-text' : 'document-text-outline'}
+            size={15}
+            color={activeSubTab === 'onestop' ? Colors.primary : Colors.textMuted}
+          />
+          <Text style={[styles.subTabText, activeSubTab === 'onestop' && styles.subTabTextActive]}>
+            Một cửa
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -804,6 +876,190 @@ export default function HomeroomScreen({ user }) {
           </ScrollView>
         )
       )}
+
+      {/* ========================================================= */}
+      {/* SUB-TAB 4: ONE-STOP SERVICE REQUESTS (GVCN THEO DÕI & GHI Ý KIẾN) */}
+      {/* ========================================================= */}
+      {activeSubTab === 'onestop' && (
+        oneStopLoading ? (
+          <View style={styles.centerWrap}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+            <Text style={styles.loadingText}>Đang tải hồ sơ Một cửa của lớp chủ nhiệm...</Text>
+          </View>
+        ) : (
+          <ScrollView
+            contentContainerStyle={{ paddingBottom: 32 }}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />}
+          >
+            {oneStopData?.summary && (
+              <View style={styles.kpiContainer}>
+                <View style={styles.kpiBox}>
+                  <Text style={styles.kpiVal}>{oneStopData.summary.totalRequests || 0}</Text>
+                  <Text style={styles.kpiLbl}>Tổng hồ sơ</Text>
+                  <Text style={styles.kpiSubLbl}>Lớp chủ nhiệm</Text>
+                </View>
+                <View style={styles.kpiBox}>
+                  <Text style={[styles.kpiVal, { color: '#d97706' }]}>{oneStopData.summary.pendingCount || 0}</Text>
+                  <Text style={styles.kpiLbl}>Đang xử lý</Text>
+                  <Text style={styles.kpiSubLbl}>Chờ kết quả</Text>
+                </View>
+                <View style={styles.kpiBox}>
+                  <Text style={[styles.kpiVal, { color: '#15803d' }]}>{oneStopData.summary.completedCount || 0}</Text>
+                  <Text style={styles.kpiLbl}>Hoàn thành</Text>
+                  <Text style={styles.kpiSubLbl}>Đã trả KQ</Text>
+                </View>
+                <View style={styles.kpiBox}>
+                  <Text style={[styles.kpiVal, { color: '#b91c1c' }]}>{oneStopData.summary.rejectedCount || 0}</Text>
+                  <Text style={styles.kpiLbl}>Từ chối</Text>
+                  <Text style={styles.kpiSubLbl}>Không duyệt</Text>
+                </View>
+              </View>
+            )}
+
+            {(oneStopData?.requests || [])
+              .filter(r => !searchQuery || (r.studentName && r.studentName.toLowerCase().includes(searchQuery.toLowerCase())) || (r.studentCode && r.studentCode.toLowerCase().includes(searchQuery.toLowerCase())) || (r.requestCode && r.requestCode.toLowerCase().includes(searchQuery.toLowerCase())))
+              .map(reqItem => {
+                const stMeta = ONESTOP_STATUS_META[reqItem.status] || ONESTOP_STATUS_META.SUBMITTED;
+                return (
+                  <View key={reqItem.id} style={styles.regCard}>
+                    <View style={styles.regCardHeader}>
+                      <View style={{ flex: 1, paddingRight: 8 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: Colors.primary }}>
+                          #{reqItem.requestCode} • {reqItem.service?.department || 'Phòng chức năng'}
+                        </Text>
+                        <Text style={[styles.stuName, { marginTop: 2 }]}>
+                          {reqItem.service?.name || 'Thủ tục hành chính'}
+                        </Text>
+                        <Text style={styles.stuCode}>
+                          SV: {reqItem.studentName} ({reqItem.studentCode})
+                        </Text>
+                      </View>
+                      <View style={[styles.statusBadge, { backgroundColor: stMeta.bg, borderColor: stMeta.color + '40', paddingHorizontal: 8, paddingVertical: 4 }]}>
+                        <Text style={[styles.statusBadgeText, { color: stMeta.color, fontSize: 11 }]}>
+                          {stMeta.label}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {reqItem.studentNote ? (
+                      <View style={{ marginTop: 8, backgroundColor: '#f8fafc', padding: 8, borderRadius: 8 }}>
+                        <Text style={{ fontSize: 11, color: Colors.textSecondary }}>
+                          💬 Lý do / Ghi chú SV: <Text style={{ color: Colors.textPrimary, fontWeight: '600' }}>{reqItem.studentNote}</Text>
+                        </Text>
+                      </View>
+                    ) : null}
+
+                    {reqItem.homeroomNote ? (
+                      <View style={{ marginTop: 8, backgroundColor: '#f5f3ff', padding: 8, borderRadius: 8, borderWidth: 1, borderColor: '#ddd6fe' }}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#5b21b6' }}>
+                          🏫 Ý kiến xác nhận của GVCN ({reqItem.homeroomNotedBy || 'GVCN'}):
+                        </Text>
+                        <Text style={{ fontSize: 12, color: '#4c1d95', marginTop: 2 }}>
+                          {reqItem.homeroomNote}
+                        </Text>
+                      </View>
+                    ) : null}
+
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#f1f5f9' }}>
+                      <Text style={{ fontSize: 11, color: Colors.textMuted }}>
+                        Ngày nộp: {reqItem.createdAt ? new Date(reqItem.createdAt).toLocaleDateString('vi-VN') : ''}
+                      </Text>
+                      <TouchableOpacity
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.primary + '15', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 }}
+                        onPress={() => handleOpenHomeroomNoteModal(reqItem)}
+                      >
+                        <Ionicons name="create-outline" size={14} color={Colors.primary} />
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.primary }}>
+                          {reqItem.homeroomNote ? 'Sửa ý kiến GVCN' : 'Ghi ý kiến GVCN'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              })}
+
+            {(!oneStopData?.requests || oneStopData.requests.length === 0) && (
+              <View style={styles.emptyWrap}>
+                <Ionicons name="document-text-outline" size={56} color={Colors.borderLight} />
+                <Text style={styles.emptyText}>Chưa có hồ sơ Một cửa nào của lớp này</Text>
+                <Text style={styles.emptySub}>
+                  Khi sinh viên trong lớp chủ nhiệm gửi yêu cầu Dịch vụ Một cửa (Xin giấy xác nhận, bảo lưu, học bổng...), danh sách sẽ hiển thị tại đây để GVCN theo dõi và ghi ý kiến xác nhận.
+                </Text>
+              </View>
+            )}
+          </ScrollView>
+        )
+      )}
+
+      {/* MODAL: GHI Ý KIẾN XÁC NHẬN CỦA GVCN CHO HỒ SƠ MỘT CỬA */}
+      <Modal
+        visible={Boolean(selectedOneStopReq)}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSelectedOneStopReq(null)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <View style={{ flex: 1, paddingRight: 10 }}>
+                <Text style={styles.modalTitle}>Ý kiến Xác nhận của GVCN</Text>
+                <Text style={styles.modalSub}>
+                  #{selectedOneStopReq?.requestCode} • {selectedOneStopReq?.studentName} ({selectedOneStopReq?.studentCode})
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.modalCloseBtn}
+                onPress={() => setSelectedOneStopReq(null)}
+              >
+                <Ionicons name="close" size={20} color={Colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={{ fontSize: 13, fontWeight: '700', color: Colors.textPrimary, marginBottom: 6 }}>
+              Thủ tục: {selectedOneStopReq?.service?.name}
+            </Text>
+            <Text style={{ fontSize: 12, color: Colors.textSecondary, marginBottom: 10 }}>
+              Ý kiến xác nhận của GVCN sẽ được đính kèm trực tiếp vào hồ sơ để chuyên viên phòng ban phụ trách ({selectedOneStopReq?.service?.department}) căn cứ giải quyết.
+            </Text>
+
+            <TextInput
+              style={{
+                borderWidth: 1,
+                borderColor: Colors.borderLight,
+                borderRadius: 10,
+                padding: 12,
+                minHeight: 90,
+                textAlignVertical: 'top',
+                fontSize: 13,
+                color: Colors.textPrimary,
+                backgroundColor: '#f8fafc',
+              }}
+              multiline
+              placeholder="Nhập nhận xét / xác nhận của GVCN về tình hình học tập, hoàn cảnh của sinh viên..."
+              placeholderTextColor={Colors.textMuted}
+              value={homeroomNoteText}
+              onChangeText={setHomeroomNoteText}
+            />
+
+            <TouchableOpacity
+              style={{
+                marginTop: 14,
+                backgroundColor: Colors.primary,
+                paddingVertical: 12,
+                borderRadius: 10,
+                alignItems: 'center',
+                opacity: savingNote ? 0.6 : 1,
+              }}
+              disabled={savingNote}
+              onPress={handleSaveHomeroomNote}
+            >
+              <Text style={{ color: '#fff', fontWeight: '800', fontSize: 14 }}>
+                {savingNote ? 'Đang lưu...' : 'Lưu ý kiến xác nhận GVCN'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* MODAL: CHI TIẾT ĐĂNG KÝ HỌC CỦA SINH VIÊN */}
       <Modal

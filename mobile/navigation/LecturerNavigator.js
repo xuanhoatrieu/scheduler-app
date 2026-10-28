@@ -13,6 +13,7 @@ import LecturerUtilitiesScreen from '../screens/lecturer/LecturerUtilitiesScreen
 import TeachingPaymentScreen from '../screens/lecturer/TeachingPaymentScreen';
 import InspectorFeedbackScreen from '../screens/lecturer/InspectorFeedbackScreen';
 import AcademicDocumentsScreen from '../screens/lecturer/AcademicDocumentsScreen';
+import StaffOneStopScreen from '../screens/lecturer/StaffOneStopScreen';
 import { Colors } from '../theme/colors';
 import { flushPendingNavigation, navigationRef } from './navigationRef';
 
@@ -40,6 +41,9 @@ function UtilitiesTab({ user }) {
   }
   if (currentScreen === 'AcademicDocuments') {
     return <AcademicDocumentsScreen onBack={() => setCurrentScreen('hub')} />;
+  }
+  if (currentScreen === 'StaffOneStop') {
+    return <StaffOneStopScreen user={user} onBack={() => setCurrentScreen('hub')} />;
   }
 
   return (

@@ -293,19 +293,20 @@ class DatabaseStrategy extends ScheduleStrategy {
     const p = parseInt(period);
     if (p === 0 || p === 1 || isNaN(p)) return '07:00';
     if (p === 2) return '07:55';
-    if (p === 3) return '08:50';
+    if (p === 3) return '08:55';
     if (p === 4) return '09:55';
     if (p === 5) return '10:50';
     if (p === 6) return '13:15';
     if (p === 7) return '14:10';
-    if (p === 8) return '15:15';
+    if (p === 8) return '15:10';
     if (p === 9) return '16:10';
     if (p === 10) return '17:05';
-    if (p === 11) return '18:00';
-    if (p === 12) return '18:50';
-    if (p === 13) return '19:40';
-    if (p === 14) return '20:30';
-    if (p === 15) return '21:15';
+    if (p === 11) return '18:25';
+    if (p === 12) return '19:20';
+    if (p === 13) return '20:20';
+    if (p === 14) return '21:00';
+    if (p === 15) return '21:40';
+    if (p === 16) return '22:20';
     return '07:00';
   }
 

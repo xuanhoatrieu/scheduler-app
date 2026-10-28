@@ -31,6 +31,22 @@ const STATUS_CONFIG = {
   pending: { label: 'Chưa ghi', color: Colors.textMuted, bg: '#f5f5f5' },
 };
 
+const EXAM_VIOLATION_LABELS = {
+  reprimand: { label: 'Khiển trách', color: '#f57c00', bg: '#fff3e0' },
+  warning: { label: 'Cảnh cáo', color: '#e65100', bg: '#fbe9e7' },
+  suspension: { label: 'Đình chỉ thi', color: '#c62828', bg: '#ffebee' },
+  late_disqualified: { label: 'Đến muộn cấm thi', color: '#6a1b9a', bg: '#f3e5f5' },
+  other: { label: 'Vi phạm khác', color: '#37474f', bg: '#eceff1' },
+};
+
+const EXAM_ROOM_STATUS_LABELS = {
+  normal: { label: 'Bình thường', color: '#2e7d32', bg: '#e8f5e9' },
+  proctor_late: { label: 'CBCT đi muộn', color: '#e65100', bg: '#fff3e0' },
+  proctor_changed: { label: 'Đổi CBCT', color: '#0277bd', bg: '#e1f5fe' },
+  proctor_absent: { label: 'Vắng CBCT', color: '#c62828', bg: '#ffebee' },
+  other_issue: { label: 'Bất thường phòng thi', color: '#ad1457', bg: '#fce4ec' },
+};
+
 const getStatusInfo = (d) => {
   if (d.status === 'rescheduled') {
     if (d.hasPermission === true) {
@@ -174,6 +190,11 @@ export default function InspectorDashboardScreen({ user }) {
                   'Thành công',
                   `Đã gửi báo cáo thanh tra thành công đến:\n${res.recipients?.join(', ') || 'Ban Giám hiệu'}`
                 );
+              } else if (res.skipped) {
+                Alert.alert(
+                  'Không gửi báo cáo',
+                  res.message || 'Ngày hôm nay bình thường hoặc không có hoạt động kiểm tra cần báo cáo.'
+                );
               } else {
                 Alert.alert('Không thành công', res.message || 'Lỗi gửi email báo cáo');
               }
@@ -208,6 +229,8 @@ export default function InspectorDashboardScreen({ user }) {
               });
               if (res.success) {
                 Alert.alert('Thành công', `Đã gửi báo cáo ${label.toLowerCase()} thành công!`);
+              } else if (res.skipped) {
+                Alert.alert('Không gửi báo cáo', res.message);
               } else {
                 Alert.alert('Không thành công', res.message || 'Lỗi gửi email');
               }
@@ -235,8 +258,15 @@ export default function InspectorDashboardScreen({ user }) {
 
   const todaySummary = todayData?.summary || {};
   const todayDetails = todayData?.details || [];
+  const todayExamSummary = todayData?.examSummary || {};
+  const todayExamViolations = todayData?.examViolations || [];
+  const todayExamRoomIssues = todayData?.examRoomIssues || [];
+
   const reportSummary = reportData?.summary || {};
   const byLecturer = reportData?.byLecturer || [];
+  const reportExamSummary = reportData?.examSummary || {};
+  const reportExamViolations = reportData?.examViolations || [];
+  const reportExamRoomIssues = reportData?.examRoomIssues || [];
 
   const pieData = [
     { name: 'Đúng giờ', value: todaySummary.onTime || 0, color: '#2e7d32' },
@@ -251,10 +281,10 @@ export default function InspectorDashboardScreen({ user }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+          <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>Báo Cáo</Text>
-          <Text style={styles.headerSubtitle}>Tổng quan kiểm tra giảng dạy</Text>
+          <Text style={styles.headerTitle}>Báo Cáo Thanh Tra</Text>
+          <Text style={styles.headerSubtitle}>Tổng quan giảng dạy & coi thi</Text>
         </View>
         <TouchableOpacity style={styles.syncBtn} onPress={onRefresh} disabled={refreshing}>
           {refreshing ? (
@@ -343,7 +373,7 @@ export default function InspectorDashboardScreen({ user }) {
                 <Text style={styles.emailCardTitle}>Báo cáo Ban Giám hiệu</Text>
               </View>
               <Text style={styles.emailCardDesc}>
-                Tự động gửi lúc 18:00 hàng ngày qua Gmail TUAF. Bạn có thể nhấn để gửi ngay tức thì.
+                Chỉ gửi lúc 18:00 khi trong ngày có sự kiện/vi phạm thanh tra (nếu bình thường hết hoặc ngày nghỉ không có lớp sẽ không gửi).
               </Text>
             </View>
             <TouchableOpacity
@@ -360,6 +390,109 @@ export default function InspectorDashboardScreen({ user }) {
                 </>
               )}
             </TouchableOpacity>
+          </View>
+
+          {/* Thống kê Thanh tra Coi thi & Vi phạm quy chế thi Hôm nay */}
+          <View style={styles.chartCard}>
+            <Text style={styles.chartTitle}>
+              Tình hình coi thi & phòng thi hôm nay
+            </Text>
+            <View style={styles.reportStats}>
+              <View style={styles.reportStatItem}>
+                <Text style={styles.reportStatValue}>
+                  {todayExamSummary.inspectedRooms || 0}
+                </Text>
+                <Text style={styles.reportStatLabel}>Phòng đã KT</Text>
+              </View>
+              <View style={styles.reportStatItem}>
+                <Text style={[styles.reportStatValue, { color: '#2e7d32' }]}>
+                  {todayExamSummary.normalRooms || 0}
+                </Text>
+                <Text style={styles.reportStatLabel}>Bình thường</Text>
+              </View>
+              <View style={styles.reportStatItem}>
+                <Text style={[styles.reportStatValue, { color: '#e65100' }]}>
+                  {todayExamSummary.issueRooms || 0}
+                </Text>
+                <Text style={styles.reportStatLabel}>Phòng/CBCT bất thường</Text>
+              </View>
+              <View style={styles.reportStatItem}>
+                <Text style={[styles.reportStatValue, { color: '#c62828' }]}>
+                  {todayExamSummary.totalViolations || 0}
+                </Text>
+                <Text style={styles.reportStatLabel}>SV vi phạm thi</Text>
+              </View>
+            </View>
+
+            {todayExamRoomIssues.length > 0 && (
+              <View style={{ marginTop: 12 }}>
+                <Text style={styles.subListTitle}>
+                  Ghi nhận phòng thi / CBCT ({todayExamRoomIssues.length})
+                </Text>
+                {todayExamRoomIssues.map((rm, idx) => {
+                  const stInfo =
+                    EXAM_ROOM_STATUS_LABELS[rm.status] ||
+                    EXAM_ROOM_STATUS_LABELS.other_issue;
+                  return (
+                    <View key={idx} style={styles.examIssueRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.examIssueCourse}>
+                          Phòng {rm.room || '—'} • {rm.courseName}
+                        </Text>
+                        <Text style={styles.examIssueMeta}>
+                          CBCT: {rm.proctors || '—'}
+                          {rm.lateMinutes > 0 ? ` • Muộn ${rm.lateMinutes} phút` : ''}
+                          {rm.substituteProctor
+                            ? ` • CBCT thay: ${rm.substituteProctor}`
+                            : ''}
+                        </Text>
+                        {rm.note ? (
+                          <Text style={styles.examIssueNote}>📝 {rm.note}</Text>
+                        ) : null}
+                      </View>
+                      <View style={[styles.statusBadge, { backgroundColor: stInfo.bg }]}>
+                        <Text style={[styles.statusBadgeText, { color: stInfo.color }]}>
+                          {stInfo.label}
+                        </Text>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+
+            {todayExamViolations.length > 0 && (
+              <View style={{ marginTop: 12 }}>
+                <Text style={[styles.subListTitle, { color: '#c62828' }]}>
+                  Biên bản sinh viên vi phạm quy chế thi ({todayExamViolations.length})
+                </Text>
+                {todayExamViolations.map((v, idx) => {
+                  const vInfo =
+                    EXAM_VIOLATION_LABELS[v.violationType] ||
+                    EXAM_VIOLATION_LABELS.other;
+                  return (
+                    <View key={idx} style={styles.examViolationRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.examIssueCourse}>
+                          {v.studentName} ({v.studentCode}) — Phòng {v.room || '—'}
+                        </Text>
+                        <Text style={styles.examIssueMeta}>
+                          Môn: {v.courseName} ({v.examTime || v.periodText || '—'})
+                        </Text>
+                        <Text style={styles.examViolationAction}>
+                          Hành vi: {v.violationAction}
+                        </Text>
+                      </View>
+                      <View style={[styles.statusBadge, { backgroundColor: vInfo.bg }]}>
+                        <Text style={[styles.statusBadgeText, { color: vInfo.color }]}>
+                          {vInfo.label}
+                        </Text>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
           </View>
 
           <Text style={styles.sectionTitle}>Chi tiết lớp học ({todayDetails.length})</Text>
@@ -499,6 +632,101 @@ export default function InspectorDashboardScreen({ user }) {
               <Text style={styles.avgNote}>
                 Thời gian đi muộn TB: {reportSummary.avgLateMinutes} phút/buổi
               </Text>
+            )}
+          </View>
+
+          {/* Thống kê Thanh tra Coi thi & Vi phạm quy chế thi theo kỳ */}
+          <View style={styles.chartCard}>
+            <Text style={styles.chartTitle}>Thống kê coi thi & vi phạm quy chế thi</Text>
+            <View style={styles.reportStats}>
+              <View style={styles.reportStatItem}>
+                <Text style={styles.reportStatValue}>
+                  {reportExamSummary.inspectedRooms || 0}
+                </Text>
+                <Text style={styles.reportStatLabel}>Phòng đã KT</Text>
+              </View>
+              <View style={styles.reportStatItem}>
+                <Text style={[styles.reportStatValue, { color: '#e65100' }]}>
+                  {reportExamSummary.issueRooms || 0}
+                </Text>
+                <Text style={styles.reportStatLabel}>CBCT/Phòng bất thường</Text>
+              </View>
+              <View style={styles.reportStatItem}>
+                <Text style={[styles.reportStatValue, { color: '#c62828' }]}>
+                  {reportExamSummary.totalViolations || 0}
+                </Text>
+                <Text style={styles.reportStatLabel}>Tổng SV vi phạm</Text>
+              </View>
+              <View style={styles.reportStatItem}>
+                <Text style={[styles.reportStatValue, { color: '#b71c1c' }]}>
+                  {reportExamSummary.suspension || 0}
+                </Text>
+                <Text style={styles.reportStatLabel}>Đình chỉ thi</Text>
+              </View>
+            </View>
+
+            {reportExamViolations.length > 0 && (
+              <View style={{ marginTop: 12 }}>
+                <Text style={[styles.subListTitle, { color: '#c62828' }]}>
+                  Danh sách sinh viên vi phạm thi ({reportExamViolations.length})
+                </Text>
+                {reportExamViolations.slice(0, 15).map((v, idx) => {
+                  const vInfo =
+                    EXAM_VIOLATION_LABELS[v.violationType] ||
+                    EXAM_VIOLATION_LABELS.other;
+                  return (
+                    <View key={idx} style={styles.examViolationRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.examIssueCourse}>
+                          {v.date} • {v.studentName} ({v.studentCode})
+                        </Text>
+                        <Text style={styles.examIssueMeta}>
+                          Phòng {v.room || '—'} • {v.courseName}
+                        </Text>
+                        <Text style={styles.examViolationAction}>
+                          Hành vi: {v.violationAction}
+                        </Text>
+                      </View>
+                      <View style={[styles.statusBadge, { backgroundColor: vInfo.bg }]}>
+                        <Text style={[styles.statusBadgeText, { color: vInfo.color }]}>
+                          {vInfo.label}
+                        </Text>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+
+            {reportExamRoomIssues.length > 0 && (
+              <View style={{ marginTop: 12 }}>
+                <Text style={styles.subListTitle}>
+                  Phòng thi / CBCT có ghi nhận bất thường ({reportExamRoomIssues.length})
+                </Text>
+                {reportExamRoomIssues.slice(0, 10).map((rm, idx) => {
+                  const stInfo =
+                    EXAM_ROOM_STATUS_LABELS[rm.status] ||
+                    EXAM_ROOM_STATUS_LABELS.other_issue;
+                  return (
+                    <View key={idx} style={styles.examIssueRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.examIssueCourse}>
+                          {rm.date} • Phòng {rm.room || '—'} • {rm.courseName}
+                        </Text>
+                        <Text style={styles.examIssueMeta}>
+                          CBCT: {rm.proctors || '—'}
+                          {rm.note ? ` • Ghi chú: ${rm.note}` : ''}
+                        </Text>
+                      </View>
+                      <View style={[styles.statusBadge, { backgroundColor: stInfo.bg }]}>
+                        <Text style={[styles.statusBadgeText, { color: stInfo.color }]}>
+                          {stInfo.label}
+                        </Text>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
             )}
           </View>
 
@@ -774,4 +1002,53 @@ const styles = StyleSheet.create({
 
   emptyWrap: { alignItems: 'center', paddingTop: 40 },
   emptyText: { fontSize: 14, color: Colors.textSecondary, marginTop: 8 },
+
+  subListTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: Colors.textPrimary,
+    marginBottom: 6,
+  },
+  examIssueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.background,
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 6,
+    gap: 8,
+  },
+  examViolationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff5f5',
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 6,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#ffcdd2',
+  },
+  examIssueCourse: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+  },
+  examIssueMeta: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
+  examIssueNote: {
+    fontSize: 11,
+    color: Colors.textPrimary,
+    marginTop: 2,
+    fontStyle: 'italic',
+  },
+  examViolationAction: {
+    fontSize: 11,
+    color: '#c62828',
+    fontWeight: '600',
+    marginTop: 2,
+  },
 });

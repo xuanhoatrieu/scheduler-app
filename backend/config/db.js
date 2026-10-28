@@ -38,6 +38,11 @@ const connectDB = async () => {
     require('../models/UserNotifyState');
     require('../models/Announcement');
     require('../models/AnnouncementRecipient');
+    require('../models/ExamViolation');
+    require('../models/ExamRoomInspection');
+    require('../models/ServiceCatalog');
+    require('../models/ServiceRequest');
+    require('../models/ServiceRequestLog');
 
     await sequelize.authenticate();
     console.log('📡 PostgreSQL Connected successfully via Sequelize ORM!');

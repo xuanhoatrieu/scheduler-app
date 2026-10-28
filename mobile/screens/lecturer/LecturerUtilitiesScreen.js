@@ -11,7 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { getTeachingPayment } from '../../services/api';
+import { getMyOneStopStaffRole, getTeachingPayment } from '../../services/api';
 import { Colors } from '../../theme/colors';
 
 export default function LecturerUtilitiesScreen({ user, onNavigate }) {
@@ -21,13 +21,28 @@ export default function LecturerUtilitiesScreen({ user, onNavigate }) {
     totalPeriods: 0,
     totalConvertedHours: 0,
   });
+  const [oneStopRole, setOneStopRole] = useState({
+    isAssignedStaff: false,
+    assignedServices: [],
+    pendingCount: 0,
+  });
   const [refreshing, setRefreshing] = useState(false);
 
   const loadWorkload = async () => {
     try {
-      const res = await getTeachingPayment();
+      const [res, roleRes] = await Promise.all([
+        getTeachingPayment(),
+        getMyOneStopStaffRole(),
+      ]);
       if (res && res.success && res.summary) {
         setSummary(res.summary);
+      }
+      if (roleRes && roleRes.success) {
+        setOneStopRole({
+          isAssignedStaff: Boolean(roleRes.isAssignedStaff),
+          assignedServices: roleRes.assignedServices || [],
+          pendingCount: Number(roleRes.pendingCount) || 0,
+        });
       }
     } catch (e) {
       // Quiet fail
@@ -177,7 +192,29 @@ export default function LecturerUtilitiesScreen({ user, onNavigate }) {
             <Text style={styles.gridDesc}>Văn bản & biểu mẫu chuẩn</Text>
           </TouchableOpacity>
 
-          {/* 5. ĐĂNG KÝ BÁO NGHỈ / DẠY BÙ (MỜ) */}
+          {/* 5. XỬ LÝ MỘT CỬA SỐ (CHỈ HIỆN VỚI CHUYÊN VIÊN ĐƯỢC ADMIN GÁN QUYỀN THỤ LÝ) */}
+          {oneStopRole.isAssignedStaff && (
+            <TouchableOpacity
+              style={styles.gridCard}
+              activeOpacity={0.8}
+              onPress={() => onNavigate('StaffOneStop')}
+            >
+              {oneStopRole.pendingCount > 0 && (
+                <View style={[styles.comingSoonBadge, { backgroundColor: '#dc2626' }]}>
+                  <Text style={[styles.comingSoonText, { color: '#fff' }]}>
+                    {oneStopRole.pendingCount} chờ duyệt
+                  </Text>
+                </View>
+              )}
+              <View style={[styles.gridIconWrap, { backgroundColor: '#dcfce7' }]}>
+                <Ionicons name="file-tray-full" size={24} color="#166534" />
+              </View>
+              <Text style={styles.gridTitle}>Xử Lý Một Cửa</Text>
+              <Text style={styles.gridDesc}>Duyệt hồ sơ SV & SLA</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* 6. ĐĂNG KÝ BÁO NGHỈ / DẠY BÙ (MỜ) */}
           <TouchableOpacity
             style={[styles.gridCard, styles.gridCardDisabled]}
             activeOpacity={0.7}

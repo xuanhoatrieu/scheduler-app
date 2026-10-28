@@ -7,12 +7,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ProfileScreen from '../screens/ProfileScreen';
 import AttendanceScreen from '../screens/inspector/AttendanceScreen';
 import InspectorDashboardScreen from '../screens/inspector/InspectorDashboardScreen';
+import InspectorExamsScreen from '../screens/inspector/InspectorExamsScreen';
 import { Colors } from '../theme/colors';
 
 const Tab = createBottomTabNavigator();
 
 const TAB_ICONS = {
   Attendance: { active: 'clipboard', inactive: 'clipboard-outline' },
+  Exams: { active: 'document-text', inactive: 'document-text-outline' },
   Dashboard: { active: 'stats-chart', inactive: 'stats-chart-outline' },
   Profile: { active: 'person-circle', inactive: 'person-circle-outline' },
 };
@@ -27,10 +29,9 @@ export default function InspectorNavigator({ user, onLogout, onSwitchRole }) {
       <Tab.Navigator
         screenOptions={({ route }) => ({
           headerShown: false,
-          tabBarIcon: ({ focused, color, size }) => {
-            const iconName = focused
-              ? TAB_ICONS[route.name].active
-              : TAB_ICONS[route.name].inactive;
+          tabBarIcon: ({ focused, color }) => {
+            const iconConf = TAB_ICONS[route.name] || TAB_ICONS.Attendance;
+            const iconName = focused ? iconConf.active : iconConf.inactive;
             return (
               <View style={focused ? styles.activeIconWrap : null}>
                 <Ionicons name={iconName} size={focused ? 24 : 22} color={color} />
@@ -51,8 +52,11 @@ export default function InspectorNavigator({ user, onLogout, onSwitchRole }) {
           tabBarItemStyle: styles.tabBarItem,
         })}
       >
-        <Tab.Screen name="Attendance" options={{ tabBarLabel: 'Điểm Danh' }}>
+        <Tab.Screen name="Attendance" options={{ tabBarLabel: 'Giảng Dạy' }}>
           {(props) => <AttendanceScreen {...props} user={user} onSwitchRole={onSwitchRole} />}
+        </Tab.Screen>
+        <Tab.Screen name="Exams" options={{ tabBarLabel: 'Lịch Thi' }}>
+          {(props) => <InspectorExamsScreen {...props} user={user} onSwitchRole={onSwitchRole} />}
         </Tab.Screen>
         <Tab.Screen name="Dashboard" options={{ tabBarLabel: 'Báo Cáo' }}>
           {(props) => <InspectorDashboardScreen {...props} user={user} onSwitchRole={onSwitchRole} />}
