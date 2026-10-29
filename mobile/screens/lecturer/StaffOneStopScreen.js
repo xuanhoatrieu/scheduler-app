@@ -91,7 +91,7 @@ export default function StaffOneStopScreen({ onBack }) {
         : item.status
     );
     setStaffNote(item.staffNote || '');
-    setTrayLocation(item.trayLocation || '');
+    setTrayLocation(item.trayLocation || item.pickupLocation || item.service?.pickupLocation || '');
     setPostalTracking(item.postalTrackingNumber || '');
     setOverdueCategory(item.overdueReasonCategory || 'waiting_signature');
     setOverdueReason(item.overdueReason || '');
@@ -428,12 +428,12 @@ export default function StaffOneStopScreen({ onBack }) {
                   </TouchableOpacity>
                 ))}
 
-                <Text style={styles.lbl}>Vị trí nhận bản giấy (Khay / Quầy)</Text>
+                <Text style={styles.lbl}>Nơi nhận kết quả trực tiếp</Text>
                 <TextInput
                   style={styles.input}
                   value={trayLocation}
                   onChangeText={setTrayLocation}
-                  placeholder="VD: Quầy số 2 - Khay A"
+                  placeholder="Nhập nơi nhận kết quả..."
                 />
 
                 <Text style={styles.lbl}>Mã vận đơn Bưu điện (nếu gửi chuyển phát)</Text>

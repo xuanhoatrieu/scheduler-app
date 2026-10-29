@@ -335,32 +335,34 @@ export default function CurriculumView({ user }) {
                       { color: gradReqs.ngoaiNgu.isMet ? '#059669' : '#D97706' },
                     ]}
                   >
-                    {gradReqs.ngoaiNgu.isMet ? 'Đạt cả 3 học phần' : 'Chưa đạt chuẩn C'}
+                    {gradReqs.ngoaiNgu.isMet
+                      ? 'Đạt (3/3 học phần)'
+                      : `Chưa đạt (${gradReqs.ngoaiNgu.passedCount ?? 0}/3 môn ≥ C)`}
                   </Text>
                 </View>
               </View>
               <Text style={styles.reqCourseNote}>
-                Yêu cầu: Cả 3 học phần Tiếng Anh 1, 2, 3 đều phải đạt từ điểm C trở lên
+                Yêu cầu: Đủ 3 học phần Tiếng Anh (Tiếng Anh 1, 2, 3) đạt từ điểm C trở lên
               </Text>
               {gradReqs.ngoaiNgu.courses && (
                 <View style={styles.subCourseList}>
                   {gradReqs.ngoaiNgu.courses.map((c, i) => (
                     <View key={i} style={styles.subCourseRow}>
                       <Ionicons
-                        name={c.isMet ? 'checkmark-circle' : 'close-circle'}
+                        name={c.isMet ? 'checkmark-circle' : c.letterGrade ? 'close-circle' : 'time-outline'}
                         size={14}
-                        color={c.isMet ? '#059669' : '#DC2626'}
+                        color={c.isMet ? '#059669' : c.letterGrade ? '#DC2626' : '#64748B'}
                       />
                       <Text style={styles.subCourseName}>
-                        {c.courseName} ({c.courseCode}):
+                        {c.courseName || 'Tiếng Anh'} {c.courseCode ? `(${c.courseCode})` : ''}:
                       </Text>
                       <Text
                         style={[
                           styles.subCourseGrade,
-                          { color: c.isMet ? '#059669' : '#DC2626' },
+                          { color: c.isMet ? '#059669' : c.letterGrade ? '#DC2626' : '#64748B' },
                         ]}
                       >
-                        {c.letterGrade ? `Điểm ${c.letterGrade} (${c.isMet ? 'Đạt' : 'Chưa đạt C'})` : 'Chưa học'}
+                        {c.letterGrade ? `Điểm ${c.letterGrade} (${c.isMet ? 'Đạt ≥ C' : 'Chưa đạt C'})` : 'Chưa học'}
                       </Text>
                     </View>
                   ))}

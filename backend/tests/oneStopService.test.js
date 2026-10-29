@@ -30,6 +30,7 @@ const {
   parseAssigneeUsernames,
   isStaffAssignedToService,
 } = require('../routes/oneStopRoutes');
+const scheduleRouter = require('../routes/schedule');
 
 test('SLA Calculator: isWeekendVN nhận diện đúng Thứ 7, Chủ Nhật và Ngày thường theo giờ VN', () => {
   // 2026-10-16 là Thứ Sáu
@@ -212,4 +213,66 @@ test('OneStop RBAC: Phân quyền chính xác Giảng viên thường vs Chuyên
     role: 'staff',
   };
   assert.equal(isStaffAssignedToService(assignedStaffById, serviceCthssv), true);
+});
+
+test('OneStop Seeder: Mọi thủ tục đều có cấu hình pickupLocation và bỏ trường graduationYear trên App SV', () => {
+  for (const srv of INITIAL_SERVICES) {
+    assert.ok(
+      srv.pickupLocation && String(srv.pickupLocation).trim().length > 0,
+      `Thủ tục ${srv.code} phải có pickupLocation mặc định`
+    );
+    const hasGradYear = (srv.formSchema || []).some(
+      (f) => (f.name || f.key) === 'graduationYear'
+    );
+    assert.equal(
+      hasGradYear,
+      false,
+      `Thủ tục ${srv.code} không được bắt sinh viên đang học nhập graduationYear`
+    );
+  }
+});
+
+test('Graduation Standards: Chuẩn Ngoại ngữ yêu cầu đủ 3 học phần Tiếng Anh đạt C trở lên & Chuẩn Tin học (THĐC / CNS&AI >= C)', () => {
+  const evaluateGraduationStandards = scheduleRouter.evaluateGraduationStandards;
+
+  // 1. Mới chỉ đạt 1 môn Tiếng Anh 2 (Điểm C) + Nhập môn CNS & AI (Điểm B) + môn chuyên ngành AI
+  const partialRes = evaluateGraduationStandards([
+    { courseCode: 'NN703012', courseName: 'Tiếng Anh 2', letterGrade: 'C', totalGrade4: 2.0 },
+    {
+      courseCode: 'NN703008',
+      courseName: 'Nhập môn Công nghệ số và Trí tuệ nhân tạo',
+      letterGrade: 'B',
+      totalGrade4: 3.0,
+    },
+  ]);
+  assert.equal(partialRes.foreignLanguage.isPassed, false);
+  assert.equal(partialRes.foreignLanguage.passedCount, 1);
+  assert.equal(partialRes.foreignLanguage.requiredCount, 3);
+  assert.equal(partialRes.foreignLanguage.courses.length, 3);
+  assert.equal(partialRes.informationTechnology.isPassed, true);
+  assert.equal(partialRes.informationTechnology.letterGrade, 'B');
+
+  // 2. Học 3 môn Tiếng Anh nhưng Tiếng Anh 3 chỉ đạt D (1.0 < 2.0) -> Chưa đạt chuẩn Ngoại ngữ
+  const twoPassedOneD = evaluateGraduationStandards([
+    { courseCode: 'NN703011', courseName: 'Tiếng Anh 1', letterGrade: 'B', totalGrade4: 3.0 },
+    { courseCode: 'NN703012', courseName: 'Tiếng Anh 2', letterGrade: 'C', totalGrade4: 2.0 },
+    { courseCode: 'NN702013', courseName: 'Tiếng Anh 3', letterGrade: 'D', totalGrade4: 1.0 },
+    { courseCode: 'QT703051', courseName: 'Nền tảng của Trí tuệ nhân tạo', letterGrade: 'A', totalGrade4: 4.0 },
+  ]);
+  assert.equal(twoPassedOneD.foreignLanguage.isPassed, false);
+  assert.equal(twoPassedOneD.foreignLanguage.passedCount, 2);
+  // Môn chuyên ngành QT703051 không được tính nhầm là Chuẩn đầu ra Tin học
+  assert.equal(twoPassedOneD.informationTechnology.isPassed, false);
+
+  // 3. Đạt đủ cả 3 học phần Tiếng Anh 1, 2, 3 từ C trở lên + Tin học đại cương đạt C -> Đạt cả 2 chuẩn
+  const fullPass = evaluateGraduationStandards([
+    { courseCode: 'NN703011', courseName: 'Tiếng Anh 1', letterGrade: 'C+', totalGrade4: 2.5 },
+    { courseCode: 'NN703012', courseName: 'Tiếng Anh 2', letterGrade: 'C', totalGrade4: 2.0 },
+    { courseCode: 'NN702013', courseName: 'Tiếng Anh 3', letterGrade: 'B', totalGrade4: 3.0 },
+    { courseCode: 'NN702008', courseName: 'Tin học đại cương', letterGrade: 'C', totalGrade4: 2.0 },
+  ]);
+  assert.equal(fullPass.foreignLanguage.isPassed, true);
+  assert.equal(fullPass.foreignLanguage.passedCount, 3);
+  assert.equal(fullPass.informationTechnology.isPassed, true);
+  assert.equal(fullPass.informationTechnology.courseName, 'Tin học đại cương');
 });

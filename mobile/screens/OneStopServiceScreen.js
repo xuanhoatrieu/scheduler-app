@@ -40,8 +40,8 @@ const STATUS_META = {
 const DELIVERY_LABELS = {
   digital_pdf: '📄 Bản điện tử PDF có QR xác thực (Nhận ngay trên App)',
   digital: '📄 Bản điện tử PDF có QR xác thực (Nhận ngay trên App)',
-  office_pickup: '🏢 Nhận bản giấy đóng dấu đỏ tại Quầy Một cửa',
-  physical_pickup: '🏢 Nhận bản giấy đóng dấu đỏ tại Quầy Một cửa',
+  office_pickup: '🏢 Nhận bản giấy trực tiếp',
+  physical_pickup: '🏢 Nhận bản giấy trực tiếp',
   postal_delivery: '📮 Gửi thư bảo đảm qua Bưu điện về tận nhà',
 };
 
@@ -67,6 +67,11 @@ export default function OneStopServiceScreen({ user }) {
   const [formValues, setFormValues] = useState({});
   const [deliveryMethod, setDeliveryMethod] = useState('digital_pdf');
   const [postalAddress, setPostalAddress] = useState('');
+  const [dbContact, setDbContact] = useState({
+    phone: user?.phone || '',
+    email: user?.email || '',
+    className: user?.className || '',
+  });
   const [studentPhone, setStudentPhone] = useState(user?.phone || '');
   const [studentEmail, setStudentEmail] = useState(user?.email || '');
   const [extraNote, setExtraNote] = useState('');
@@ -86,11 +91,38 @@ export default function OneStopServiceScreen({ user }) {
         getMyOneStopRequests(),
       ]);
       if (srvRes.success) setServices(srvRes.data || []);
-      if (reqRes.success) setMyRequests(reqRes.data || []);
+      const reqList = reqRes.success ? reqRes.data || [] : [];
+      if (reqRes.success) setMyRequests(reqList);
+
+      const resolvedPhone =
+        srvRes?.studentContact?.phone ||
+        reqRes?.studentContact?.phone ||
+        reqList[0]?.studentPhone ||
+        user?.phone ||
+        '';
+      const resolvedEmail =
+        srvRes?.studentContact?.email ||
+        reqRes?.studentContact?.email ||
+        reqList[0]?.studentEmail ||
+        user?.email ||
+        '';
+      const resolvedClass =
+        srvRes?.studentContact?.className ||
+        reqRes?.studentContact?.className ||
+        user?.className ||
+        '';
+
+      setDbContact({
+        phone: resolvedPhone,
+        email: resolvedEmail,
+        className: resolvedClass,
+      });
+      setStudentPhone((prev) => prev || resolvedPhone);
+      setStudentEmail((prev) => prev || resolvedEmail);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user?.phone, user?.email, user?.className]);
 
   useEffect(() => {
     loadData();
@@ -105,7 +137,10 @@ export default function OneStopServiceScreen({ user }) {
   const openApplyModal = (srv) => {
     setSelectedService(srv);
     const defaults = {};
-    for (const f of srv.formSchema || []) {
+    const validSchemaFields = (srv.formSchema || []).filter(
+      (f) => (f?.name || f?.key) !== 'graduationYear'
+    );
+    for (const f of validSchemaFields) {
       const fName = f.name || f.key;
       if (!fName) continue;
       if (f.defaultValue !== undefined) {
@@ -117,6 +152,8 @@ export default function OneStopServiceScreen({ user }) {
       }
     }
     setFormValues(defaults);
+    if (!studentPhone && dbContact.phone) setStudentPhone(dbContact.phone);
+    if (!studentEmail && dbContact.email) setStudentEmail(dbContact.email);
     const allowedDeliv = Array.isArray(srv.deliveryOptions)
       ? srv.deliveryOptions.map(normalizeDeliveryKey)
       : ['digital_pdf', 'office_pickup'];
@@ -473,7 +510,9 @@ export default function OneStopServiceScreen({ user }) {
                 </Text>
                 <Text style={styles.autoFillLine}>
                   Mã SV: <Text style={{ fontWeight: '700' }}>{user?.username}</Text> • Lớp:{' '}
-                  <Text style={{ fontWeight: '700' }}>{user?.className || 'Chính quy'}</Text>
+                  <Text style={{ fontWeight: '700' }}>
+                    {dbContact.className || user?.className || 'Chính quy'}
+                  </Text>
                 </Text>
               </View>
 
@@ -495,55 +534,57 @@ export default function OneStopServiceScreen({ user }) {
                 keyboardType="email-address"
               />
 
-              {/* Dynamic Schema Fields */}
-              {(selectedService?.formSchema || []).map((field, idx) => {
-                const fName = field.name || field.key || `field_${idx}`;
-                return (
-                  <View key={fName} style={{ marginTop: 10 }}>
-                    <Text style={styles.inputLabel}>
-                      {field.label} {field.required ? '*' : ''}
-                    </Text>
-                    {field.type === 'select' && Array.isArray(field.options) ? (
-                      <View style={styles.optionChipsWrap}>
-                        {field.options.map((opt) => {
-                          const chosen = formValues[fName] === opt;
-                          return (
-                            <TouchableOpacity
-                              key={opt}
-                              style={[styles.optionChip, chosen && styles.optionChipActive]}
-                              onPress={() =>
-                                setFormValues((prev) => ({ ...prev, [fName]: opt }))
-                              }
-                            >
-                              <Text
-                                style={[
-                                  styles.optionChipTxt,
-                                  chosen && styles.optionChipTxtActive,
-                                ]}
+              {/* Dynamic Schema Fields (bỏ trường Năm tốt nghiệp vì SV đang học) */}
+              {(selectedService?.formSchema || [])
+                .filter((field) => (field?.name || field?.key) !== 'graduationYear')
+                .map((field, idx) => {
+                  const fName = field.name || field.key || `field_${idx}`;
+                  return (
+                    <View key={fName} style={{ marginTop: 10 }}>
+                      <Text style={styles.inputLabel}>
+                        {field.label} {field.required ? '*' : ''}
+                      </Text>
+                      {field.type === 'select' && Array.isArray(field.options) ? (
+                        <View style={styles.optionChipsWrap}>
+                          {field.options.map((opt) => {
+                            const chosen = formValues[fName] === opt;
+                            return (
+                              <TouchableOpacity
+                                key={opt}
+                                style={[styles.optionChip, chosen && styles.optionChipActive]}
+                                onPress={() =>
+                                  setFormValues((prev) => ({ ...prev, [fName]: opt }))
+                                }
                               >
-                                {opt}
-                              </Text>
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </View>
-                    ) : (
-                      <TextInput
-                        style={styles.textInput}
-                        value={String(formValues[fName] ?? '')}
-                        onChangeText={(txt) =>
-                          setFormValues((prev) => ({ ...prev, [fName]: txt }))
-                        }
-                        placeholder={
-                          field.placeholder ||
-                          `Nhập ${(field.label || fName).toLowerCase()}...`
-                        }
-                        keyboardType={field.type === 'number' ? 'numeric' : 'default'}
-                      />
-                    )}
-                  </View>
-                );
-              })}
+                                <Text
+                                  style={[
+                                    styles.optionChipTxt,
+                                    chosen && styles.optionChipTxtActive,
+                                  ]}
+                                >
+                                  {opt}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                      ) : (
+                        <TextInput
+                          style={styles.textInput}
+                          value={String(formValues[fName] ?? '')}
+                          onChangeText={(txt) =>
+                            setFormValues((prev) => ({ ...prev, [fName]: txt }))
+                          }
+                          placeholder={
+                            field.placeholder ||
+                            `Nhập ${(field.label || fName).toLowerCase()}...`
+                          }
+                          keyboardType={field.type === 'number' ? 'numeric' : 'default'}
+                        />
+                      )}
+                    </View>
+                  );
+                })}
 
               {/* Delivery Method */}
               <Text style={[styles.inputLabel, { marginTop: 14 }]}>
@@ -553,6 +594,13 @@ export default function OneStopServiceScreen({ user }) {
                 .map(normalizeDeliveryKey)
                 .map((optKey) => {
                   const chosen = deliveryMethod === optKey;
+                  const configuredPickup = String(selectedService?.pickupLocation || '').trim();
+                  const optionLabel =
+                    optKey === 'office_pickup'
+                      ? configuredPickup
+                        ? `🏢 Nhận trực tiếp (${configuredPickup})`
+                        : DELIVERY_LABELS.office_pickup
+                      : DELIVERY_LABELS[optKey] || optKey;
                   return (
                     <TouchableOpacity
                       key={optKey}
@@ -570,12 +618,25 @@ export default function OneStopServiceScreen({ user }) {
                           chosen && { color: '#166534', fontWeight: '700' },
                         ]}
                       >
-                        {DELIVERY_LABELS[optKey] || optKey}
+                        {optionLabel}
                       </Text>
                     </TouchableOpacity>
                   );
                 }
               )}
+
+              {deliveryMethod === 'office_pickup' &&
+                Boolean(String(selectedService?.pickupLocation || '').trim()) && (
+                  <View style={styles.pickupLocationBox}>
+                    <Ionicons name="location" size={18} color="#166534" style={{ marginTop: 1 }} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.pickupLocationTitle}>Nơi nhận kết quả:</Text>
+                      <Text style={styles.pickupLocationValue}>
+                        {selectedService.pickupLocation}
+                      </Text>
+                    </View>
+                  </View>
+                )}
 
               {deliveryMethod === 'postal_delivery' && (
                 <View style={{ marginTop: 10 }}>
@@ -646,6 +707,21 @@ export default function OneStopServiceScreen({ user }) {
                 <Text style={styles.detailMetaLine}>
                   ⏱️ Cam kết SLA: {detailRequest.slaStatus?.remainingText || '—'}
                 </Text>
+                {normalizeDeliveryKey(detailRequest.deliveryMethod) === 'office_pickup' &&
+                  Boolean(
+                    detailRequest.trayLocation ||
+                      detailRequest.pickupLocation ||
+                      detailRequest.service?.pickupLocation
+                  ) && (
+                    <Text style={styles.detailMetaLine}>
+                      📍 Nơi nhận kết quả:{' '}
+                      <Text style={{ fontWeight: '700', color: '#166534' }}>
+                        {detailRequest.trayLocation ||
+                          detailRequest.pickupLocation ||
+                          detailRequest.service?.pickupLocation}
+                      </Text>
+                    </Text>
+                  )}
 
                 {detailRequest.staffNote ? (
                   <View style={styles.staffNoteBox}>
@@ -731,7 +807,7 @@ export default function OneStopServiceScreen({ user }) {
                     ) : null}
                     {detailRequest.pickupQrCode ? (
                       <Text style={styles.detailMetaLine}>
-                        🎫 Mã QR nhận giấy tại quầy: <Text style={{ fontWeight: '800' }}>{detailRequest.pickupQrCode}</Text>
+                        🎫 Mã QR nhận kết quả trực tiếp: <Text style={{ fontWeight: '800' }}>{detailRequest.pickupQrCode}</Text>
                       </Text>
                     ) : null}
                     {detailRequest.postalTrackingNumber ? (
@@ -1016,6 +1092,20 @@ const styles = StyleSheet.create({
   },
   deliveryOptionRowActive: { backgroundColor: '#f0fdf4', borderColor: '#166534' },
   deliveryOptionTxt: { flex: 1, fontSize: 12, color: '#334155' },
+  pickupLocationBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: '#f0fdf4',
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+    borderRadius: 10,
+    padding: 10,
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  pickupLocationTitle: { fontSize: 11, fontWeight: '700', color: '#166534' },
+  pickupLocationValue: { fontSize: 12, fontWeight: '700', color: '#0f172a', marginTop: 2 },
   submitPrimaryBtn: {
     backgroundColor: '#166534',
     borderRadius: 12,

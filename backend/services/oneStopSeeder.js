@@ -28,6 +28,7 @@ const INITIAL_SERVICES = [
     postalFeeAmount: 30000,
     bankAccountInfo: DEFAULT_BANK_INFO,
     deliveryOptions: ['digital_pdf', 'office_pickup'],
+    pickupLocation: 'Phòng Công tác HSSV (Tầng 1 - Nhà Trung tâm)',
     formSchema: [
       {
         name: 'purpose',
@@ -75,6 +76,7 @@ const INITIAL_SERVICES = [
     postalFeeAmount: 30000,
     bankAccountInfo: DEFAULT_BANK_INFO,
     deliveryOptions: ['digital_pdf', 'office_pickup'],
+    pickupLocation: 'Phòng Đào tạo (Tầng 1 - Nhà Trung tâm)',
     formSchema: [
       {
         name: 'companyName',
@@ -109,7 +111,7 @@ const INITIAL_SERVICES = [
     department: 'CTSV',
     icon: 'card-outline',
     description:
-      'Làm lại thẻ sinh viên tích hợp thư viện khi bị mất, gãy hỏng hoặc mờ thông tin. Nhận thẻ cứng tại Quầy Một cửa.',
+      'Làm lại thẻ sinh viên tích hợp thư viện khi bị mất, gãy hỏng hoặc mờ thông tin.',
     displayOrder: 3,
     slaHours: 48,
     assigneeName: 'Chuyên viên Phòng CTSV',
@@ -122,6 +124,7 @@ const INITIAL_SERVICES = [
     postalFeeAmount: 30000,
     bankAccountInfo: DEFAULT_BANK_INFO,
     deliveryOptions: ['office_pickup'],
+    pickupLocation: 'Phòng Công tác HSSV (Tầng 1 - Nhà Trung tâm)',
     formSchema: [
       {
         name: 'reissueReason',
@@ -143,7 +146,7 @@ const INITIAL_SERVICES = [
     department: 'DAO_TAO',
     icon: 'school-outline',
     description:
-      'Cấp bản sao văn bằng tốt nghiệp đại học/sau đại học từ sổ gốc theo Thông tư 21/2019/TT-BGDĐT. Hỗ trợ nhận tại Quầy Một cửa hoặc gửi chuyển phát nhanh Bưu điện về tận nhà.',
+      'Cấp bản sao văn bằng tốt nghiệp đại học/sau đại học từ sổ gốc theo Thông tư 21/2019/TT-BGDĐT. Hỗ trợ nhận trực tiếp hoặc gửi chuyển phát nhanh Bưu điện về tận nhà.',
     displayOrder: 4,
     slaHours: 72,
     assigneeName: 'Chuyên viên Quản lý Văn bằng - P. Đào tạo',
@@ -156,18 +159,12 @@ const INITIAL_SERVICES = [
     postalFeeAmount: 30000,
     bankAccountInfo: DEFAULT_BANK_INFO,
     deliveryOptions: ['office_pickup', 'postal_delivery'],
+    pickupLocation: 'Phòng Đào tạo (Tầng 1 - Nhà Trung tâm)',
     formSchema: [
-      {
-        name: 'graduationYear',
-        key: 'graduationYear',
-        label: 'Năm tốt nghiệp',
-        type: 'text',
-        required: true,
-      },
       {
         name: 'diplomaNumber',
         key: 'diplomaNumber',
-        label: 'Số hiệu bằng / Số vào sổ gốc (nếu nhớ)',
+        label: 'Số hiệu bằng / Số vào sổ gốc (nếu có)',
         type: 'text',
         required: false,
       },
@@ -197,6 +194,7 @@ const INITIAL_SERVICES = [
     postalFeeAmount: 30000,
     bankAccountInfo: DEFAULT_BANK_INFO,
     deliveryOptions: ['digital_pdf', 'office_pickup', 'postal_delivery'],
+    pickupLocation: 'Phòng Đào tạo (Tầng 1 - Nhà Trung tâm)',
     formSchema: [
       {
         name: 'semesterScope',
@@ -230,6 +228,7 @@ const INITIAL_SERVICES = [
     postalFeeAmount: 0,
     bankAccountInfo: DEFAULT_BANK_INFO,
     deliveryOptions: ['digital_pdf'],
+    pickupLocation: 'Phòng Khảo thí & ĐBCL (Nhà Trung tâm)',
     formSchema: [
       { name: 'courseName', key: 'courseName', label: 'Tên học phần & Mã học phần xin hoãn thi', type: 'text', required: true },
       { name: 'examDate', key: 'examDate', label: 'Ngày thi theo lịch', type: 'text', required: true },
@@ -257,6 +256,7 @@ const INITIAL_SERVICES = [
     postalFeeAmount: 0,
     bankAccountInfo: DEFAULT_BANK_INFO,
     deliveryOptions: ['digital_pdf'],
+    pickupLocation: 'Phòng Khảo thí & ĐBCL (Nhà Trung tâm)',
     formSchema: [
       { name: 'courseName', key: 'courseName', label: 'Tên học phần cần phúc khảo', type: 'text', required: true },
       { name: 'examDate', key: 'examDate', label: 'Ngày thi & Phòng thi', type: 'text', required: true },
@@ -284,6 +284,7 @@ const INITIAL_SERVICES = [
     postalFeeAmount: 0,
     bankAccountInfo: DEFAULT_BANK_INFO,
     deliveryOptions: ['digital_pdf', 'office_pickup'],
+    pickupLocation: 'Phòng Đào tạo (Tầng 1 - Nhà Trung tâm)',
     formSchema: [
       { name: 'preserveDuration', key: 'preserveDuration', label: 'Thời gian xin bảo lưu (Từ học kỳ - Đến học kỳ)', type: 'text', required: true },
       { name: 'reason', key: 'reason', label: 'Lý do xin nghỉ học tạm thời', type: 'text', required: true },
@@ -310,6 +311,7 @@ const INITIAL_SERVICES = [
     postalFeeAmount: 0,
     bankAccountInfo: DEFAULT_BANK_INFO,
     deliveryOptions: ['digital_pdf'],
+    pickupLocation: 'Phòng Công tác HSSV (Tầng 1 - Nhà Trung tâm)',
     formSchema: [
       {
         name: 'policyCategory',
@@ -347,6 +349,7 @@ const INITIAL_SERVICES = [
     postalFeeAmount: 0,
     bankAccountInfo: DEFAULT_BANK_INFO,
     deliveryOptions: ['digital_pdf', 'office_pickup'],
+    pickupLocation: 'Văn phòng Ban Quản lý Ký túc xá TUAF',
     formSchema: [
       {
         name: 'requestType',
@@ -371,6 +374,22 @@ function normalizeDeliveryMethodKey(opt) {
   return opt;
 }
 
+function getDefaultPickupLocation(code, department) {
+  const tpl = INITIAL_SERVICES.find((s) => s.code === code);
+  if (tpl && tpl.pickupLocation) return tpl.pickupLocation;
+  const dept = String(department || '').toUpperCase();
+  if (dept.includes('DAO_TAO') || dept.includes('ĐÀO TẠO')) {
+    return 'Phòng Đào tạo (Tầng 1 - Nhà Trung tâm)';
+  }
+  if (dept.includes('KHAO_THI') || dept.includes('KHẢO THÍ')) {
+    return 'Phòng Khảo thí & ĐBCL (Nhà Trung tâm)';
+  }
+  if (dept.includes('KTX') || dept.includes('KÝ TÚC XÁ')) {
+    return 'Văn phòng Ban Quản lý Ký túc xá TUAF';
+  }
+  return 'Phòng Công tác HSSV (Tầng 1 - Nhà Trung tâm)';
+}
+
 /**
  * Khởi tạo danh mục dịch vụ Một cửa mặc định nếu bảng ServiceCatalog đang trống
  * Đồng thời tự động chuẩn hóa các bản ghi cũ nếu có lệch tên trường formSchema hoặc deliveryOptions
@@ -381,6 +400,16 @@ async function seedInitialServices() {
     if (existingRows.length > 0) {
       for (const row of existingRows) {
         let changed = false;
+        const expectedDefaultPickup = getDefaultPickupLocation(row.code, row.department);
+        if (!row.pickupLocation || !String(row.pickupLocation).trim()) {
+          row.pickupLocation = expectedDefaultPickup;
+          changed = true;
+        } else if (String(row.pickupLocation).includes('Quầy Một cửa')) {
+          row.pickupLocation = String(row.pickupLocation)
+            .replace(/^Quầy Một cửa\s*-\s*/i, '')
+            .trim() || expectedDefaultPickup;
+          changed = true;
+        }
         if (Array.isArray(row.deliveryOptions)) {
           const nextDeliv = row.deliveryOptions.map(normalizeDeliveryMethodKey);
           if (JSON.stringify(nextDeliv) !== JSON.stringify(row.deliveryOptions)) {
@@ -389,7 +418,14 @@ async function seedInitialServices() {
           }
         }
         if (Array.isArray(row.formSchema)) {
-          const nextSchema = row.formSchema.map((f) => {
+          const filteredSchema = row.formSchema.filter((f) => {
+            const fKey = f?.name || f?.key;
+            return fKey !== 'graduationYear';
+          });
+          if (filteredSchema.length !== row.formSchema.length) {
+            changed = true;
+          }
+          const nextSchema = filteredSchema.map((f) => {
             if (f && !f.name && f.key) {
               changed = true;
               return { ...f, name: f.key };

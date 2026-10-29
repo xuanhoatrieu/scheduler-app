@@ -47,7 +47,7 @@
     },
     "android": {
       "package": "com.xuanhoatrieu.tuafschedule",
-      "versionCode": 42,
+      "versionCode": 43,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -55,7 +55,7 @@
     },
     "ios": {
       "bundleIdentifier": "com.xuanhoatrieu.tuafschedule",
-      "buildNumber": "42",
+      "buildNumber": "43",
       "supportsTablet": false,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false

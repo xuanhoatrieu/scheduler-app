@@ -380,6 +380,10 @@
           el('td', {}, [
             el('div', { style: 'font-weight:600;color:#fff;', text: srv.name }),
             el('div', {
+              style: 'font-size:12px;color:#38bdf8;margin-top:2px;',
+              text: `📍 Nơi nhận KQ: ${srv.pickupLocation || 'Chưa cấu hình'}`,
+            }),
+            el('div', {
               style: 'font-size:12px;color:var(--text-muted);',
               text: srv.allowAlumni ? 'Hỗ trợ cả SV & Cựu SV (/onegate)' : 'Chỉ SV đang theo học',
             }),
@@ -450,6 +454,9 @@
     $('os-srv-code').disabled = Boolean(srv);
     $('os-srv-name').value = srv ? srv.name : '';
     $('os-srv-dept').value = srv ? srv.department : 'Phòng Công tác HSSV';
+    if ($('os-srv-pickup-location')) {
+      $('os-srv-pickup-location').value = srv ? srv.pickupLocation || '' : '';
+    }
     $('os-srv-sla').value = srv ? srv.slaHours : 24;
     $('os-srv-fee').value = srv ? srv.feeAmount : 0;
     $('os-srv-postal-fee').value = srv ? srv.postalFeeAmount : 30000;
@@ -494,6 +501,9 @@
         code: $('os-srv-code').value.trim().toUpperCase(),
         name: $('os-srv-name').value.trim(),
         department: $('os-srv-dept').value.trim(),
+        pickupLocation: $('os-srv-pickup-location')
+          ? $('os-srv-pickup-location').value.trim()
+          : '',
         slaHours: Math.max(1, parseInt($('os-srv-sla').value, 10) || 24),
         isPaid: feeAmount > 0,
         feeAmount,

@@ -14,6 +14,224 @@ import { getGradesAll } from '../services/api';
 import { Colors, getGradeColor } from '../theme/colors';
 import CurriculumView from '../components/CurriculumView';
 
+function isCourseGradeCOrHigher(c) {
+  if (!c) return false;
+  const letter = String(c.letterGrade || '').trim().toUpperCase();
+  if (['F', 'D', 'D+'].includes(letter)) return false;
+  if (c.totalGrade4 != null && !Number.isNaN(Number(c.totalGrade4))) {
+    return Number(c.totalGrade4) >= 2.0;
+  }
+  if (['A+', 'A', 'B+', 'B', 'C+', 'C', 'P', 'ĐẠT', 'DAT'].includes(letter)) {
+    return true;
+  }
+  if (c.totalGrade10 != null && !Number.isNaN(Number(c.totalGrade10))) {
+    return Number(c.totalGrade10) >= 5.5;
+  }
+  return false;
+}
+
+function classifyEnglishCourseSlot(c) {
+  const code = String(c?.courseCode || '').toUpperCase().trim();
+  const name = String(c?.courseName || '').toLowerCase().trim();
+  if (code.startsWith('CDRTA') || name.includes('chuẩn đầu ra ngoại ngữ')) {
+    return { slot: 'CDRTA', defaultName: 'Chứng chỉ CĐR Ngoại ngữ', order: 0 };
+  }
+  if (
+    ['NN703011', 'ENG131', 'ENG121', 'ENG111'].includes(code) ||
+    /\btiếng anh\s*1\b/i.test(name) ||
+    /\banh văn\s*1\b/i.test(name)
+  ) {
+    return { slot: 'TA1', defaultName: 'Tiếng Anh 1', order: 1 };
+  }
+  if (
+    ['NN703012', 'ENG132', 'ENG122', 'ENG112'].includes(code) ||
+    /\btiếng anh\s*2\b/i.test(name) ||
+    /\banh văn\s*2\b/i.test(name)
+  ) {
+    return { slot: 'TA2', defaultName: 'Tiếng Anh 2', order: 2 };
+  }
+  if (
+    ['NN702013', 'NN703013', 'ENG133', 'ENG123', 'ENG113'].includes(code) ||
+    /\btiếng anh\s*3\b/i.test(name) ||
+    /\banh văn\s*3\b/i.test(name)
+  ) {
+    return { slot: 'TA3', defaultName: 'Tiếng Anh 3', order: 3 };
+  }
+  return { slot: code || name || 'TA_OTHER', defaultName: c?.courseName || 'Tiếng Anh', order: 4 };
+}
+
+function resolveGraduationStandards(semesterGroups = [], serverStandards = null) {
+  const allCourses = (semesterGroups || []).flatMap((sem) => sem?.courses || []);
+  if (allCourses.length === 0 && serverStandards) {
+    return serverStandards;
+  }
+
+  const englishCodes = [
+    'NN703011',
+    'NN703012',
+    'NN702013',
+    'NN703013',
+    'ENG131',
+    'ENG132',
+    'ENG133',
+    'ENG111',
+    'ENG112',
+    'ENG113',
+    'ENG121',
+    'ENG122',
+    'ENG123',
+  ];
+  const itCodes = ['GIN131', 'GIN121', 'GIN111', 'NN703008', 'NN702008'];
+
+  const langCourses = allCourses.filter((c) => {
+    const code = String(c?.courseCode || '').toUpperCase().trim();
+    const name = String(c?.courseName || '').toLowerCase().trim();
+    return (
+      englishCodes.includes(code) ||
+      code.startsWith('ENG') ||
+      code.startsWith('CDRTA') ||
+      name.includes('tiếng anh') ||
+      name.includes('anh văn') ||
+      name.includes('ngoại ngữ') ||
+      name.includes('english')
+    );
+  });
+
+  const itCourses = allCourses.filter((c) => {
+    const code = String(c?.courseCode || '').toUpperCase().trim();
+    const name = String(c?.courseName || '').toLowerCase().trim();
+    return (
+      itCodes.includes(code) ||
+      code.startsWith('GIN') ||
+      code.startsWith('CDRTH') ||
+      code.startsWith('CDRIC3') ||
+      name.includes('tin học đại cương') ||
+      name.includes('nhập môn công nghệ số') ||
+      (name.includes('công nghệ số') && name.includes('trí tuệ nhân tạo')) ||
+      name.includes('chuẩn đầu ra tin học') ||
+      name.includes('chứng chỉ tin học') ||
+      name.includes('ic3')
+    );
+  });
+
+  const slotMap = new Map();
+  let hasDirectLangCert = false;
+
+  for (const c of langCourses) {
+    const { slot, defaultName, order } = classifyEnglishCourseSlot(c);
+    if (slot === 'CDRTA' && isCourseGradeCOrHigher(c)) {
+      hasDirectLangCert = true;
+    }
+    const existing = slotMap.get(slot);
+    const score4 = c.totalGrade4 != null ? Number(c.totalGrade4) : -1;
+    const prevScore4 = existing?.score4 != null ? Number(existing.score4) : -1;
+    if (!existing || score4 > prevScore4 || (isCourseGradeCOrHigher(c) && !existing.isMet)) {
+      slotMap.set(slot, {
+        slot,
+        order,
+        courseCode: c.courseCode || slot,
+        courseName: c.courseName || defaultName,
+        letterGrade: c.letterGrade || null,
+        score4: c.totalGrade4 ?? null,
+        isStudied: Boolean(c.letterGrade || c.totalGrade4 != null || c.totalGrade10 != null),
+        isMet: isCourseGradeCOrHigher(c),
+      });
+    }
+  }
+
+  const standardSlots = [
+    { slot: 'TA1', defaultCode: 'NN703011', defaultName: 'Tiếng Anh 1', order: 1 },
+    { slot: 'TA2', defaultCode: 'NN703012', defaultName: 'Tiếng Anh 2', order: 2 },
+    { slot: 'TA3', defaultCode: 'NN702013', defaultName: 'Tiếng Anh 3', order: 3 },
+  ];
+
+  const structuredLangCourses = standardSlots.map((std) => {
+    const found = slotMap.get(std.slot);
+    if (found) return found;
+    return {
+      slot: std.slot,
+      order: std.order,
+      courseCode: std.defaultCode,
+      courseName: std.defaultName,
+      letterGrade: null,
+      score4: null,
+      isStudied: false,
+      isMet: false,
+    };
+  });
+
+  for (const [slotKey, item] of slotMap.entries()) {
+    if (!['TA1', 'TA2', 'TA3', 'CDRTA'].includes(slotKey)) {
+      structuredLangCourses.push(item);
+    }
+  }
+
+  const passedLangItems = Array.from(slotMap.values()).filter(
+    (item) => item.slot !== 'CDRTA' && item.isMet
+  );
+  const studiedLangItems = Array.from(slotMap.values()).filter(
+    (item) => item.slot !== 'CDRTA' && item.isStudied
+  );
+
+  const requiredLangCount = 3;
+  const passedLangCount = passedLangItems.length;
+  const isLangPassed = hasDirectLangCert || passedLangCount >= requiredLangCount;
+
+  const langShortStatus = isLangPassed
+    ? hasDirectLangCert && passedLangCount < requiredLangCount
+      ? 'Đạt chuẩn CĐR'
+      : `Đạt (${passedLangCount}/${requiredLangCount} môn ≥ C)`
+    : studiedLangItems.length > 0
+    ? `Chưa đạt (${passedLangCount}/${requiredLangCount} môn ≥ C)`
+    : `Chưa học (0/${requiredLangCount} môn)`;
+
+  const passedITCourses = itCourses.filter(isCourseGradeCOrHigher);
+  const isITPassed = passedITCourses.length > 0;
+  let topIT = null;
+  if (passedITCourses.length > 0) {
+    topIT = [...passedITCourses].sort(
+      (a, b) => (Number(b.totalGrade4) || 0) - (Number(a.totalGrade4) || 0)
+    )[0];
+  }
+  const latestIT = topIT || itCourses[0] || null;
+
+  const itShortStatus = isITPassed
+    ? `Đạt (Điểm ${topIT.letterGrade})`
+    : latestIT?.letterGrade
+    ? `Chưa đạt (Điểm ${latestIT.letterGrade})`
+    : 'Chưa học';
+
+  const itDetailText = isITPassed
+    ? `Môn: ${topIT.courseName} — Điểm ${topIT.letterGrade} (Đạt chuẩn ≥ C)`
+    : latestIT
+    ? `Môn: ${latestIT.courseName} — Điểm ${latestIT.letterGrade || 'Chưa có'} (Yêu cầu đạt từ C trở lên)`
+    : 'Yêu cầu: Tin học đại cương hoặc Nhập môn Công nghệ số và Trí tuệ nhân tạo đạt từ C trở lên';
+
+  return {
+    foreignLanguage: {
+      ...(serverStandards?.foreignLanguage || {}),
+      isPassed: isLangPassed,
+      passedCount: passedLangCount,
+      requiredCount: requiredLangCount,
+      shortStatus: langShortStatus,
+      courses:
+        Array.isArray(serverStandards?.foreignLanguage?.courses) &&
+        serverStandards.foreignLanguage.courses.length >= 3
+          ? serverStandards.foreignLanguage.courses
+          : structuredLangCourses,
+    },
+    informationTechnology: {
+      ...(serverStandards?.informationTechnology || {}),
+      isPassed: isITPassed,
+      courseCode: latestIT?.courseCode || serverStandards?.informationTechnology?.courseCode || null,
+      courseName: latestIT?.courseName || serverStandards?.informationTechnology?.courseName || null,
+      letterGrade: latestIT?.letterGrade || serverStandards?.informationTechnology?.letterGrade || null,
+      shortStatus: serverStandards?.informationTechnology?.shortStatus || itShortStatus,
+      detailText: serverStandards?.informationTechnology?.detailText || itDetailText,
+    },
+  };
+}
+
 export default function GradesScreen({ user }) {
   const [semesterGroups, setSemesterGroups] = useState([]);
   const [summary, setSummary] = useState(null);
@@ -189,40 +407,184 @@ export default function GradesScreen({ user }) {
                 </View>
               </View>
 
-              <View style={{ marginTop: 4, gap: 6 }}>
-                {/* Ngoại ngữ */}
-                <View style={styles.standardBadgeRow}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 6 }}>
-                    <Ionicons
-                      name={graduationStandards.foreignLanguage?.isPassed ? "checkmark-circle" : "alert-circle"}
-                      size={15}
-                      color={graduationStandards.foreignLanguage?.isPassed ? Colors.success : Colors.accentOrange}
-                    />
-                    <Text style={styles.standardBadgeLabel}>Ngoại ngữ (TA):</Text>
+              <View style={{ marginTop: 6, gap: 8 }}>
+                {/* 1. Chuẩn Ngoại ngữ: 3 học phần Tiếng Anh đạt C trở lên */}
+                <View
+                  style={[
+                    styles.standardCard,
+                    graduationStandards.foreignLanguage?.isPassed
+                      ? styles.standardCardPassed
+                      : styles.standardCardPending,
+                  ]}
+                >
+                  <View style={styles.standardCardHeader}>
+                    <View style={styles.standardTitleRow}>
+                      <Ionicons
+                        name={
+                          graduationStandards.foreignLanguage?.isPassed
+                            ? 'checkmark-circle'
+                            : 'alert-circle'
+                        }
+                        size={16}
+                        color={
+                          graduationStandards.foreignLanguage?.isPassed
+                            ? Colors.success
+                            : Colors.accentOrange
+                        }
+                      />
+                      <Text style={styles.standardBadgeLabel}>
+                        Chuẩn Ngoại ngữ (3 học phần TA ≥ C)
+                      </Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.standardStatusPill,
+                        {
+                          backgroundColor: graduationStandards.foreignLanguage?.isPassed
+                            ? '#DCFCE7'
+                            : '#FEF3C7',
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.standardBadgeStatus,
+                          {
+                            color: graduationStandards.foreignLanguage?.isPassed
+                              ? '#15803D'
+                              : '#B45309',
+                          },
+                        ]}
+                      >
+                        {graduationStandards.foreignLanguage?.shortStatus ||
+                          (graduationStandards.foreignLanguage?.isPassed ? 'Đạt' : 'Chưa đạt')}
+                      </Text>
+                    </View>
                   </View>
-                  <Text style={[
-                    styles.standardBadgeStatus,
-                    { color: graduationStandards.foreignLanguage?.isPassed ? Colors.success : Colors.accentOrange }
-                  ]}>
-                    {graduationStandards.foreignLanguage?.statusText || 'Chưa rõ'}
-                  </Text>
+
+                  {Array.isArray(graduationStandards.foreignLanguage?.courses) &&
+                  graduationStandards.foreignLanguage.courses.length > 0 ? (
+                    <View style={styles.standardCourseChipsWrap}>
+                      {graduationStandards.foreignLanguage.courses.map((c, idx) => {
+                        const chipMet = Boolean(c.isMet);
+                        const chipStudied = Boolean(c.letterGrade);
+                        return (
+                          <View
+                            key={c.slot || c.courseCode || idx}
+                            style={[
+                              styles.standardCourseChip,
+                              chipMet
+                                ? styles.standardCourseChipMet
+                                : chipStudied
+                                ? styles.standardCourseChipFailed
+                                : styles.standardCourseChipUnstudied,
+                            ]}
+                          >
+                            <Ionicons
+                              name={
+                                chipMet
+                                  ? 'checkmark-circle'
+                                  : chipStudied
+                                  ? 'close-circle'
+                                  : 'time-outline'
+                              }
+                              size={13}
+                              color={chipMet ? '#15803D' : chipStudied ? '#DC2626' : '#64748B'}
+                            />
+                            <Text
+                              style={[
+                                styles.standardCourseChipText,
+                                {
+                                  color: chipMet
+                                    ? '#166534'
+                                    : chipStudied
+                                    ? '#B91C1C'
+                                    : '#475569',
+                                },
+                              ]}
+                            >
+                              {c.courseName}: {c.letterGrade ? `Điểm ${c.letterGrade}` : 'Chưa học'}
+                            </Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  ) : (
+                    <Text style={styles.standardDetailText}>
+                      {graduationStandards.foreignLanguage?.detailText ||
+                        graduationStandards.foreignLanguage?.statusText ||
+                        'Yêu cầu đủ 3 học phần Tiếng Anh 1, 2, 3 đạt từ điểm C trở lên'}
+                    </Text>
+                  )}
                 </View>
 
-                {/* Tin học */}
-                <View style={styles.standardBadgeRow}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 6 }}>
-                    <Ionicons
-                      name={graduationStandards.informationTechnology?.isPassed ? "checkmark-circle" : "alert-circle"}
-                      size={15}
-                      color={graduationStandards.informationTechnology?.isPassed ? Colors.success : Colors.accentOrange}
-                    />
-                    <Text style={styles.standardBadgeLabel}>Tin học / CNS:</Text>
+                {/* 2. Chuẩn Tin học: Tin học đại cương hoặc Nhập môn CNS & TTNT đạt C trở lên */}
+                <View
+                  style={[
+                    styles.standardCard,
+                    graduationStandards.informationTechnology?.isPassed
+                      ? styles.standardCardPassed
+                      : styles.standardCardPending,
+                  ]}
+                >
+                  <View style={styles.standardCardHeader}>
+                    <View style={styles.standardTitleRow}>
+                      <Ionicons
+                        name={
+                          graduationStandards.informationTechnology?.isPassed
+                            ? 'checkmark-circle'
+                            : 'alert-circle'
+                        }
+                        size={16}
+                        color={
+                          graduationStandards.informationTechnology?.isPassed
+                            ? Colors.success
+                            : Colors.accentOrange
+                        }
+                      />
+                      <Text style={styles.standardBadgeLabel}>
+                        Chuẩn Tin học (THĐC / CNS & AI ≥ C)
+                      </Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.standardStatusPill,
+                        {
+                          backgroundColor: graduationStandards.informationTechnology?.isPassed
+                            ? '#DCFCE7'
+                            : '#FEF3C7',
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.standardBadgeStatus,
+                          {
+                            color: graduationStandards.informationTechnology?.isPassed
+                              ? '#15803D'
+                              : '#B45309',
+                          },
+                        ]}
+                      >
+                        {graduationStandards.informationTechnology?.shortStatus ||
+                          (graduationStandards.informationTechnology?.isPassed
+                            ? `Đạt (Điểm ${graduationStandards.informationTechnology?.letterGrade || 'C'})`
+                            : 'Chưa đạt')}
+                      </Text>
+                    </View>
                   </View>
-                  <Text style={[
-                    styles.standardBadgeStatus,
-                    { color: graduationStandards.informationTechnology?.isPassed ? Colors.success : Colors.accentOrange }
-                  ]}>
-                    {graduationStandards.informationTechnology?.statusText || 'Chưa rõ'}
+
+                  <Text style={styles.standardDetailText}>
+                    {graduationStandards.informationTechnology?.courseName
+                      ? `Môn: ${graduationStandards.informationTechnology.courseName} — Điểm ${
+                          graduationStandards.informationTechnology.letterGrade || 'Chưa có'
+                        } (${
+                          graduationStandards.informationTechnology.isPassed
+                            ? 'Đạt chuẩn ≥ C'
+                            : 'Cần đạt từ C trở lên'
+                        })`
+                      : graduationStandards.informationTechnology?.detailText ||
+                        'Yêu cầu: Tin học đại cương hoặc Nhập môn Công nghệ số và Trí tuệ nhân tạo đạt từ C trở lên'}
                   </Text>
                 </View>
               </View>
@@ -318,7 +680,10 @@ export default function GradesScreen({ user }) {
           failedCredits={summary?.failedCredits}
           totalRequiredCredits={summary?.totalRequiredCredits}
           graduationProgress={summary?.graduationProgress}
-          graduationStandards={summary?.graduationStandards}
+          graduationStandards={resolveGraduationStandards(
+            semesterGroups,
+            summary?.graduationStandards
+          )}
         />
 
         {/* Filter Bar */}
@@ -702,24 +1067,86 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 14, color: Colors.textMuted, marginTop: 12 },
   emptySubText: { fontSize: 12, color: Colors.textMuted, marginTop: 4 },
 
-  // Graduation Standard Badges
-  standardBadgeRow: {
-    flexDirection: 'row',
-    justify: 'space-between',
-    alignItems: 'center',
+  // Graduation Standard Cards (2-tier layout, anti-overlap)
+  standardCard: {
     backgroundColor: Colors.background,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingHorizontal: 11,
+    paddingVertical: 9,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: Colors.borderLight,
   },
+  standardCardPassed: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#BBF7D0',
+  },
+  standardCardPending: {
+    backgroundColor: '#FFFBEB',
+    borderColor: '#FDE68A',
+  },
+  standardCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8,
+  },
+  standardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 6,
+  },
   standardBadgeLabel: {
+    flex: 1,
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
     color: Colors.textPrimary,
   },
+  standardStatusPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    flexShrink: 0,
+  },
   standardBadgeStatus: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  standardDetailText: {
+    fontSize: 11.5,
+    color: Colors.textSecondary,
+    marginTop: 5,
+    lineHeight: 16,
+    fontWeight: '500',
+  },
+  standardCourseChipsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 7,
+  },
+  standardCourseChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  standardCourseChipMet: {
+    backgroundColor: '#DCFCE7',
+    borderColor: '#86EFAC',
+  },
+  standardCourseChipFailed: {
+    backgroundColor: '#FEE2E2',
+    borderColor: '#FCA5A5',
+  },
+  standardCourseChipUnstudied: {
+    backgroundColor: '#F1F5F9',
+    borderColor: '#CBD5E1',
+  },
+  standardCourseChipText: {
     fontSize: 11,
     fontWeight: '700',
   },

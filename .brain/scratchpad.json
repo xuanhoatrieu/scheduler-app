@@ -1,51 +1,37 @@
 {
-  "active_feature": "Kiểm tra & Sửa lỗi toàn diện: (1) Dịch vụ Một cửa Sinh viên, (2) Phân hệ Thanh tra (Lịch giảng & Coi thi), (3) Đồng bộ khung giờ học dmGioHoc",
+  "active_feature": "Cập nhật Một cửa SV (tự lấy SĐT từ DB, bỏ trường năm tốt nghiệp, cấu hình Nơi nhận kết quả trực tiếp) & Sửa logic + giao diện Chuẩn đầu ra tốt nghiệp (Điểm số)",
   "target_app": "TUAF Scheduler (Backend + Mobile App)",
   "key_files": [
     "backend/models/ServiceCatalog.js",
-    "backend/models/ServiceRequest.js",
-    "backend/models/ServiceRequestLog.js",
     "backend/services/oneStopSeeder.js",
     "backend/routes/oneStopRoutes.js",
-    "backend/jobs/oneStopSlaJob.js",
-    "backend/services/oneStopNotificationService.js",
-    "mobile/screens/OneStopServiceScreen.js",
+    "backend/public/admin/index.html",
+    "backend/public/admin/js/onestop.js",
     "backend/public/onegate/index.html",
-    "backend/services/tuafQueries.js",
-    "backend/routes/inspector.js",
-    "backend/services/emailReportService.js",
-    "backend/models/ExamRoomInspection.js",
-    "backend/models/ExamViolation.js",
-    "mobile/screens/inspector/InspectorExamsScreen.js",
-    "backend/utils/periodMapping.js",
-    "mobile/utils/scheduleDate.js"
+    "mobile/screens/OneStopServiceScreen.js",
+    "backend/routes/schedule.js",
+    "mobile/screens/GradesScreen.js",
+    "mobile/components/CurriculumView.js",
+    "backend/tests/oneStopService.test.js"
   ],
   "database": {
     "tables": [
       "ServiceCatalogs",
       "ServiceRequests",
       "ServiceRequestLogs",
-      "Attendances",
-      "ExamRoomInspections",
-      "ExamViolations",
-      "TCT_DotThi_Phong",
-      "MARK_ToChucThiPhong_TC",
-      "dmGioHoc"
+      "Grades",
+      "STU_HoSoSinhVien (SQL Server TUAF)"
     ],
     "schema_file": "backend/config/db.js"
   },
   "endpoints": [
     "GET /api/services",
+    "GET /api/services/my-requests",
     "POST /api/services/requests",
-    "GET /api/services/requests/my",
-    "GET /api/staff/services/requests",
-    "PUT /api/staff/services/requests/:id/process",
-    "GET /api/inspector/classes",
-    "GET /api/inspector/exams",
-    "POST /api/inspector/exams/room-check",
-    "POST /api/inspector/exams/violations",
-    "GET /api/inspector/dashboard/report"
+    "PUT /api/admin/services/:id",
+    "GET /api/grades/all",
+    "GET /api/curriculum"
   ],
-  "last_status": "Đã rà soát chuyên sâu và sửa triệt để 7 lỗi ở Phân hệ Một cửa Sinh viên + 4 lỗi ở Phân hệ Thanh tra; đồng bộ schema PostgreSQL, kiểm thử E2E trên SQL Server TUAF thật và pass 100% unit tests (86/86 Backend, 53/53 Mobile).",
-  "updated_at": "2026-10-28T20:44:00+07:00"
+  "last_status": "Đã hoàn thành 3 hạng mục: (1) Tự động lấy SĐT/Email sinh viên từ STU_HoSoSinhVien & bỏ trường Năm tốt nghiệp trên App; (2) Thêm cấu hình pickupLocation (Nơi nhận kết quả trực tiếp) cho từng thủ tục trên Admin và hiển thị trên App/Web; (3) Cập nhật logic Chuẩn Ngoại ngữ (3 học phần TA >= C) & Chuẩn Tin học (THĐC hoặc Nhập môn CNS&AI >= C) kèm thiết kế lại thẻ 2 tầng chống đè chữ. Đã pass 88/88 Backend tests và 53/53 Mobile tests.",
+  "updated_at": "2026-10-29T09:14:00+07:00"
 }

@@ -116,6 +116,12 @@ const ServiceCatalog = sequelize.define(
       defaultValue: ['digital_pdf', 'office_pickup'],
       comment: 'Mảng các phương thức nhận kết quả: digital_pdf, office_pickup, postal_delivery',
     },
+    pickupLocation: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      defaultValue: '',
+      comment: 'Nơi nhận kết quả bản giấy trực tiếp (Admin cấu hình theo từng thủ tục)',
+    },
     formSchema: {
       type: DataTypes.JSONB,
       allowNull: false,

@@ -418,9 +418,12 @@
       const delivSelect = document.getElementById('almDeliveryMethod');
       const rawOpts = Array.isArray(selectedService.deliveryOptions) ? selectedService.deliveryOptions : ['digital_pdf'];
       const opts = rawOpts.map((o) => o === 'digital' ? 'digital_pdf' : (o === 'physical_pickup' ? 'office_pickup' : o));
+      const pickupPlace = String(selectedService.pickupLocation || '').trim();
       const labels = {
         digital_pdf: 'Bản điện tử PDF có QR xác thực (Nhận qua Email / Web)',
-        office_pickup: 'Nhận bản giấy trực tiếp tại Quầy Một cửa TUAF',
+        office_pickup: pickupPlace
+          ? `Nhận bản giấy trực tiếp (${pickupPlace})`
+          : 'Nhận bản giấy trực tiếp',
         postal_delivery: `Gửi chuyển phát bảo đảm qua Bưu điện (+${Number(selectedService.postalFeeAmount || 0).toLocaleString('vi-VN')}đ)`,
       };
       delivSelect.innerHTML = opts.map((o) => `<option value="${esc(o)}">${esc(labels[o] || o)}</option>`).join('');

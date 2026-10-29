@@ -489,95 +489,268 @@ async function ensureStudentGrades(user, pool, forceSync = false) {
 }
 
 /**
- * Đánh giá Chuẩn đầu ra Ngoại ngữ & Tin học từ danh sách môn học
- * @param {Array} grades 
+ * Kiểm tra một học phần có đạt điểm từ C trở lên (totalGrade4 >= 2.0 hoặc điểm chữ C/C+/B/B+/A/A+) hay không
  */
-function evaluateGraduationStandards(grades) {
-  const englishCodes = ['NN703011', 'NN703012', 'NN702013', 'NN703013', 'ENG131', 'ENG132', 'ENG133'];
-  const itCodes = ['GIN131', 'GIN121', 'NN703008'];
+function isGradeCOrHigher(c) {
+  if (!c) return false;
+  const letter = String(c.letterGrade || '').trim().toUpperCase();
+  if (['F', 'D', 'D+'].includes(letter)) return false;
+  if (c.totalGrade4 != null && !Number.isNaN(Number(c.totalGrade4))) {
+    return Number(c.totalGrade4) >= 2.0;
+  }
+  if (['A+', 'A', 'B+', 'B', 'C+', 'C', 'P', 'ĐẠT', 'DAT'].includes(letter)) {
+    return true;
+  }
+  if (c.totalGrade10 != null && !Number.isNaN(Number(c.totalGrade10))) {
+    return Number(c.totalGrade10) >= 5.5;
+  }
+  return false;
+}
 
-  const langCourses = grades.filter(c => {
-    const code = (c.courseCode || '').toUpperCase().trim();
-    const name = (c.courseName || '').toLowerCase();
-    return englishCodes.includes(code) || 
-           code.startsWith('ENG') || 
-           code.startsWith('CDRTA') || 
-           name.includes('tiếng anh') || 
-           name.includes('ngoại ngữ') || 
-           name.includes('english');
+/**
+ * Xác định phân mức Tiếng Anh (TA1, TA2, TA3 hoặc mã môn riêng) để tránh tính trùng môn học lại
+ */
+function classifyEnglishSlot(c) {
+  const code = String(c?.courseCode || '').toUpperCase().trim();
+  const name = String(c?.courseName || '').toLowerCase().trim();
+  if (code.startsWith('CDRTA') || name.includes('chuẩn đầu ra ngoại ngữ')) {
+    return { slot: 'CDRTA', defaultName: 'Chứng chỉ Chuẩn đầu ra Ngoại ngữ', order: 0 };
+  }
+  if (
+    ['NN703011', 'ENG131', 'ENG121', 'ENG111'].includes(code) ||
+    /\btiếng anh\s*1\b/i.test(name) ||
+    /\banh văn\s*1\b/i.test(name)
+  ) {
+    return { slot: 'TA1', defaultName: 'Tiếng Anh 1', order: 1 };
+  }
+  if (
+    ['NN703012', 'ENG132', 'ENG122', 'ENG112'].includes(code) ||
+    /\btiếng anh\s*2\b/i.test(name) ||
+    /\banh văn\s*2\b/i.test(name)
+  ) {
+    return { slot: 'TA2', defaultName: 'Tiếng Anh 2', order: 2 };
+  }
+  if (
+    ['NN702013', 'NN703013', 'ENG133', 'ENG123', 'ENG113'].includes(code) ||
+    /\btiếng anh\s*3\b/i.test(name) ||
+    /\banh văn\s*3\b/i.test(name)
+  ) {
+    return { slot: 'TA3', defaultName: 'Tiếng Anh 3', order: 3 };
+  }
+  return { slot: code || name || 'TA_OTHER', defaultName: c?.courseName || 'Tiếng Anh', order: 4 };
+}
+
+/**
+ * Đánh giá Chuẩn đầu ra Ngoại ngữ & Tin học từ danh sách môn học:
+ * 1. Chuẩn Ngoại ngữ: Phải có đủ 3 học phần Tiếng Anh (Tiếng Anh 1, 2, 3) đều đạt từ điểm C trở lên
+ *    (hoặc đã có Chứng chỉ Chuẩn đầu ra Ngoại ngữ CDRTA đạt).
+ * 2. Chuẩn Tin học: Môn "Tin học đại cương" HOẶC môn "Nhập môn Công nghệ số và Trí tuệ nhân tạo"
+ *    đạt từ điểm C trở lên.
+ * @param {Array} grades
+ */
+function evaluateGraduationStandards(grades = []) {
+  const englishCodes = [
+    'NN703011',
+    'NN703012',
+    'NN702013',
+    'NN703013',
+    'ENG131',
+    'ENG132',
+    'ENG133',
+    'ENG111',
+    'ENG112',
+    'ENG113',
+    'ENG121',
+    'ENG122',
+    'ENG123',
+  ];
+  const itCodes = ['GIN131', 'GIN121', 'GIN111', 'NN703008', 'NN702008'];
+
+  const langCourses = (grades || []).filter((c) => {
+    const code = String(c?.courseCode || '').toUpperCase().trim();
+    const name = String(c?.courseName || '').toLowerCase().trim();
+    return (
+      englishCodes.includes(code) ||
+      code.startsWith('ENG') ||
+      code.startsWith('CDRTA') ||
+      name.includes('tiếng anh') ||
+      name.includes('anh văn') ||
+      name.includes('ngoại ngữ') ||
+      name.includes('english')
+    );
   });
 
-  const itCourses = grades.filter(c => {
-    const code = (c.courseCode || '').toUpperCase().trim();
-    const name = (c.courseName || '').toLowerCase();
-    return itCodes.includes(code) || 
-           code.startsWith('GIN') || 
-           code.startsWith('INF') || 
-           code.startsWith('CDRTH') || 
-           code.startsWith('CDRIC3') || 
-           name.includes('tin học') || 
-           name.includes('công nghệ số') || 
-           name.includes('trí tuệ nhân tạo') || 
-           name.includes('ic3');
+  // Chỉ lọc đúng môn Tin học đại cương hoặc Nhập môn Công nghệ số và Trí tuệ nhân tạo (tránh bắt nhầm môn chuyên ngành AI)
+  const itCourses = (grades || []).filter((c) => {
+    const code = String(c?.courseCode || '').toUpperCase().trim();
+    const name = String(c?.courseName || '').toLowerCase().trim();
+    return (
+      itCodes.includes(code) ||
+      code.startsWith('GIN') ||
+      code.startsWith('CDRTH') ||
+      code.startsWith('CDRIC3') ||
+      name.includes('tin học đại cương') ||
+      name.includes('nhập môn công nghệ số') ||
+      (name.includes('công nghệ số') && name.includes('trí tuệ nhân tạo')) ||
+      name.includes('chuẩn đầu ra tin học') ||
+      name.includes('chứng chỉ tin học') ||
+      name.includes('ic3')
+    );
   });
 
-  const passedLangCourses = langCourses.filter(c => c.letterGrade && c.letterGrade !== 'F' && c.totalGrade4 != null && c.totalGrade4 >= 2.0);
-  
-  let highestLang = null;
-  if (passedLangCourses.length > 0) {
-    passedLangCourses.sort((a, b) => {
-      const codeA = (a.courseCode || '').toUpperCase();
-      const codeB = (b.courseCode || '').toUpperCase();
-      const nameA = (a.courseName || '').toLowerCase();
-      const nameB = (b.courseName || '').toLowerCase();
+  // Gom nhóm học phần Tiếng Anh theo slot (giữ kết quả cao nhất nếu học lại)
+  const slotMap = new Map();
+  let hasDirectLangCert = false;
 
-      const getRank = (code, name) => {
-        if (code === 'NN702013' || code === 'NN703013' || code === 'ENG133' || code.startsWith('CDRTA') || name.includes('tiếng anh 3') || name.includes('b1')) return 3;
-        if (code === 'NN703012' || code === 'ENG132' || name.includes('tiếng anh 2')) return 2;
-        if (code === 'NN703011' || code === 'ENG131' || name.includes('tiếng anh 1')) return 1;
-        return 0;
-      };
-
-      const rankA = getRank(codeA, nameA);
-      const rankB = getRank(codeB, nameB);
-      if (rankA !== rankB) return rankB - rankA;
-      return (b.totalGrade4 || 0) - (a.totalGrade4 || 0);
-    });
-    highestLang = passedLangCourses[0];
+  for (const c of langCourses) {
+    const { slot, defaultName, order } = classifyEnglishSlot(c);
+    if (slot === 'CDRTA' && isGradeCOrHigher(c)) {
+      hasDirectLangCert = true;
+    }
+    const existing = slotMap.get(slot);
+    const score4 = c.totalGrade4 != null ? Number(c.totalGrade4) : -1;
+    const prevScore4 = existing?.raw?.totalGrade4 != null ? Number(existing.raw.totalGrade4) : -1;
+    if (!existing || score4 > prevScore4 || (isGradeCOrHigher(c) && !existing.isMet)) {
+      slotMap.set(slot, {
+        slot,
+        order,
+        courseCode: c.courseCode || slot,
+        courseName: c.courseName || defaultName,
+        letterGrade: c.letterGrade || null,
+        score4: c.totalGrade4 ?? null,
+        score10: c.totalGrade10 ?? null,
+        isStudied: Boolean(c.letterGrade || c.totalGrade4 != null || c.totalGrade10 != null),
+        isMet: isGradeCOrHigher(c),
+        raw: c,
+      });
+    }
   }
 
-  const isLangPassed = highestLang != null;
+  // Luôn đảm bảo hiển thị đủ 3 học phần chuẩn (Tiếng Anh 1, Tiếng Anh 2, Tiếng Anh 3)
+  const standardSlots = [
+    { slot: 'TA1', defaultCode: 'NN703011', defaultName: 'Tiếng Anh 1', order: 1 },
+    { slot: 'TA2', defaultCode: 'NN703012', defaultName: 'Tiếng Anh 2', order: 2 },
+    { slot: 'TA3', defaultCode: 'NN702013', defaultName: 'Tiếng Anh 3', order: 3 },
+  ];
 
-  const passedITCourses = itCourses.filter(c => c.letterGrade && c.letterGrade !== 'F' && c.totalGrade4 != null && c.totalGrade4 >= 2.0);
+  const structuredLangCourses = standardSlots.map((std) => {
+    const found = slotMap.get(std.slot);
+    if (found) {
+      const { raw: _raw, ...rest } = found;
+      return rest;
+    }
+    return {
+      slot: std.slot,
+      order: std.order,
+      courseCode: std.defaultCode,
+      courseName: std.defaultName,
+      letterGrade: null,
+      score4: null,
+      score10: null,
+      isStudied: false,
+      isMet: false,
+    };
+  });
+
+  // Bổ sung các học phần Tiếng Anh khác mã (nếu sinh viên học mã tương đương ngoài TA1/2/3)
+  for (const [slotKey, item] of slotMap.entries()) {
+    if (!['TA1', 'TA2', 'TA3', 'CDRTA'].includes(slotKey)) {
+      const { raw: _raw, ...rest } = item;
+      structuredLangCourses.push(rest);
+    }
+  }
+
+  const passedLangItems = Array.from(slotMap.values()).filter(
+    (item) => item.slot !== 'CDRTA' && item.isMet
+  );
+  const studiedLangItems = Array.from(slotMap.values()).filter(
+    (item) => item.slot !== 'CDRTA' && item.isStudied
+  );
+
+  const requiredLangCount = 3;
+  const passedLangCount = passedLangItems.length;
+  const isLangPassed = hasDirectLangCert || passedLangCount >= requiredLangCount;
+
+  const highestLang =
+    passedLangItems.length > 0
+      ? [...passedLangItems].sort((a, b) => b.order - a.order || (b.score4 || 0) - (a.score4 || 0))[0]
+      : studiedLangItems[0] || null;
+
+  const langCourseBreakdown = structuredLangCourses
+    .slice(0, 3)
+    .map((c) => `${c.courseName}: ${c.letterGrade || 'Chưa học'}`)
+    .join(' • ');
+
+  const langShortStatus = isLangPassed
+    ? hasDirectLangCert && passedLangCount < requiredLangCount
+      ? 'Đạt chuẩn CĐR'
+      : `Đạt (${passedLangCount}/${requiredLangCount} môn ≥ C)`
+    : studiedLangItems.length > 0
+    ? `Chưa đạt (${passedLangCount}/${requiredLangCount} môn ≥ C)`
+    : `Chưa học (0/${requiredLangCount} môn)`;
+
+  const langStatusText = isLangPassed
+    ? `Đạt chuẩn (${passedLangCount}/${requiredLangCount} học phần Tiếng Anh ≥ C: ${langCourseBreakdown})`
+    : studiedLangItems.length > 0
+    ? `Chưa đạt (${passedLangCount}/${requiredLangCount} học phần ≥ C — ${langCourseBreakdown})`
+    : 'Chưa đạt (Yêu cầu đủ 3 học phần Tiếng Anh 1, 2, 3 đạt điểm C trở lên)';
+
+  // Đánh giá Chuẩn Tin học (Tin học đại cương HOẶC Nhập môn Công nghệ số và Trí tuệ nhân tạo >= C)
+  const passedITCourses = itCourses.filter(isGradeCOrHigher);
   const isITPassed = passedITCourses.length > 0;
-  
+
   let topIT = null;
   if (passedITCourses.length > 0) {
-    passedITCourses.sort((a, b) => (b.totalGrade4 || 0) - (a.totalGrade4 || 0));
-    topIT = passedITCourses[0];
+    const sorted = [...passedITCourses].sort(
+      (a, b) => (Number(b.totalGrade4) || 0) - (Number(a.totalGrade4) || 0)
+    );
+    topIT = sorted[0];
   }
+  const latestIT = topIT || itCourses[0] || null;
+
+  const itShortStatus = isITPassed
+    ? `Đạt (Điểm ${topIT.letterGrade})`
+    : latestIT?.letterGrade
+    ? `Chưa đạt (Điểm ${latestIT.letterGrade})`
+    : 'Chưa học';
+
+  const itDetailText = isITPassed
+    ? `${topIT.courseName} — Điểm ${topIT.letterGrade} (Đạt chuẩn ≥ C)`
+    : latestIT
+    ? `${latestIT.courseName} — Điểm ${latestIT.letterGrade || 'Chưa có'} (Yêu cầu đạt từ C trở lên)`
+    : 'Yêu cầu: Tin học đại cương hoặc Nhập môn Công nghệ số và Trí tuệ nhân tạo đạt từ C trở lên';
+
+  const itStatusText = isITPassed
+    ? `Đạt (${topIT.courseName} - Điểm ${topIT.letterGrade})`
+    : latestIT
+    ? `Chưa đạt (${latestIT.courseName} - Điểm ${latestIT.letterGrade || 'Chưa có'}, cần từ C trở lên)`
+    : 'Chưa đạt (Cần Tin học đại cương hoặc Nhập môn CNS & TTNT từ C trở lên)';
 
   return {
     foreignLanguage: {
       isPassed: isLangPassed,
+      passedCount: passedLangCount,
+      requiredCount: requiredLangCount,
+      studiedCount: studiedLangItems.length,
       courseCode: highestLang ? highestLang.courseCode : null,
       courseName: highestLang ? highestLang.courseName : null,
       letterGrade: highestLang ? highestLang.letterGrade : null,
-      score4: highestLang ? highestLang.totalGrade4 : null,
-      statusText: isLangPassed 
-        ? `Đạt (${highestLang.courseName} - Điểm ${highestLang.letterGrade})`
-        : (langCourses.length > 0 ? 'Chưa đạt (Cần học phần Tiếng Anh từ C trở lên)' : 'Chưa đăng ký/Chưa có điểm')
+      score4: highestLang ? highestLang.score4 : null,
+      shortStatus: langShortStatus,
+      detailText: langCourseBreakdown,
+      statusText: langStatusText,
+      courses: structuredLangCourses,
     },
     informationTechnology: {
       isPassed: isITPassed,
-      courseCode: topIT ? topIT.courseCode : null,
-      courseName: topIT ? topIT.courseName : null,
-      letterGrade: topIT ? topIT.letterGrade : null,
-      score4: topIT ? topIT.totalGrade4 : null,
-      statusText: isITPassed 
-        ? `Đạt (${topIT.courseName} - Điểm ${topIT.letterGrade})`
-        : (itCourses.length > 0 ? 'Chưa đạt (Cần học phần Tin học/CNS&AI từ C trở lên)' : 'Chưa đăng ký/Chưa có điểm')
-    }
+      courseCode: latestIT ? latestIT.courseCode : null,
+      courseName: latestIT ? latestIT.courseName : null,
+      letterGrade: latestIT ? latestIT.letterGrade : null,
+      score4: latestIT ? latestIT.totalGrade4 : null,
+      shortStatus: itShortStatus,
+      detailText: itDetailText,
+      statusText: itStatusText,
+    },
   };
 }
 
@@ -1043,8 +1216,10 @@ router.get('/curriculum', authMiddleware, async (req, res) => {
       },
       tinHoc: {
         title: 'Chuẩn đầu ra Tin học',
-        courseCode: stds.informationTechnology.courseCode || 'GIN131',
-        courseName: stds.informationTechnology.courseName || 'Tin học đại cương / CNS & AI',
+        courseCode: stds.informationTechnology.courseCode || 'NN703008 / NN702008',
+        courseName:
+          stds.informationTechnology.courseName ||
+          'Tin học đại cương / Nhập môn Công nghệ số và Trí tuệ nhân tạo',
         minGradeRequired: 'C',
         currentGrade: stds.informationTechnology.letterGrade,
         isMet: tinHocMet,
@@ -1053,9 +1228,11 @@ router.get('/curriculum', authMiddleware, async (req, res) => {
       ngoaiNgu: {
         title: 'Chuẩn đầu ra Ngoại ngữ (Tiếng Anh 1, 2, 3)',
         minGradeRequired: 'C',
+        passedCount: stds.foreignLanguage.passedCount,
+        requiredCount: stds.foreignLanguage.requiredCount,
         isMet: ngoaiNguMet,
         details: stds.foreignLanguage.statusText,
-        courses: [stds.foreignLanguage]
+        courses: stds.foreignLanguage.courses
       }
     };
 
@@ -1361,4 +1538,5 @@ router.get('/diem-ren-luyen/all', authMiddleware, async (req, res) => {
   }
 });
 
+router.evaluateGraduationStandards = evaluateGraduationStandards;
 module.exports = router;

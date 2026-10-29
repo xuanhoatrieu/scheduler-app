@@ -197,9 +197,88 @@ function enrichRequestPayload(requestInstance, serviceInstance = null) {
 
   return {
     ...plain,
+    pickupLocation: plain.trayLocation || service?.pickupLocation || '',
     slaStatus,
     paymentInfo,
   };
+}
+
+/**
+ * Helper: Tra cứu Số điện thoại & Email của sinh viên đang theo học từ CSDL TUAF (STU_HoSoSinhVien)
+ * kèm fallback từ hồ sơ Một cửa gần nhất của sinh viên trong PostgreSQL
+ */
+async function resolveStudentContactFromDb(user) {
+  if (!user) return { phone: '', email: '', className: '' };
+  let phone = String(user.phone || '').trim();
+  let email = String(user.email || '').trim();
+  let className = String(user.className || '').trim();
+
+  const username = String(user.username || '').trim();
+  if ((!phone || !email) && username) {
+    try {
+      const pool = await getPool().catch(() => null);
+      if (pool) {
+        const sql = require('mssql');
+        const req = pool.request();
+        let row = null;
+        if (user.tuafStudentId) {
+          req.input('idSv', sql.UniqueIdentifier, user.tuafStudentId);
+          const r = await req.query(`
+            SELECT TOP 1 Dienthoai_canhan, Dienthoai_canhan2, Dien_thoai_NR, Email, EmailTruong, Ma_lop
+            FROM STU_HoSoSinhVien
+            WHERE ID_sv = @idSv
+          `);
+          row = r.recordset?.[0] || null;
+        }
+        if (!row) {
+          const req2 = pool.request();
+          req2.input('maSv', sql.NVarChar(50), username);
+          const r2 = await req2.query(`
+            SELECT TOP 1 Dienthoai_canhan, Dienthoai_canhan2, Dien_thoai_NR, Email, EmailTruong, Ma_lop
+            FROM STU_HoSoSinhVien
+            WHERE UPPER(Ma_sv) = UPPER(@maSv)
+          `);
+          row = r2.recordset?.[0] || null;
+        }
+        if (row) {
+          const dbPhone = String(
+            row.Dienthoai_canhan || row.Dienthoai_canhan2 || row.Dien_thoai_NR || ''
+          ).trim();
+          const dbEmail = String(row.Email || row.EmailTruong || '').trim();
+          const dbClass = String(row.Ma_lop || '').trim();
+          if (!phone && dbPhone) phone = dbPhone;
+          if (!email && dbEmail) email = dbEmail;
+          if ((!className || className === 'Chua cap nhat') && dbClass) className = dbClass;
+        }
+      }
+    } catch (_err) {
+      // Bỏ qua lỗi kết nối SQL Server, chuyển sang fallback PostgreSQL
+    }
+  }
+
+  // Fallback từ hồ sơ Một cửa gần nhất của sinh viên trong PostgreSQL
+  if ((!phone || !email) && (user.id || username)) {
+    try {
+      const latestReq = await ServiceRequest.findOne({
+        where: {
+          [Op.or]: [
+            ...(user.id ? [{ studentUserId: user.id }] : []),
+            ...(username ? [{ studentUsername: username }] : []),
+          ],
+        },
+        order: [['createdAt', 'DESC']],
+      });
+      if (latestReq) {
+        if (!phone && latestReq.studentPhone) phone = String(latestReq.studentPhone).trim();
+        if (!email && latestReq.studentEmail) email = String(latestReq.studentEmail).trim();
+        if (!className && latestReq.studentClass) className = String(latestReq.studentClass).trim();
+      }
+    } catch (_err) {
+      // Ignore
+    }
+  }
+
+  return { phone, email, className };
 }
 
 /**
@@ -287,15 +366,21 @@ function normalizeServicePayload(srvInstance) {
   if (!srvInstance) return null;
   const plain =
     typeof srvInstance.toJSON === 'function' ? srvInstance.toJSON() : { ...srvInstance };
+  plain.pickupLocation = String(plain.pickupLocation || '').trim();
   if (Array.isArray(plain.deliveryOptions)) {
     plain.deliveryOptions = plain.deliveryOptions.map(normalizeDeliveryKey);
   }
   if (Array.isArray(plain.formSchema)) {
-    plain.formSchema = plain.formSchema.map((f) =>
-      f && typeof f === 'object'
-        ? { ...f, name: f.name || f.key, key: f.key || f.name }
-        : f
-    );
+    plain.formSchema = plain.formSchema
+      .filter((f) => {
+        const fKey = f?.name || f?.key;
+        return fKey !== 'graduationYear';
+      })
+      .map((f) =>
+        f && typeof f === 'object'
+          ? { ...f, name: f.name || f.key, key: f.key || f.name }
+          : f
+      );
   }
   return plain;
 }
@@ -303,8 +388,9 @@ function normalizeServicePayload(srvInstance) {
 /**
  * GET /api/services
  * Lấy danh sách thủ tục đang mở (có thể lọc ?alumni=true hoặc ?department=...)
+ * Nếu sinh viên đã đăng nhập, trả kèm studentContact (phone, email, className) từ CSDL TUAF
  */
-router.get('/', async (req, res) => {
+router.get('/', optionalAuth, async (req, res) => {
   try {
     const where = { isActive: true };
     if (req.query.alumni === 'true' || req.query.alumni === '1') {
@@ -322,9 +408,12 @@ router.get('/', async (req, res) => {
       ],
     });
 
+    const studentContact = req.user ? await resolveStudentContactFromDb(req.user) : null;
+
     res.json({
       success: true,
       data: services.map(normalizeServicePayload),
+      ...(studentContact ? { studentContact } : {}),
     });
   } catch (error) {
     console.error('❌ [OneStop] GET /api/services error:', error.message);
@@ -497,8 +586,18 @@ router.post('/requests', optionalAuth, async (req, res) => {
       (req.user ? req.user.username : studentUsername) || studentUsername || ''
     ).trim();
     const finalNationalId = String(nationalId || '').trim();
-    const finalPhone = String(studentPhone || req.user?.phone || '').trim();
-    const finalEmail = String(studentEmail || req.user?.email || '').trim();
+    let finalPhone = String(studentPhone || req.user?.phone || '').trim();
+    let finalEmail = String(studentEmail || req.user?.email || '').trim();
+    let resolvedClass = String(req.user?.className || studentClass || '').trim();
+
+    if (req.user && (!finalPhone || !finalEmail || !resolvedClass || resolvedClass === 'Chua cap nhat')) {
+      const dbContact = await resolveStudentContactFromDb(req.user);
+      if (!finalPhone && dbContact.phone) finalPhone = dbContact.phone;
+      if (!finalEmail && dbContact.email) finalEmail = dbContact.email;
+      if ((!resolvedClass || resolvedClass === 'Chua cap nhat') && dbContact.className) {
+        resolvedClass = dbContact.className;
+      }
+    }
 
     if (!finalFullName) {
       return res.status(400).json({
@@ -530,11 +629,12 @@ router.post('/requests', optionalAuth, async (req, res) => {
       });
     }
 
-    // 4. Kiểm tra các trường bắt buộc trong formSchema
+    // 4. Kiểm tra các trường bắt buộc trong formSchema (bỏ qua graduationYear vì SV đang học)
     const schemaFields = Array.isArray(service.formSchema) ? service.formSchema : [];
     const sanitizedFormData = {};
     for (const field of schemaFields) {
       const fieldName = field.name || field.key;
+      if (fieldName === 'graduationYear') continue;
       const val = formData ? (formData[fieldName] ?? formData[field.key]) : undefined;
       if (field.required && (val === undefined || val === null || String(val).trim() === '')) {
         return res.status(400).json({
@@ -614,7 +714,7 @@ router.post('/requests', optionalAuth, async (req, res) => {
       studentFullName: finalFullName,
       studentEmail: finalEmail || null,
       studentPhone: finalPhone || null,
-      studentClass: String(req.user?.className || studentClass || '').trim() || null,
+      studentClass: resolvedClass || null,
       studentFaculty: String(req.user?.department || studentFaculty || '').trim() || null,
       isAlumni: isAlumniRequest,
       nationalId: finalNationalId || null,
@@ -708,9 +808,11 @@ router.get('/my-requests', authMiddleware, async (req, res) => {
     });
 
     const enriched = rows.map((r) => enrichRequestPayload(r, r.service));
+    const studentContact = await resolveStudentContactFromDb(req.user);
     return res.json({
       success: true,
       data: enriched,
+      studentContact,
     });
   } catch (error) {
     console.error('❌ [OneStop] GET /my-requests error:', error.message);
@@ -1634,6 +1736,13 @@ router.patch('/staff/requests/:id/process', staffOrAdminGuard, async (req, res) 
     }
     if (trayLocation) {
       requestRow.trayLocation = String(trayLocation).trim();
+    } else if (
+      requestRow.deliveryMethod === 'office_pickup' &&
+      ['ready_for_pickup', 'completed'].includes(targetStatus) &&
+      !requestRow.trayLocation &&
+      requestRow.service?.pickupLocation
+    ) {
+      requestRow.trayLocation = String(requestRow.service.pickupLocation).trim();
     }
     if (postalTrackingNumber) {
       requestRow.postalTrackingNumber = String(postalTrackingNumber).trim();
@@ -1711,8 +1820,10 @@ router.patch('/staff/requests/:id/process', staffOrAdminGuard, async (req, res) 
         body:
           requestRow.deliveryMethod === 'office_pickup'
             ? `Giấy tờ "${requestRow.serviceName}" đã hoàn tất${
-                requestRow.trayLocation ? ` (Vị trí: ${requestRow.trayLocation})` : ''
-              }. Vui lòng mang mã QR trên App tới quầy Một cửa để nhận.`
+                requestRow.trayLocation || requestRow.service?.pickupLocation
+                  ? ` (Nơi nhận: ${requestRow.trayLocation || requestRow.service?.pickupLocation})`
+                  : ''
+              }. Vui lòng mang mã QR trên App tới nhận kết quả.`
             : `Kết quả thủ tục "${requestRow.serviceName}" đã sẵn sàng!`,
       },
       completed: {
@@ -1811,7 +1922,11 @@ router.post('/staff/requests/:id/handover', staffOrAdminGuard, async (req, res) 
 
     await notifyStudentStatusUpdate(requestRow, {
       title: `🤝 Đã bàn giao bản giấy hồ sơ #${requestRow.requestCode}`,
-      body: `Bạn đã nhận bản giấy thủ tục "${requestRow.serviceName}" tại quầy Một cửa. Hãy dành 10 giây đánh giá chất lượng phục vụ nhé!`,
+      body: `Bạn đã nhận bản giấy thủ tục "${requestRow.serviceName}"${
+        requestRow.trayLocation || requestRow.service?.pickupLocation
+          ? ` tại ${requestRow.trayLocation || requestRow.service?.pickupLocation}`
+          : ''
+      }. Hãy dành 10 giây đánh giá chất lượng phục vụ nhé!`,
     });
 
     return res.json({
@@ -2008,6 +2123,7 @@ adminRouter.post('/', async (req, res) => {
       deliveryOptions: Array.isArray(payload.deliveryOptions)
         ? payload.deliveryOptions.map(normalizeDeliveryKey)
         : ['digital_pdf', 'office_pickup'],
+      pickupLocation: String(payload.pickupLocation || '').trim(),
       formSchema: Array.isArray(payload.formSchema)
         ? payload.formSchema.map((f) =>
             f && typeof f === 'object'
@@ -2073,6 +2189,7 @@ adminRouter.put('/:id', async (req, res) => {
       'postalFeeAmount',
       'bankAccountInfo',
       'deliveryOptions',
+      'pickupLocation',
       'formSchema',
       'requiresAttachment',
       'attachmentGuide',
