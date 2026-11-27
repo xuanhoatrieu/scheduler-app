@@ -291,7 +291,7 @@ export default function ProfileScreen({ user, onLogout, onSwitchRole }) {
           <View style={styles.infoCard}>
             <View style={styles.infoCardRow}>
               <Text style={styles.infoCardLabel}>Phiên bản</Text>
-              <Text style={styles.infoCardValue}>1.1.6 (Build 43)</Text>
+              <Text style={styles.infoCardValue}>1.1.7 (Build 44)</Text>
             </View>
             <View style={styles.infoCardDivider} />
             <View style={styles.infoCardRow}>

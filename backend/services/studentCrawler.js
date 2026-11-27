@@ -80,9 +80,14 @@ const loginStudent = async (username, password) => {
 
     // 4. Kiểm tra xem đăng nhập thành công hay thất bại
     const $res = cheerio.load(loginRes.data);
-    const alertText = $res('.alert, .text-danger, #error-message, .validation-summary-errors').text().trim();
+    const alertText = $res('#Ero, .error, .alert, .text-danger, #error-message, .validation-summary-errors').text().trim();
     
-    if (alertText && (alertText.includes('không chính xác') || alertText.includes('sai'))) {
+    if (alertText && (alertText.includes('không chính xác') || alertText.includes('sai') || alertText.includes('không tồn tại'))) {
+      return { success: false, error: 'Mã sinh viên hoặc mật khẩu cổng trường không chính xác.' };
+    }
+
+    // Nếu response vẫn còn nguyên form đăng nhập (#loginform) thì đăng nhập chưa thành công
+    if ($res('#loginform').length > 0 && !$res('#ulMenu2 .styMenu').html()) {
       return { success: false, error: 'Mã sinh viên hoặc mật khẩu cổng trường không chính xác.' };
     }
 
@@ -91,6 +96,9 @@ const loginStudent = async (username, password) => {
     const $home = cheerio.load(homeRes.data);
     
     const userMenuHtml = $home('#ulMenu2 .styMenu').html() || '';
+    if (!userMenuHtml && $home('#loginform').length > 0) {
+      return { success: false, error: 'Mã sinh viên hoặc mật khẩu cổng trường không chính xác.' };
+    }
     let fullName = 'Sinh viên TUAF';
     let className = 'Chưa cập nhật';
     if (userMenuHtml) {

@@ -122,43 +122,87 @@ async function getPool() {
     return _pool;
   }
 
-  // Tránh race condition: chỉ tạo pool 1 lần
+  // Nếu pool cũ đã mất kết nối, dọn dẹp trước khi tạo pool mới
+  if (_pool && !_pool.connected) {
+    try {
+      await _pool.close();
+    } catch (_) {
+      // Ignore error when closing stale pool
+    }
+    _pool = null;
+  }
+
+  // Tránh race condition: chỉ tạo pool 1 lần khi đang kết nối dở
   if (_poolPromise) {
     return _poolPromise;
   }
 
   _poolPromise = (async () => {
-    let creds;
-
-    // Ưu tiên: NamViet API dynamic credentials
     try {
-      console.log('🔑 [NamViet] Đang lấy credentials từ API NamViet...');
-      creds = await fetchDynamicCredentials();
-      console.log(`🔑 [NamViet] Credentials OK → ${creds.server}/${creds.database}`);
-    } catch (apiErr) {
-      console.warn(`⚠️ [NamViet] API lỗi: ${apiErr.message}. Dùng static .env credentials...`);
-      creds = getStaticCredentials();
-      console.log(`🔑 [NamViet] Fallback static → ${creds.server}/${creds.database}`);
-    }
+      let creds;
+      let usedDynamic = false;
 
-    // Kết nối SQL Server
-    const config = buildPoolConfig(creds);
-    console.log(`📡 [NamViet] Đang kết nối SQL Server ${creds.server}/${creds.database}...`);
+      // Ưu tiên: NamViet API dynamic credentials
+      try {
+        console.log('🔑 [NamViet] Đang lấy credentials từ API NamViet...');
+        creds = await fetchDynamicCredentials();
+        usedDynamic = true;
+        console.log(`🔑 [NamViet] Credentials OK → ${creds.server}/${creds.database}`);
+      } catch (apiErr) {
+        console.warn(`⚠️ [NamViet] API lỗi: ${apiErr.message}. Dùng static .env credentials...`);
+        creds = getStaticCredentials();
+        console.log(`🔑 [NamViet] Fallback static → ${creds.server}/${creds.database}`);
+      }
 
-    const pool = await new sql.ConnectionPool(config).connect();
-    console.log(`✅ [NamViet] SQL Server connected! (pool max=${config.pool.max}, readOnly=true)`);
+      // Kết nối SQL Server (nếu dynamic creds lỗi kết nối thì thử fallback sang static .env nếu có)
+      let pool;
+      try {
+        const config = buildPoolConfig(creds);
+        console.log(`📡 [NamViet] Đang kết nối SQL Server ${creds.server}/${creds.database}...`);
+        pool = await new sql.ConnectionPool(config).connect();
+      } catch (connErr) {
+        if (usedDynamic) {
+          try {
+            const staticCreds = getStaticCredentials();
+            const isDifferent =
+              staticCreds.server !== creds.server ||
+              staticCreds.user !== creds.user ||
+              staticCreds.password !== creds.password ||
+              staticCreds.database !== creds.database;
+            if (isDifferent) {
+              console.warn(`⚠️ [NamViet] Kết nối dynamic thất bại (${connErr.message}). Thử fallback static .env...`);
+              const fallbackConfig = buildPoolConfig(staticCreds);
+              pool = await new sql.ConnectionPool(fallbackConfig).connect();
+            } else {
+              throw connErr;
+            }
+          } catch (_) {
+            throw connErr;
+          }
+        } else {
+          throw connErr;
+        }
+      }
 
-    _pool = pool;
-    _poolPromise = null;
+      console.log(`✅ [NamViet] SQL Server connected! (pool max=5, readOnly=true)`);
 
-    // Xử lý pool error
-    pool.on('error', (err) => {
-      console.error('❌ [NamViet] Pool error:', err.message);
+      _pool = pool;
+      _poolPromise = null;
+
+      // Xử lý pool error
+      pool.on('error', (err) => {
+        console.error('❌ [NamViet] Pool error:', err.message);
+        _pool = null;
+        _poolPromise = null;
+      });
+
+      return pool;
+    } catch (err) {
+      // BẮT BUỘC reset _poolPromise = null khi lỗi để các request sau tự động kết nối lại
       _pool = null;
       _poolPromise = null;
-    });
-
-    return pool;
+      throw err;
+    }
   })();
 
   return _poolPromise;
